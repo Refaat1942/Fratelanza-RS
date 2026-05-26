@@ -10,10 +10,19 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from enum import StrEnum
+import os
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel, Field
+
+from backend.vps_admin.storage import (
+    load_customers,
+    load_tenant_document,
+    save_customer,
+    save_tenant_document,
+    tenant_db_path,
+)
 
 
 class LicenseState(StrEnum):
@@ -179,9 +188,10 @@ class TaxCreateRequest(BaseModel):
 
 app = FastAPI(title="Fratelanza VPS Admin API", version="0.1.0")
 
-# Replace this in production with PostgreSQL/MySQL and hashed API keys.
-CUSTOMERS: dict[str, CustomerRecord] = {}
-TENANT_DATA: dict[str, dict[str, list[dict[str, object]] | dict[str, object]]] = {}
+ADMIN_KEY = os.getenv("FRATELANZA_ADMIN_KEY", "change-this-admin-key")
+CUSTOMERS: dict[str, CustomerRecord] = {
+    customer_id: CustomerRecord(**row) for customer_id, row in load_customers().items()
+}
 
 
 DEFAULT_PERMISSIONS = [
@@ -217,10 +227,15 @@ def require_customer(
     return customer
 
 
+def require_admin(x_admin_key: Annotated[str | None, Header()] = None) -> None:
+    """Protect admin endpoints used by your laptop Admin EXE."""
+    if x_admin_key != ADMIN_KEY:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin key.")
+
+
 def tenant_data(customer: CustomerRecord) -> dict[str, list[dict[str, object]] | dict[str, object]]:
-    """Return isolated in-memory data for a customer database key."""
-    if customer.database_key not in TENANT_DATA:
-        TENANT_DATA[customer.database_key] = {
+    """Return isolated persisted data for a customer database key."""
+    default = {
             "categories": [{"CategoryId": 1, "CategoryName": "General", "Description": "", "IsActive": True}],
             "brands": [],
             "units": [{"UnitId": 1, "UnitName": "Piece", "Symbol": "pc", "AllowsDecimals": False}],
@@ -245,7 +260,11 @@ def tenant_data(customer: CustomerRecord) -> dict[str, list[dict[str, object]] |
                 "LogoPath": "",
             },
         }
-    return TENANT_DATA[customer.database_key]
+    return load_tenant_document(customer.database_key, default)
+
+
+def persist_tenant(customer: CustomerRecord, data: dict[str, object]) -> None:
+    save_tenant_document(customer.database_key, data)
 
 
 def next_id(rows: list[dict[str, object]], key: str) -> int:
@@ -286,25 +305,57 @@ def login(
     }
 
 
+@app.get("/admin/customers", response_model=list[CustomerRecord])
+def list_admin_customers(_: Annotated[None, Depends(require_admin)]) -> list[CustomerRecord]:
+    """List customers for the Admin EXE."""
+    return list(CUSTOMERS.values())
+
+
 @app.post("/admin/customers", response_model=CustomerRecord)
-def create_customer(request: CreateCustomerRequest) -> CustomerRecord:
+def create_customer(
+    request: CreateCustomerRequest,
+    _: Annotated[None, Depends(require_admin)],
+) -> CustomerRecord:
     """Create a customer and assign its separate database key."""
     if request.customer_id in CUSTOMERS:
         raise HTTPException(status_code=409, detail="Customer already exists.")
     customer = CustomerRecord(**request.model_dump())
     CUSTOMERS[customer.customer_id] = customer
+    save_customer(customer)
+    tenant_data(customer)
     return customer
 
 
 @app.post("/admin/customers/{customer_id}/state/{state}", response_model=CustomerRecord)
-def update_license_state(customer_id: str, state: LicenseState) -> CustomerRecord:
+def update_license_state(
+    customer_id: str,
+    state: LicenseState,
+    _: Annotated[None, Depends(require_admin)],
+) -> CustomerRecord:
     """Suspend/reactivate a customer from your admin panel."""
     customer = CUSTOMERS.get(customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found.")
     updated = customer.model_copy(update={"license_state": state})
     CUSTOMERS[customer_id] = updated
+    save_customer(updated)
     return updated
+
+
+@app.get("/admin/customers/{customer_id}/database")
+def customer_database_info(
+    customer_id: str,
+    _: Annotated[None, Depends(require_admin)],
+) -> dict[str, str]:
+    """Show where a customer's isolated VPS database file lives."""
+    customer = CUSTOMERS.get(customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found.")
+    return {
+        "customer_id": customer.customer_id,
+        "database_key": customer.database_key,
+        "database_path": str(tenant_db_path(customer.database_key)),
+    }
 
 
 @app.post("/installations/heartbeat", response_model=HeartbeatResponse)
@@ -348,9 +399,11 @@ def add_category(
     request: NamedCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["categories"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["categories"]  # type: ignore[assignment]
     row = {"CategoryId": next_id(rows, "CategoryId"), "CategoryName": request.name, "Description": request.description, "IsActive": True}
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -364,9 +417,11 @@ def add_brand(
     request: NamedCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["brands"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["brands"]  # type: ignore[assignment]
     row = {"BrandId": next_id(rows, "BrandId"), "BrandName": request.name, "IsActive": True}
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -380,9 +435,11 @@ def add_unit(
     request: UnitCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["units"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["units"]  # type: ignore[assignment]
     row = {"UnitId": next_id(rows, "UnitId"), "UnitName": request.name, "Symbol": request.symbol, "AllowsDecimals": request.allows_decimals}
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -442,6 +499,7 @@ def add_product(
         "IsActive": True,
     }
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -450,9 +508,11 @@ def adjust_stock(
     request: StockAdjustmentRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, str]:
-    for product in tenant_data(customer)["products"]:  # type: ignore[union-attr]
+    data = tenant_data(customer)
+    for product in data["products"]:  # type: ignore[union-attr]
         if product["ProductId"] == request.product_id:
             product["QuantityOnHand"] = decimal_value(product["QuantityOnHand"]) + request.quantity_delta
+            persist_tenant(customer, data)
             return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Product not found.")
 
@@ -463,9 +523,11 @@ def set_barcode(
     request: BarcodeUpdateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, str]:
-    for product in tenant_data(customer)["products"]:  # type: ignore[union-attr]
+    data = tenant_data(customer)
+    for product in data["products"]:  # type: ignore[union-attr]
         if product["ProductId"] == product_id:
             product["Barcode"] = request.barcode
+            persist_tenant(customer, data)
             return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Product not found.")
 
@@ -487,7 +549,8 @@ def add_business_customer(
     request: CustomerCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["customers"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["customers"]  # type: ignore[assignment]
     row = {
         "CustomerId": next_id(rows, "CustomerId"),
         "CustomerCode": request.code,
@@ -501,6 +564,7 @@ def add_business_customer(
         "IsActive": True,
     }
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -521,7 +585,8 @@ def add_supplier(
     request: SupplierCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["suppliers"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["suppliers"]  # type: ignore[assignment]
     row = {
         "SupplierId": next_id(rows, "SupplierId"),
         "SupplierCode": request.code,
@@ -535,6 +600,7 @@ def add_supplier(
         "IsActive": True,
     }
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -553,9 +619,11 @@ def add_expense_category(
     request: NamedCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["expense_categories"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["expense_categories"]  # type: ignore[assignment]
     row = {"ExpenseCategoryId": next_id(rows, "ExpenseCategoryId"), "CategoryName": request.name}
     rows.append(row)
+    persist_tenant(customer, data)
     return row
 
 
@@ -587,6 +655,7 @@ def add_expense(
     rows.append(row)
     if cashbox:
         cashbox["CurrentBalance"] = decimal_value(cashbox["CurrentBalance"]) - request.amount
+    persist_tenant(customer, data)
     return row
 
 
@@ -616,6 +685,7 @@ def add_revenue(
     rows.append(row)
     if cashbox:
         cashbox["CurrentBalance"] = decimal_value(cashbox["CurrentBalance"]) + request.amount
+    persist_tenant(customer, data)
     return row
 
 
@@ -664,6 +734,7 @@ def create_invoice(
         item = dict(line)
         item["SalesInvoiceId"] = invoice_id
         invoice_items.append(item)
+    persist_tenant(customer, data)
     return {"invoice_id": invoice_id}
 
 
@@ -747,7 +818,9 @@ def update_company_profile(
         "AddressLine": request.address,
         "LogoPath": request.logo_path,
     }
-    tenant_data(customer)["company_profile"] = profile
+    data = tenant_data(customer)
+    data["company_profile"] = profile
+    persist_tenant(customer, data)
     return profile
 
 
@@ -761,7 +834,8 @@ def add_tax(
     request: TaxCreateRequest,
     customer: Annotated[CustomerRecord, Depends(require_customer)],
 ) -> dict[str, object]:
-    rows = tenant_data(customer)["taxes"]  # type: ignore[assignment]
+    data = tenant_data(customer)
+    rows = data["taxes"]  # type: ignore[assignment]
     row = {
         "TaxSettingId": next_id(rows, "TaxSettingId"),
         "TaxName": request.name,
@@ -770,4 +844,5 @@ def add_tax(
         "IsActive": True,
     }
     rows.append(row)
+    persist_tenant(customer, data)
     return row

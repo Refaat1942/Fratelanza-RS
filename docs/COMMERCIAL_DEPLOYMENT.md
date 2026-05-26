@@ -67,6 +67,53 @@ FRATELANZA_REMOTE_DISABLE=true
 FRATELANZA_REMOTE_OFFLINE_GRACE_HOURS=72
 ```
 
+You can also ship the customer EXE with `config/customer_cloud.toml`, which is
+prepared for VPS mode and does not require local SQL Server values.
+
+## Your laptop Admin EXE
+
+Your laptop should run the admin console, not the customer business database.
+
+Development command:
+
+```bash
+fratelanza-admin
+```
+
+Environment for your laptop:
+
+```env
+FRATELANZA_ADMIN_API_BASE_URL=https://your-vps-domain.com
+FRATELANZA_ADMIN_KEY=<your-private-admin-key>
+```
+
+The admin console can:
+
+- Create customers.
+- Generate/store customer API keys.
+- Assign each customer a database key.
+- Suspend/reactivate licenses.
+- Show the VPS database path for a customer.
+
+## VPS storage
+
+Set this on the VPS:
+
+```env
+FRATELANZA_ADMIN_KEY=<your-private-admin-key>
+FRATELANZA_VPS_DATA_ROOT=/opt/fratelanza/data
+```
+
+The backend stores:
+
+```text
+/opt/fratelanza/data/admin.sqlite3
+/opt/fratelanza/data/tenants/customer_001.sqlite3
+/opt/fratelanza/data/tenants/customer_002.sqlite3
+```
+
+So every customer has a separate database file on your VPS.
+
 ## Current API coverage
 
 The desktop app can now switch repository composition by data mode:
@@ -86,9 +133,9 @@ The VPS scaffold exposes API routes for:
 - Reports and low-stock alerts
 - Company profile and taxes
 
-The scaffold uses in-memory tenant data so the contract is testable quickly.
-Before production, replace that storage with real per-customer databases on the
-VPS using each customer's `database_key`.
+The current scaffold persists customer/license records and per-customer business
+data into SQLite files on the VPS. For larger deployments, these SQLite files
+can later be replaced by PostgreSQL databases while keeping the same API shape.
 
 ## Important
 

@@ -34,6 +34,7 @@ backend = [
 
 [project.scripts]
 fratelanza = "fratelanza.main:main"
+fratelanza-admin = "fratelanza_admin.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -59,6 +59,12 @@ tests/                          Focused validation tests
    python -m fratelanza
    ```
 
+To run your laptop admin console:
+
+```bash
+fratelanza-admin
+```
+
 The default seeded administrator is configured in
 `database/sqlserver/001_create_schema.sql`. Change the password immediately
 after deployment.
@@ -131,6 +137,9 @@ FRATELANZA_DATA_MODE=hybrid_offline
 In this mode the EXE talks to your VPS API and uses a cached offline license
 policy for temporary offline operation. Each customer is assigned a separate
 database key by the VPS. See `docs/COMMERCIAL_DEPLOYMENT.md`.
+
+For customer EXE builds with no local SQL Server, start from
+`config/customer_cloud.toml`.
 
 ## Commercial Customization Notes
 
