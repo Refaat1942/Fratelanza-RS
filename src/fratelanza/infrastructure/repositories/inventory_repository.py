@@ -85,6 +85,10 @@ class InventoryRepository(SqlServerRepository):
             like,
         )
 
+    def next_product_sequence(self) -> int:
+        row = self.fetch_one("SELECT COUNT(*) + 1 AS NextNumber FROM inventory.Products")
+        return int(row["NextNumber"]) if row else 1
+
     def add_product(
         self,
         *,

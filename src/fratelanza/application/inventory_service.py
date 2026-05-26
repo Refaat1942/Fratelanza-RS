@@ -37,7 +37,7 @@ class InventoryService:
         return self._repository.list_products(search.strip())
 
     def add_product(self, values: dict[str, object]) -> None:
-        product_id_seed = int(values.get("product_id_seed") or 1)
+        product_id_seed = self._repository.next_product_sequence()
         category_id = int(values.get("category_id") or 1)
         product_code = str(values.get("product_code") or "").strip()
         if not product_code:
