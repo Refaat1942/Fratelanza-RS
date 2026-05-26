@@ -23,6 +23,12 @@ uvicorn backend.vps_admin.main:app --host 0.0.0.0 --port 8000
 
 Production on the VPS should run behind HTTPS using Nginx or Caddy.
 
+One-command VPS deployment:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-LMP/cursor/fratelanza-business-suite-becb/scripts/deploy_vps_api.sh | bash
+```
+
 Environment:
 
 ```env

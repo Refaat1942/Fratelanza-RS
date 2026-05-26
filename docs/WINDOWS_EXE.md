@@ -110,15 +110,10 @@ The customer does not install SQL Server. The EXE talks to your VPS API.
 On your VPS:
 
 ```bash
-git clone https://github.com/Refaat1942/Fratelanza-LMP.git
-cd Fratelanza-LMP
-git checkout cursor/fratelanza-business-suite-becb
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[backend]"
-export FRATELANZA_ADMIN_KEY="your-private-admin-key"
-export FRATELANZA_VPS_DATA_ROOT="/opt/fratelanza/data"
-uvicorn backend.vps_admin.main:app --host 0.0.0.0 --port 8000
+curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-LMP/cursor/fratelanza-business-suite-becb/scripts/deploy_vps_api.sh | bash
 ```
+
+The script deploys the API on internal port `1058`, configures Nginx on port
+`80`, prints the admin key, and prints the exact `.env` lines for the Admin EXE.
 
 Then put it behind HTTPS with your VPS domain before selling to customers.
