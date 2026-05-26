@@ -125,6 +125,11 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
     if load_dotenv is not None:
         load_dotenv(PROJECT_ROOT / ".env")
     path = config_path or DEFAULT_CONFIG_PATH
+    if not path.exists() and getattr(sys, "frozen", False):
+        bundled_root = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
+        bundled_path = bundled_root / "config" / "app.toml"
+        if bundled_path.exists():
+            path = bundled_path
     if not path.exists():
         raise ConfigurationError(f"Configuration file not found: {path}")
 

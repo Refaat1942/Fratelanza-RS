@@ -61,6 +61,16 @@ To run your laptop admin console:
 To build the Windows desktop EXE, run `scripts\build_customer_exe.bat` on
 Windows.
 
+The build script copies editable runtime files beside the EXE:
+
+```text
+dist\FratelanzaBusinessSuite\config\app.toml
+dist\FratelanzaBusinessSuite\.env.example
+```
+
+Create `dist\FratelanzaBusinessSuite\.env` from `.env.example` and set local SQL
+Server values before running the EXE.
+
 The default seeded administrator is configured in
 `database/sqlserver/001_create_schema.sql`. Change the password immediately
 after deployment.

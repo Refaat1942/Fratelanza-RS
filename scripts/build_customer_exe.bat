@@ -14,6 +14,10 @@ if errorlevel 1 goto failed
 pyinstaller --clean --noconfirm build\windows\fratelanza_customer.spec
 if errorlevel 1 goto failed
 
+if not exist dist\FratelanzaBusinessSuite\config mkdir dist\FratelanzaBusinessSuite\config
+copy /Y config\app.toml dist\FratelanzaBusinessSuite\config\app.toml >nul
+copy /Y .env.example dist\FratelanzaBusinessSuite\.env.example >nul
+
 echo.
 echo Customer EXE created at:
 echo dist\FratelanzaBusinessSuite\FratelanzaBusinessSuite.exe
