@@ -351,6 +351,17 @@ CREATE TABLE settings.ApplicationSettings (
     UpdatedAt datetime2(0) NOT NULL CONSTRAINT DF_ApplicationSettings_UpdatedAt DEFAULT sysutcdatetime()
 );
 
+CREATE TABLE settings.ClientBranding (
+    ClientBrandingId int IDENTITY(1,1) NOT NULL CONSTRAINT PK_ClientBranding PRIMARY KEY,
+    ClientDisplayName nvarchar(180) NOT NULL,
+    LogoPath nvarchar(500) NULL,
+    PrimaryColor nvarchar(20) NOT NULL CONSTRAINT DF_ClientBranding_PrimaryColor DEFAULT N'#55d6be',
+    PreferredLocale nvarchar(10) NOT NULL CONSTRAINT DF_ClientBranding_PreferredLocale DEFAULT N'en',
+    ThemeName nvarchar(40) NOT NULL CONSTRAINT DF_ClientBranding_ThemeName DEFAULT N'dark',
+    IsActive bit NOT NULL CONSTRAINT DF_ClientBranding_IsActive DEFAULT 1,
+    UpdatedAt datetime2(0) NOT NULL CONSTRAINT DF_ClientBranding_UpdatedAt DEFAULT sysutcdatetime()
+);
+
 CREATE TABLE reporting.SavedReports (
     SavedReportId int IDENTITY(1,1) NOT NULL CONSTRAINT PK_SavedReports PRIMARY KEY,
     ReportKey nvarchar(120) NOT NULL,
@@ -393,6 +404,19 @@ CREATE TABLE system.BackupHistory (
     CreatedAt datetime2(0) NOT NULL CONSTRAINT DF_BackupHistory_CreatedAt DEFAULT sysutcdatetime()
 );
 
+CREATE TABLE system.RemoteControlState (
+    RemoteControlStateId int IDENTITY(1,1) NOT NULL CONSTRAINT PK_RemoteControlState PRIMARY KEY,
+    ClientId nvarchar(120) NULL,
+    InstallationId nvarchar(120) NULL,
+    ApiBaseUrl nvarchar(500) NULL,
+    LicenseState nvarchar(40) NOT NULL CONSTRAINT DF_RemoteControlState_LicenseState DEFAULT N'not_configured',
+    AllowRemoteSupport bit NOT NULL CONSTRAINT DF_RemoteControlState_AllowSupport DEFAULT 0,
+    AllowRemoteDisable bit NOT NULL CONSTRAINT DF_RemoteControlState_AllowDisable DEFAULT 1,
+    LastHeartbeatAt datetime2(0) NULL,
+    LastMessage nvarchar(1000) NULL,
+    UpdatedAt datetime2(0) NOT NULL CONSTRAINT DF_RemoteControlState_UpdatedAt DEFAULT sysutcdatetime()
+);
+
 INSERT INTO security.Roles (RoleName, Description, IsSystemRole)
 VALUES
     (N'Admin', N'Full system administrator', 1),
@@ -416,7 +440,8 @@ VALUES
     (N'crm.manage', N'Manage customers and suppliers'),
     (N'reports.view', N'View reports'),
     (N'settings.manage', N'Manage system settings'),
-    (N'barcode.manage', N'Manage barcode labels');
+    (N'barcode.manage', N'Manage barcode labels'),
+    (N'admin_panel.manage', N'Manage VPS control, licensing, and branding');
 
 INSERT INTO security.RolePermissions (RoleId, PermissionId)
 SELECT r.RoleId, p.PermissionId
@@ -450,3 +475,9 @@ VALUES
     (N'theme', N'dark'),
     (N'barcode.prefix', N'FRA'),
     (N'backup.enabled', N'true');
+
+INSERT INTO settings.ClientBranding (ClientDisplayName, PreferredLocale, ThemeName)
+VALUES (N'Fratelanza Client Company', N'en', N'dark');
+
+INSERT INTO system.RemoteControlState (LicenseState, LastMessage)
+VALUES (N'not_configured', N'VPS control is not configured.');

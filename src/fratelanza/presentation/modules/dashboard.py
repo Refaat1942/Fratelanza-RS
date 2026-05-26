@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QGridLayout, QLabel, QVBoxLayout, QWidget
 
 from fratelanza.application.dashboard_service import DashboardService
+from fratelanza.core.i18n import Localizer
 from fratelanza.domain.entities import DashboardMetric
 from fratelanza.presentation.components.metric_card import MetricCard
 
@@ -17,18 +18,17 @@ logger = logging.getLogger(__name__)
 class DashboardView(QWidget):
     """Executive dashboard with reusable KPI cards."""
 
-    def __init__(self, dashboard_service: DashboardService) -> None:
+    def __init__(self, dashboard_service: DashboardService, localizer: Localizer) -> None:
         super().__init__()
         self._dashboard_service = dashboard_service
+        self._localizer = localizer
         self._build()
 
     def _build(self) -> None:
-        title = QLabel("Business Dashboard")
+        title = QLabel(self._localizer.gettext("dashboard.title"))
         title.setObjectName("Title")
 
-        subtitle = QLabel(
-            "Sales, inventory, finance, customer, supplier, and alert analytics in one place."
-        )
+        subtitle = QLabel(self._localizer.gettext("dashboard.subtitle"))
         subtitle.setObjectName("Muted")
         subtitle.setWordWrap(True)
 
@@ -40,12 +40,9 @@ class DashboardView(QWidget):
         chart_card = QFrame()
         chart_card.setObjectName("Card")
         chart_card.setMinimumHeight(260)
-        chart_title = QLabel("Analytics Workspace")
+        chart_title = QLabel(self._localizer.gettext("dashboard.analytics_workspace"))
         chart_title.setObjectName("SectionTitle")
-        chart_hint = QLabel(
-            "Charts are wired through the dashboard service and ready for sales trends, "
-            "top products, cashbox movement, and profit visualization."
-        )
+        chart_hint = QLabel(self._localizer.gettext("dashboard.analytics_hint"))
         chart_hint.setObjectName("Muted")
         chart_hint.setWordWrap(True)
         chart_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)

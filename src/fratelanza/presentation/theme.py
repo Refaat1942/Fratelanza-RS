@@ -51,8 +51,9 @@ def get_theme(name: str) -> Theme:
     return LIGHT_THEME if name.lower() == "light" else DARK_THEME
 
 
-def build_stylesheet(theme: Theme) -> str:
+def build_stylesheet(theme: Theme, *, primary_color: str | None = None) -> str:
     """Build the global Qt style sheet."""
+    primary = primary_color or theme.primary
     return f"""
     QWidget {{
         background-color: {theme.background};
@@ -85,10 +86,10 @@ def build_stylesheet(theme: Theme) -> str:
     }}
     QPushButton:hover {{
         background-color: {theme.surface_alt};
-        border-color: {theme.primary};
+        border-color: {primary};
     }}
     QPushButton#PrimaryButton {{
-        background-color: {theme.primary};
+        background-color: {primary};
         color: #07120f;
         border: none;
         font-weight: 700;
@@ -102,10 +103,10 @@ def build_stylesheet(theme: Theme) -> str:
         border: 1px solid {theme.border};
         border-radius: 12px;
         padding: 11px 12px;
-        selection-background-color: {theme.primary};
+        selection-background-color: {primary};
     }}
     QLineEdit:focus, QComboBox:focus, QTextEdit:focus {{
-        border-color: {theme.primary};
+        border-color: {primary};
     }}
     QStackedWidget {{
         background-color: transparent;

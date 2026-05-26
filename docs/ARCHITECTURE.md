@@ -37,6 +37,8 @@ theme system, login dialog, dashboard, navigation shell, and module placeholders
 - Reports and analytics
 - Settings
 - Barcode system
+- VPS admin control and client licensing
+- English/Arabic localization and branding
 
 Each module starts with a UI shell and database tables. New business behavior
 should be added module-by-module using application services and repositories.
@@ -50,6 +52,21 @@ settings tables. Future changes should be added as numbered migration scripts.
 ## Customization Strategy
 
 - Branding: `config/app.toml` and `presentation/theme.py`
+- Client logos and names: `[branding]` in `config/app.toml` or `.env`
+- Language: `FRATELANZA_LOCALE=en` or `FRATELANZA_LOCALE=ar`
+- VPS control: `[remote_admin]` in `config/app.toml` or `.env`
 - Client-specific logic: new application services
 - Client-specific fields: additive SQL migration scripts
 - UI extensions: new widgets/views under `presentation/modules`
+
+## VPS Control Plane Contract
+
+Each sold installation can call a Fratelanza-owned VPS endpoint:
+
+`POST /installations/heartbeat`
+
+The request includes the client id, installation id, app version, machine name,
+remote-support preference, and timestamp. The response should include a
+`state` value such as `active`, `suspended`, or `expired`, plus an optional
+operator message. The desktop shell blocks login when the VPS returns a disabled
+state and `allow_remote_disable` is enabled.

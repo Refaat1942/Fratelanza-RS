@@ -22,6 +22,7 @@ class Permission(StrEnum):
     REPORTS_VIEW = "reports.view"
     SETTINGS_MANAGE = "settings.manage"
     BARCODE_MANAGE = "barcode.manage"
+    ADMIN_PANEL_MANAGE = "admin_panel.manage"
 
 
 class RoleName(StrEnum):
@@ -48,6 +49,7 @@ DEFAULT_ROLE_PERMISSIONS: dict[RoleName, set[Permission]] = {
         Permission.CRM_MANAGE,
         Permission.REPORTS_VIEW,
         Permission.BARCODE_MANAGE,
+        Permission.ADMIN_PANEL_MANAGE,
     },
     RoleName.CASHIER: {
         Permission.DASHBOARD_VIEW,

@@ -8,6 +8,22 @@ theme = "dark"
 auto_backup_enabled = true
 backup_directory = "backups"
 
+[branding]
+client_display_name = "Fratelanza Client Company"
+logo_path = ""
+primary_color = "#55d6be"
+allow_client_branding = true
+
+[remote_admin]
+enabled = false
+api_base_url = ""
+api_key = ""
+client_id = ""
+installation_id = ""
+allow_remote_support = false
+allow_remote_disable = true
+heartbeat_interval_seconds = 900
+
 [database]
 driver = "ODBC Driver 18 for SQL Server"
 server = "localhost"

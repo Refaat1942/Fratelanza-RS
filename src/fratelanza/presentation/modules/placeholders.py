@@ -6,28 +6,30 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
 
 from fratelanza.application.module_catalog import ModuleDefinition
+from fratelanza.core.i18n import Localizer
 
 
 class ModulePlaceholderView(QWidget):
     """Professional placeholder for modules that will be expanded next."""
 
-    def __init__(self, module: ModuleDefinition) -> None:
+    def __init__(self, module: ModuleDefinition, localizer: Localizer) -> None:
         super().__init__()
+        self._localizer = localizer
 
         card = QFrame()
         card.setObjectName("Card")
         card.setMinimumHeight(280)
 
-        title = QLabel(module.title)
+        title = QLabel(self._localizer.gettext(module.title_key))
         title.setObjectName("Title")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        description = QLabel(module.description)
+        description = QLabel(self._localizer.gettext(module.description_key))
         description.setObjectName("Muted")
         description.setWordWrap(True)
         description.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        status = QLabel("Module shell is ready for client-specific workflows.")
+        status = QLabel(self._localizer.gettext("module.shell_ready"))
         status.setObjectName("Muted")
         status.setAlignment(Qt.AlignmentFlag.AlignCenter)
 

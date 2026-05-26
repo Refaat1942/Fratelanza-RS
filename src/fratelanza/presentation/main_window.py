@@ -14,11 +14,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from fratelanza.application.branding_service import BrandingProfile
 from fratelanza.application.dashboard_service import DashboardService
 from fratelanza.application.module_catalog import MODULE_CATALOG, ModuleDefinition
+from fratelanza.application.remote_admin_service import RemoteAdminService
 from fratelanza.application.session import UserSession
+from fratelanza.core.i18n import Localizer
 from fratelanza.core.permissions import has_permission
 from fratelanza.presentation.components.sidebar import Sidebar
+from fratelanza.presentation.modules.admin_panel import AdminPanelView
 from fratelanza.presentation.modules.dashboard import DashboardView
 from fratelanza.presentation.modules.placeholders import ModulePlaceholderView
 
@@ -30,40 +34,43 @@ class MainWindow(QMainWindow):
         self,
         *,
         session: UserSession,
-        brand_name: str,
+        branding: BrandingProfile,
+        localizer: Localizer,
         dashboard_service: DashboardService,
+        remote_admin_service: RemoteAdminService,
     ) -> None:
         super().__init__()
         self._session = session
+        self._branding = branding
+        self._localizer = localizer
         self._dashboard_service = dashboard_service
+        self._remote_admin_service = remote_admin_service
         self._module_indexes: dict[str, int] = {}
         self._fade_animation: QPropertyAnimation | None = None
 
-        self.setWindowTitle(f"{brand_name} Business Suite")
+        self.setWindowTitle(f"{branding.display_name} - {branding.product_name}")
         self.resize(1360, 820)
         self.setMinimumSize(1100, 700)
-        self._build(brand_name)
+        self._build()
 
-    def _build(self, brand_name: str) -> None:
+    def _build(self) -> None:
         modules = self._allowed_modules()
         self._stack = QStackedWidget()
 
         for module in modules:
-            view = (
-                DashboardView(self._dashboard_service)
-                if module.key == "dashboard"
-                else ModulePlaceholderView(module)
-            )
+            view = self._create_module_view(module)
             self._module_indexes[module.key] = self._stack.addWidget(view)
 
-        sidebar = Sidebar(modules, brand_name)
+        sidebar = Sidebar(modules, self._branding, self._localizer)
         sidebar.navigation_requested.connect(self.navigate)
 
         top_bar = QFrame()
         top_bar.setObjectName("TopBar")
         search = QLineEdit()
-        search.setPlaceholderText("Search products, invoices, customers, suppliers...")
-        user_label = QLabel(f"{self._session.user.display_name} ({self._session.user.role.name})")
+        search.setPlaceholderText(self._localizer.gettext("app.search_placeholder"))
+        user_label = QLabel(
+            f"{self._session.user.display_name} ({self._session.user.role.name})"
+        )
         user_label.setObjectName("Muted")
 
         top_layout = QHBoxLayout(top_bar)
@@ -92,6 +99,17 @@ class MainWindow(QMainWindow):
 
         if "dashboard" in self._module_indexes:
             self.navigate("dashboard")
+
+    def _create_module_view(self, module: ModuleDefinition) -> QWidget:
+        if module.key == "dashboard":
+            return DashboardView(self._dashboard_service, self._localizer)
+        if module.key == "admin_panel":
+            return AdminPanelView(
+                localizer=self._localizer,
+                branding=self._branding,
+                remote_admin_service=self._remote_admin_service,
+            )
+        return ModulePlaceholderView(module, self._localizer)
 
     def _allowed_modules(self) -> list[ModuleDefinition]:
         permissions = self._session.permissions

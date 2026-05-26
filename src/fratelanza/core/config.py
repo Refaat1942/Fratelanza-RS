@@ -63,6 +63,35 @@ class DatabaseSettings:
 
 
 @dataclass(frozen=True)
+class BrandingSettings:
+    """Client-facing branding and white-label settings."""
+
+    client_display_name: str
+    logo_path: Path | None
+    primary_color: str
+    allow_client_branding: bool = True
+
+
+@dataclass(frozen=True)
+class RemoteAdminSettings:
+    """VPS control-plane settings for sold customer installations."""
+
+    enabled: bool
+    api_base_url: str
+    api_key: str
+    client_id: str
+    installation_id: str
+    allow_remote_support: bool
+    allow_remote_disable: bool
+    heartbeat_interval_seconds: int = 900
+
+    @property
+    def is_configured(self) -> bool:
+        """Return True when enough settings exist to contact the VPS API."""
+        return bool(self.enabled and self.api_base_url and self.api_key and self.installation_id)
+
+
+@dataclass(frozen=True)
 class ApplicationSettings:
     """Top-level application settings."""
 
@@ -76,6 +105,8 @@ class ApplicationSettings:
     backup_directory: Path
     log_level: str
     database: DatabaseSettings
+    branding: BrandingSettings
+    remote_admin: RemoteAdminSettings
 
 
 def load_settings(config_path: Path | None = None) -> ApplicationSettings:
@@ -92,6 +123,8 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
 
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     app = data.get("application", {})
+    branding = data.get("branding", {})
+    remote_admin = data.get("remote_admin", {})
     db = data.get("database", {})
 
     database_settings = DatabaseSettings(
@@ -116,15 +149,65 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
     if not database_settings.driver or not database_settings.server or not database_settings.database:
         raise ConfigurationError("Database driver, server, and database are required.")
 
+    logo_path_value = os.getenv("FRATELANZA_LOGO_PATH", branding.get("logo_path", "")).strip()
+    logo_path = Path(logo_path_value).expanduser() if logo_path_value else None
+    if logo_path is not None and not logo_path.is_absolute():
+        logo_path = PROJECT_ROOT / logo_path
+
     return ApplicationSettings(
         brand_name=app.get("brand_name", "Fratelanza"),
         product_name=app.get("product_name", "Fratelanza Business Suite"),
         environment=os.getenv("FRATELANZA_ENVIRONMENT", app.get("environment", "production")),
-        default_locale=app.get("default_locale", "en"),
+        default_locale=os.getenv("FRATELANZA_LOCALE", app.get("default_locale", "en")),
         currency=app.get("currency", "USD"),
         theme=app.get("theme", "dark"),
         auto_backup_enabled=_to_bool(app.get("auto_backup_enabled", True)),
         backup_directory=PROJECT_ROOT / app.get("backup_directory", "backups"),
         log_level=os.getenv("FRATELANZA_LOG_LEVEL", "INFO"),
         database=database_settings,
+        branding=BrandingSettings(
+            client_display_name=os.getenv(
+                "FRATELANZA_CLIENT_DISPLAY_NAME",
+                branding.get("client_display_name", app.get("brand_name", "Fratelanza")),
+            ),
+            logo_path=logo_path,
+            primary_color=os.getenv(
+                "FRATELANZA_PRIMARY_COLOR",
+                branding.get("primary_color", "#55d6be"),
+            ),
+            allow_client_branding=_to_bool(branding.get("allow_client_branding", True)),
+        ),
+        remote_admin=RemoteAdminSettings(
+            enabled=_to_bool(
+                os.getenv("FRATELANZA_REMOTE_ENABLED", remote_admin.get("enabled", False))
+            ),
+            api_base_url=os.getenv(
+                "FRATELANZA_REMOTE_API_BASE_URL",
+                remote_admin.get("api_base_url", ""),
+            ).rstrip("/"),
+            api_key=os.getenv("FRATELANZA_REMOTE_API_KEY", remote_admin.get("api_key", "")),
+            client_id=os.getenv("FRATELANZA_REMOTE_CLIENT_ID", remote_admin.get("client_id", "")),
+            installation_id=os.getenv(
+                "FRATELANZA_REMOTE_INSTALLATION_ID",
+                remote_admin.get("installation_id", ""),
+            ),
+            allow_remote_support=_to_bool(
+                os.getenv(
+                    "FRATELANZA_REMOTE_SUPPORT",
+                    remote_admin.get("allow_remote_support", False),
+                )
+            ),
+            allow_remote_disable=_to_bool(
+                os.getenv(
+                    "FRATELANZA_REMOTE_DISABLE",
+                    remote_admin.get("allow_remote_disable", True),
+                )
+            ),
+            heartbeat_interval_seconds=int(
+                os.getenv(
+                    "FRATELANZA_REMOTE_HEARTBEAT_SECONDS",
+                    remote_admin.get("heartbeat_interval_seconds", 900),
+                )
+            ),
+        ),
     )
