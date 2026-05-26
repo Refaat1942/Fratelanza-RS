@@ -17,6 +17,12 @@ from fratelanza.core.exceptions import ConfigurationError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "app.toml"
+SQL_SERVER_DRIVER_PREFERENCE = (
+    "ODBC Driver 18 for SQL Server",
+    "ODBC Driver 17 for SQL Server",
+    "SQL Server Native Client 11.0",
+    "SQL Server",
+)
 
 
 def _to_bool(value: object) -> bool:
@@ -25,6 +31,22 @@ def _to_bool(value: object) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def resolve_sql_server_driver(configured_driver: str) -> str:
+    """Return a usable SQL Server ODBC driver when pyodbc can list installed drivers."""
+    try:
+        import pyodbc
+    except ImportError:
+        return configured_driver
+
+    installed_drivers = set(pyodbc.drivers())
+    if configured_driver in installed_drivers:
+        return configured_driver
+    for preferred_driver in SQL_SERVER_DRIVER_PREFERENCE:
+        if preferred_driver in installed_drivers:
+            return preferred_driver
+    return configured_driver
 
 
 @dataclass(frozen=True)
@@ -127,8 +149,9 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
     remote_admin = data.get("remote_admin", {})
     db = data.get("database", {})
 
+    configured_driver = os.getenv("FRATELANZA_DB_DRIVER", db.get("driver", ""))
     database_settings = DatabaseSettings(
-        driver=os.getenv("FRATELANZA_DB_DRIVER", db.get("driver", "")),
+        driver=resolve_sql_server_driver(configured_driver),
         server=os.getenv("FRATELANZA_DB_SERVER", db.get("server", "")),
         database=os.getenv("FRATELANZA_DB_NAME", db.get("database", "")),
         trusted_connection=_to_bool(

@@ -61,6 +61,24 @@ The default seeded administrator is configured in
 `database/sqlserver/001_create_schema.sql`. Change the password immediately
 after deployment.
 
+### SQL Server driver troubleshooting
+
+If Windows shows `Data source name not found and no default driver specified`,
+run:
+
+```bash
+python -m fratelanza.database doctor
+```
+
+The app automatically uses the best installed SQL Server ODBC driver in this
+order: Driver 18, Driver 17, SQL Server Native Client 11.0, then SQL Server.
+For SQL Server running locally in SSMS as `A-REFAAT`, create a `.env` with:
+
+```env
+FRATELANZA_DB_SERVER=A-REFAAT
+FRATELANZA_DB_ENCRYPT=false
+```
+
 ## Included Foundation
 
 - Login screen and authentication service
