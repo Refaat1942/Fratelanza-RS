@@ -2,7 +2,6 @@
   "app.business_suite": "نظام إدارة الأعمال",
   "app.secure_login": "تسجيل دخول آمن عبر SQL Server",
   "app.search_placeholder": "ابحث عن المنتجات أو الفواتير أو العملاء أو الموردين...",
-  "auth.default_hint": "مستخدم التشغيل الأول: admin / Admin@12345",
   "auth.login_failed": "فشل تسجيل الدخول",
   "auth.password": "كلمة المرور",
   "auth.sign_in": "تسجيل الدخول",

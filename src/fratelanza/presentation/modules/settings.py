@@ -95,7 +95,8 @@ class SettingsView(QWidget):
         text = QLabel(
             "Runtime Settings\n\n"
             f"Language: {self._settings.default_locale}\n"
-            f"Theme: {self._settings.theme}\n"
+            f"Startup theme: {self._settings.theme}\n"
+            "Available themes: dark, light\n"
             f"Currency: {self._settings.currency}\n"
             f"Backup enabled: {self._settings.auto_backup_enabled}\n"
             f"Backup folder: {self._settings.backup_directory}\n"

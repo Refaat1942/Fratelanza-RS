@@ -65,7 +65,6 @@ class LoginDialog(QDialog):
             )
 
         self._username = QLineEdit()
-        self._username.setText("admin")
 
         self._password = QLineEdit()
         self._password.setEchoMode(QLineEdit.EchoMode.Password)
@@ -83,17 +82,12 @@ class LoginDialog(QDialog):
         self._login_button.setObjectName("PrimaryButton")
         self._login_button.clicked.connect(self._login)
 
-        self._hint = QLabel()
-        self._hint.setObjectName("Muted")
-        self._hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         form = QVBoxLayout()
         form.setSpacing(14)
         form.addWidget(self._language)
         form.addWidget(self._username)
         form.addWidget(self._password)
         form.addWidget(self._login_button)
-        form.addWidget(self._hint)
 
         frame = QVBoxLayout(self)
         frame.setContentsMargins(42, 42, 42, 42)
@@ -124,7 +118,6 @@ class LoginDialog(QDialog):
         self._username.setPlaceholderText(self._localizer.gettext("auth.username"))
         self._password.setPlaceholderText(self._localizer.gettext("auth.password"))
         self._login_button.setText(self._localizer.gettext("auth.sign_in"))
-        self._hint.setText(self._localizer.gettext("auth.default_hint"))
         self._footer_label.setText(self._localizer.gettext("app.secure_login"))
 
     def _switch_language(self) -> None:

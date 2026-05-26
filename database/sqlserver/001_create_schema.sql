@@ -471,7 +471,7 @@ INSERT INTO settings.CompanyProfile (CompanyName, TradeName)
 VALUES (N'Fratelanza Client Company', N'Fratelanza');
 
 INSERT INTO settings.CurrencySettings (CurrencyCode, CurrencyName, Symbol, DecimalPlaces, IsDefault)
-VALUES (N'USD', N'US Dollar', N'$', 2, 1);
+VALUES (N'EGP', N'Egyptian Pound', N'EGP', 2, 1);
 
 INSERT INTO settings.ApplicationSettings (SettingKey, SettingValue)
 VALUES

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation
 from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -40,6 +42,7 @@ from fratelanza.presentation.modules.placeholders import ModulePlaceholderView
 from fratelanza.presentation.modules.reports import ReportsView
 from fratelanza.presentation.modules.sales import SalesView
 from fratelanza.presentation.modules.settings import SettingsView
+from fratelanza.presentation.theme import build_stylesheet, get_theme
 
 
 class MainWindow(QMainWindow):
@@ -99,6 +102,13 @@ class MainWindow(QMainWindow):
         top_bar.setObjectName("TopBar")
         search = QLineEdit()
         search.setPlaceholderText(self._localizer.gettext("app.search_placeholder"))
+        theme_selector = QComboBox()
+        theme_selector.addItem("Dark", "dark")
+        theme_selector.addItem("Light", "light")
+        theme_selector.setCurrentIndex(max(0, theme_selector.findData(self._settings.theme)))
+        theme_selector.currentIndexChanged.connect(
+            lambda: self._apply_theme(str(theme_selector.currentData()))
+        )
         user_label = QLabel(
             f"{self._session.user.display_name} ({self._session.user.role.name})"
         )
@@ -107,6 +117,7 @@ class MainWindow(QMainWindow):
         top_layout = QHBoxLayout(top_bar)
         top_layout.setContentsMargins(16, 12, 16, 12)
         top_layout.addWidget(search, stretch=1)
+        top_layout.addWidget(theme_selector)
         top_layout.addWidget(user_label)
 
         content_layout = QVBoxLayout()
@@ -176,3 +187,12 @@ class MainWindow(QMainWindow):
         self._fade_animation.setEndValue(1.0)
         self._fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._fade_animation.start()
+
+    def _apply_theme(self, theme_name: str) -> None:
+        """Apply dark or light theme at runtime."""
+        app = QApplication.instance()
+        if app is None:
+            return
+        app.setStyleSheet(
+            build_stylesheet(get_theme(theme_name), primary_color=self._branding.primary_color)
+        )

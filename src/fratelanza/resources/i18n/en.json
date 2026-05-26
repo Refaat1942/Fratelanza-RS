@@ -2,7 +2,6 @@
   "app.business_suite": "Business Suite",
   "app.secure_login": "Secure SQL Server login",
   "app.search_placeholder": "Search products, invoices, customers, suppliers...",
-  "auth.default_hint": "Default first-run user: admin / Admin@12345",
   "auth.login_failed": "Login failed",
   "auth.password": "Password",
   "auth.sign_in": "Sign in",
