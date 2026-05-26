@@ -65,6 +65,9 @@ To run your laptop admin console:
 fratelanza-admin
 ```
 
+To build Windows EXEs for your laptop/admin console and customer installs, see
+`docs/WINDOWS_EXE.md`.
+
 The default seeded administrator is configured in
 `database/sqlserver/001_create_schema.sql`. Change the password immediately
 after deployment.

@@ -11,12 +11,17 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 import os
+import sys
 import tomllib
 
 from fratelanza.core.exceptions import ConfigurationError
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = (
+    Path(sys.executable).resolve().parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parents[3]
+)
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "app.toml"
 SQL_SERVER_DRIVER_PREFERENCE = (
     "ODBC Driver 18 for SQL Server",
