@@ -1,4 +1,5 @@
-from fratelanza.application.remote_admin_service import LicenseState, RemoteAdminService
+from fratelanza.application.license import LicenseState
+from fratelanza.application.remote_admin_service import RemoteAdminService
 from fratelanza.core.config import RemoteAdminSettings
 
 

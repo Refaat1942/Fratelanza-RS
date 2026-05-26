@@ -19,6 +19,7 @@ be customized per client and evolved toward ERP, SaaS, or web delivery later.
 - English and Arabic localization with right-to-left layout support
 - Client branding with custom name, logo path, and primary color
 - VPS remote admin foundation for licensing and sold-installation control
+- EXE-only cloud/hybrid deployment mode with per-customer VPS database assignment
 
 ## Project Structure
 
@@ -26,6 +27,7 @@ be customized per client and evolved toward ERP, SaaS, or web delivery later.
 config/                         Runtime configuration templates
 database/sqlserver/             SQL Server schema and seed scripts
 docs/                           Product and architecture documentation
+backend/vps_admin/              VPS admin/control API scaffold
 src/fratelanza/
   application/                  Use cases and business services
   core/                         Config, security, logging, permissions
@@ -89,6 +91,7 @@ FRATELANZA_DB_ENCRYPT=false
 - Dashboard layout with business KPI cards, module navigation, and placeholders
 - Inventory, sales, finance, CRM, reports, barcode, and settings module shells
 - Admin panel shell for VPS licensing/control state and client branding visibility
+- Cloud API and offline license-cache foundation for EXE-only customer deployments
 - Centralized configuration, logging, exception handling, and styling
 
 ## Language and Branding
@@ -118,6 +121,16 @@ FRATELANZA_REMOTE_INSTALLATION_ID=<installation-id>
 The desktop app sends a heartbeat to `/installations/heartbeat`. The response
 can return license states such as `active`, `suspended`, or `expired`. If remote
 disable is enabled, suspended or expired installations are blocked before login.
+
+For customers who should install only the EXE and no SQL Server, use:
+
+```env
+FRATELANZA_DATA_MODE=hybrid_offline
+```
+
+In this mode the EXE talks to your VPS API and uses a cached offline license
+policy for temporary offline operation. Each customer is assigned a separate
+database key by the VPS. See `docs/COMMERCIAL_DEPLOYMENT.md`.
 
 ## Commercial Customization Notes
 

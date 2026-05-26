@@ -8,6 +8,7 @@ for larger clients.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 import os
 import tomllib
@@ -23,6 +24,14 @@ SQL_SERVER_DRIVER_PREFERENCE = (
     "SQL Server Native Client 11.0",
     "SQL Server",
 )
+
+
+class DataAccessMode(StrEnum):
+    """Supported deployment modes for sold installations."""
+
+    LOCAL_SQL = "local_sql"
+    CLOUD_API = "cloud_api"
+    HYBRID_OFFLINE = "hybrid_offline"
 
 
 def _to_bool(value: object) -> bool:
@@ -47,6 +56,24 @@ def resolve_sql_server_driver(configured_driver: str) -> str:
         if preferred_driver in installed_drivers:
             return preferred_driver
     return configured_driver
+
+
+@dataclass(frozen=True)
+class DataAccessSettings:
+    """How the desktop app reads and writes business data."""
+
+    mode: DataAccessMode
+    local_cache_path: Path
+    separate_database_per_customer: bool
+    require_vps_first_activation: bool
+
+    @property
+    def uses_cloud_api(self) -> bool:
+        return self.mode in {DataAccessMode.CLOUD_API, DataAccessMode.HYBRID_OFFLINE}
+
+    @property
+    def supports_offline_cache(self) -> bool:
+        return self.mode == DataAccessMode.HYBRID_OFFLINE
 
 
 @dataclass(frozen=True)
@@ -106,6 +133,8 @@ class RemoteAdminSettings:
     allow_remote_support: bool
     allow_remote_disable: bool
     heartbeat_interval_seconds: int = 900
+    offline_grace_hours: int = 72
+    offline_license_cache_path: Path | None = None
 
     @property
     def is_configured(self) -> bool:
@@ -127,6 +156,7 @@ class ApplicationSettings:
     backup_directory: Path
     log_level: str
     database: DatabaseSettings
+    data_access: DataAccessSettings
     branding: BrandingSettings
     remote_admin: RemoteAdminSettings
 
@@ -145,9 +175,22 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
 
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     app = data.get("application", {})
+    data_access = data.get("data_access", {})
     branding = data.get("branding", {})
     remote_admin = data.get("remote_admin", {})
     db = data.get("database", {})
+
+    configured_mode = os.getenv(
+        "FRATELANZA_DATA_MODE",
+        data_access.get("mode", DataAccessMode.LOCAL_SQL.value),
+    )
+    try:
+        data_access_mode = DataAccessMode(configured_mode)
+    except ValueError as exc:
+        valid_modes = ", ".join(mode.value for mode in DataAccessMode)
+        raise ConfigurationError(
+            f"Invalid FRATELANZA_DATA_MODE '{configured_mode}'. Use one of: {valid_modes}."
+        ) from exc
 
     configured_driver = os.getenv("FRATELANZA_DB_DRIVER", db.get("driver", ""))
     database_settings = DatabaseSettings(
@@ -169,13 +212,36 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
         timeout=int(os.getenv("FRATELANZA_DB_TIMEOUT", db.get("timeout", 30))),
     )
 
-    if not database_settings.driver or not database_settings.server or not database_settings.database:
+    if (
+        data_access_mode == DataAccessMode.LOCAL_SQL
+        and (
+            not database_settings.driver
+            or not database_settings.server
+            or not database_settings.database
+        )
+    ):
         raise ConfigurationError("Database driver, server, and database are required.")
 
     logo_path_value = os.getenv("FRATELANZA_LOGO_PATH", branding.get("logo_path", "")).strip()
     logo_path = Path(logo_path_value).expanduser() if logo_path_value else None
     if logo_path is not None and not logo_path.is_absolute():
         logo_path = PROJECT_ROOT / logo_path
+
+    cache_path_value = os.getenv(
+        "FRATELANZA_LOCAL_CACHE_PATH",
+        data_access.get("local_cache_path", "runtime/offline_cache.sqlite3"),
+    )
+    local_cache_path = Path(cache_path_value).expanduser()
+    if not local_cache_path.is_absolute():
+        local_cache_path = PROJECT_ROOT / local_cache_path
+
+    license_cache_value = os.getenv(
+        "FRATELANZA_REMOTE_LICENSE_CACHE_PATH",
+        remote_admin.get("offline_license_cache_path", "runtime/license_cache.json"),
+    )
+    offline_license_cache_path = Path(license_cache_value).expanduser()
+    if not offline_license_cache_path.is_absolute():
+        offline_license_cache_path = PROJECT_ROOT / offline_license_cache_path
 
     return ApplicationSettings(
         brand_name=app.get("brand_name", "Fratelanza"),
@@ -188,6 +254,19 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
         backup_directory=PROJECT_ROOT / app.get("backup_directory", "backups"),
         log_level=os.getenv("FRATELANZA_LOG_LEVEL", "INFO"),
         database=database_settings,
+        data_access=DataAccessSettings(
+            mode=data_access_mode,
+            local_cache_path=local_cache_path,
+            separate_database_per_customer=_to_bool(
+                data_access.get("separate_database_per_customer", True)
+            ),
+            require_vps_first_activation=_to_bool(
+                os.getenv(
+                    "FRATELANZA_REQUIRE_VPS_FIRST_ACTIVATION",
+                    data_access.get("require_vps_first_activation", True),
+                )
+            ),
+        ),
         branding=BrandingSettings(
             client_display_name=os.getenv(
                 "FRATELANZA_CLIENT_DISPLAY_NAME",
@@ -232,5 +311,12 @@ def load_settings(config_path: Path | None = None) -> ApplicationSettings:
                     remote_admin.get("heartbeat_interval_seconds", 900),
                 )
             ),
+            offline_grace_hours=int(
+                os.getenv(
+                    "FRATELANZA_REMOTE_OFFLINE_GRACE_HOURS",
+                    remote_admin.get("offline_grace_hours", 72),
+                )
+            ),
+            offline_license_cache_path=offline_license_cache_path,
         ),
     )

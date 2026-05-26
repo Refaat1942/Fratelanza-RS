@@ -15,6 +15,7 @@ from fratelanza.application.branding_service import BrandingService
 from fratelanza.application.dashboard_service import DashboardService
 from fratelanza.application.finance_service import FinanceService
 from fratelanza.application.inventory_service import InventoryService
+from fratelanza.application.offline_license_cache import OfflineLicenseCache
 from fratelanza.application.partner_service import PartnerService
 from fratelanza.application.remote_admin_service import RemoteAdminService
 from fratelanza.application.reports_service import ReportsService
@@ -66,7 +67,12 @@ def run_desktop_app(settings: ApplicationSettings) -> int:
     sales_service = SalesService(sales_repository, inventory_repository, partner_repository)
     reports_service = ReportsService(reports_repository)
     settings_service = SettingsService(settings_repository)
-    remote_admin_service = RemoteAdminService(settings.remote_admin)
+    license_cache = (
+        OfflineLicenseCache(settings.remote_admin.offline_license_cache_path)
+        if settings.remote_admin.offline_license_cache_path is not None
+        else None
+    )
+    remote_admin_service = RemoteAdminService(settings.remote_admin, license_cache=license_cache)
     remote_admin_service.sync_installation(
         app_version=__version__,
         machine_name=platform.node(),

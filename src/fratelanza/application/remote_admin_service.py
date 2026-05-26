@@ -3,27 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from enum import StrEnum
+from datetime import datetime, timedelta, timezone
 import json
 import logging
 from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+from fratelanza.application.license import LicenseState
+from fratelanza.application.offline_license_cache import CachedLicensePolicy, OfflineLicenseCache
 from fratelanza.core.config import RemoteAdminSettings
 
 logger = logging.getLogger(__name__)
-
-
-class LicenseState(StrEnum):
-    """Installation state returned by the Fratelanza VPS control plane."""
-
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
-    EXPIRED = "expired"
-    OFFLINE_GRACE = "offline_grace"
-    NOT_CONFIGURED = "not_configured"
 
 
 @dataclass(frozen=True)
@@ -37,6 +28,8 @@ class RemoteAdminStatus:
     allow_remote_support: bool
     allow_remote_disable: bool
     last_heartbeat_at: datetime | None
+    database_key: str = ""
+    offline_allow_until: datetime | None = None
     message: str = ""
 
     @property
@@ -81,9 +74,11 @@ class RemoteAdminService:
         self,
         settings: RemoteAdminSettings,
         client: RemoteAdminClient | None = None,
+        license_cache: OfflineLicenseCache | None = None,
     ) -> None:
         self._settings = settings
         self._client = client or RemoteAdminClient(settings)
+        self._license_cache = license_cache
         self._last_status = self._not_configured_status()
 
     def current_status(self) -> RemoteAdminStatus:
@@ -109,11 +104,21 @@ class RemoteAdminService:
             response = self._client.heartbeat(payload)
         except (URLError, TimeoutError, OSError, ValueError) as exc:
             logger.warning("VPS heartbeat failed; using offline grace mode: %s", exc)
-            self._last_status = self._status(
-                LicenseState.OFFLINE_GRACE,
-                now,
-                "Could not reach VPS. Offline grace mode is active.",
-            )
+            cached_policy = self._license_cache.load() if self._license_cache else None
+            if cached_policy and cached_policy.can_run_now:
+                self._last_status = self._status(
+                    LicenseState.OFFLINE_GRACE,
+                    now,
+                    "VPS is offline. Cached license policy allows temporary use.",
+                    database_key=cached_policy.database_key,
+                    offline_allow_until=cached_policy.allow_until,
+                )
+            else:
+                self._last_status = self._status(
+                    LicenseState.EXPIRED,
+                    now,
+                    "Cannot reach VPS and no valid offline license remains.",
+                )
             return self._last_status
 
         try:
@@ -121,7 +126,26 @@ class RemoteAdminService:
         except ValueError:
             state = LicenseState.OFFLINE_GRACE
         message = str(response.get("message", ""))
-        self._last_status = self._status(state, now, message)
+        database_key = str(response.get("database_key", ""))
+        offline_allow_until = now + timedelta(hours=self._settings.offline_grace_hours)
+        self._last_status = self._status(
+            state,
+            now,
+            message,
+            database_key=database_key,
+            offline_allow_until=offline_allow_until,
+        )
+        if self._license_cache and state == LicenseState.ACTIVE:
+            self._license_cache.save(
+                CachedLicensePolicy(
+                    state=LicenseState.ACTIVE,
+                    client_id=self._settings.client_id,
+                    installation_id=self._settings.installation_id,
+                    database_key=database_key,
+                    allow_until=offline_allow_until,
+                    message=message,
+                )
+            )
         return self._last_status
 
     def _not_configured_status(self) -> RemoteAdminStatus:
@@ -132,6 +156,9 @@ class RemoteAdminService:
         state: LicenseState,
         last_heartbeat_at: datetime | None,
         message: str,
+        *,
+        database_key: str = "",
+        offline_allow_until: datetime | None = None,
     ) -> RemoteAdminStatus:
         return RemoteAdminStatus(
             state=state,
@@ -141,5 +168,7 @@ class RemoteAdminService:
             allow_remote_support=self._settings.allow_remote_support,
             allow_remote_disable=self._settings.allow_remote_disable,
             last_heartbeat_at=last_heartbeat_at,
+            database_key=database_key,
+            offline_allow_until=offline_allow_until,
             message=message,
         )
