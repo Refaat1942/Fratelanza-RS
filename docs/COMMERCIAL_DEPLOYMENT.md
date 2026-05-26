@@ -67,6 +67,29 @@ FRATELANZA_REMOTE_DISABLE=true
 FRATELANZA_REMOTE_OFFLINE_GRACE_HOURS=72
 ```
 
+## Current API coverage
+
+The desktop app can now switch repository composition by data mode:
+
+- `local_sql`: modules use local SQL Server repositories.
+- `cloud_api`: modules use the VPS API.
+- `hybrid_offline`: modules use the VPS API, with cached license policy for
+  temporary offline startup.
+
+The VPS scaffold exposes API routes for:
+
+- Login
+- Products, categories, brands, units, stock adjustments
+- Customers and suppliers
+- Expenses, revenues, cashboxes, expense categories
+- Sales invoices
+- Reports and low-stock alerts
+- Company profile and taxes
+
+The scaffold uses in-memory tenant data so the contract is testable quickly.
+Before production, replace that storage with real per-customer databases on the
+VPS using each customer's `database_key`.
+
 ## Important
 
 Do not expose SQL Server directly to customer EXEs over the public internet.

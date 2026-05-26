@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from typing import Any
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from fratelanza.core.config import RemoteAdminSettings
@@ -26,11 +27,20 @@ class CloudApiClient:
     def __init__(self, settings: RemoteAdminSettings) -> None:
         self._settings = settings
 
-    def request(self, method: str, path: str, payload: dict[str, Any] | None = None) -> Any:
+    def request(
+        self,
+        method: str,
+        path: str,
+        payload: dict[str, Any] | None = None,
+        query: dict[str, Any] | None = None,
+    ) -> Any:
         """Send a JSON request to the configured VPS API."""
         body = json.dumps(payload or {}).encode("utf-8") if payload is not None else None
+        url = f"{self._settings.api_base_url.rstrip('/')}/{path.lstrip('/')}"
+        if query:
+            url = f"{url}?{urlencode({key: value for key, value in query.items() if value is not None})}"
         request = Request(
-            f"{self._settings.api_base_url.rstrip('/')}/{path.lstrip('/')}",
+            url,
             data=body,
             method=method.upper(),
             headers={
