@@ -20,7 +20,7 @@ class SqlServerConnectionFactory:
         self._settings = settings
 
     @contextmanager
-    def connect(self, *, database: str | None = None) -> Iterator[Any]:
+    def connect(self, *, database: str | None = None, autocommit: bool = False) -> Iterator[Any]:
         """Yield a pyodbc connection and close it safely."""
         try:
             import pyodbc
@@ -32,11 +32,12 @@ class SqlServerConnectionFactory:
         connection_string = self._settings.connection_string(database=database)
         connection = None
         try:
-            connection = pyodbc.connect(connection_string, autocommit=False)
+            connection = pyodbc.connect(connection_string, autocommit=autocommit)
             yield connection
-            connection.commit()
+            if not autocommit:
+                connection.commit()
         except Exception as exc:  # pragma: no cover - integration behavior
-            if connection is not None:
+            if connection is not None and not autocommit:
                 connection.rollback()
             logger.exception("SQL Server operation failed.")
             raise DatabaseConnectionError(str(exc)) from exc

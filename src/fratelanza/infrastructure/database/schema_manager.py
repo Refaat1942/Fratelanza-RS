@@ -29,7 +29,7 @@ class SchemaManager:
             "__DATABASE_NAME__", self._settings.database
         )
         batches = split_sql_batches(sql)
-        with self._connection_factory.connect(database="master") as connection:
+        with self._connection_factory.connect(database="master", autocommit=True) as connection:
             cursor = connection.cursor()
             for batch in batches:
                 cursor.execute(batch)
