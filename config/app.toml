@@ -1,0 +1,26 @@
+[application]
+brand_name = "Fratelanza"
+product_name = "Fratelanza Business Suite"
+environment = "development"
+default_locale = "en"
+currency = "EGP"
+theme = "dark"
+auto_backup_enabled = true
+backup_directory = "backups"
+
+[branding]
+client_display_name = "Fratelanza Client Company"
+logo_path = ""
+primary_color = "#55d6be"
+allow_client_branding = true
+
+[database]
+driver = "ODBC Driver 18 for SQL Server"
+server = "localhost"
+database = "FratelanzaBusiness"
+trusted_connection = true
+username = ""
+password = ""
+encrypt = true
+trust_server_certificate = true
+timeout = 30
