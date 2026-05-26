@@ -1,15 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_data_files
 
 
+project_root = Path(SPECPATH).parents[1]
+src_root = project_root / "src"
+
 datas = collect_data_files("fratelanza")
-datas += [(".env.example", ".env.example")]
+datas += [(str(project_root / ".env.example"), ".")]
 
 
 a = Analysis(
-    ["src/fratelanza_admin/main.py"],
-    pathex=[],
+    [str(src_root / "fratelanza_admin" / "main.py")],
+    pathex=[str(src_root), str(project_root)],
     binaries=[],
     datas=datas,
     hiddenimports=[

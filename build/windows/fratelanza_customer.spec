@@ -1,18 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_data_files
 
 
+project_root = Path(SPECPATH).parents[1]
+src_root = project_root / "src"
+
 datas = collect_data_files("fratelanza")
 datas += [
-    ("config/customer_cloud.toml", "config/app.toml"),
-    (".env.example", ".env.example"),
+    (str(project_root / "config" / "customer_cloud.toml"), "config"),
+    (str(project_root / ".env.example"), "."),
 ]
 
 
 a = Analysis(
-    ["src/fratelanza/main.py"],
-    pathex=[],
+    [str(src_root / "fratelanza" / "main.py")],
+    pathex=[str(src_root), str(project_root)],
     binaries=[],
     datas=datas,
     hiddenimports=[
