@@ -464,6 +464,9 @@ VALUES (N'Piece', N'pc', 0), (N'Box', N'box', 0), (N'Kilogram', N'kg', 1);
 INSERT INTO finance.Cashboxes (CashboxName)
 VALUES (N'Main Cashbox');
 
+INSERT INTO finance.ExpenseCategories (CategoryName)
+VALUES (N'General');
+
 INSERT INTO settings.CompanyProfile (CompanyName, TradeName)
 VALUES (N'Fratelanza Client Company', N'Fratelanza');
 

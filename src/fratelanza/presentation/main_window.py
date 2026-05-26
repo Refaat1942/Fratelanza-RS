@@ -15,16 +15,31 @@ from PyQt6.QtWidgets import (
 )
 
 from fratelanza.application.branding_service import BrandingProfile
+from fratelanza.application.barcode_service import BarcodeService
 from fratelanza.application.dashboard_service import DashboardService
+from fratelanza.application.finance_service import FinanceService
+from fratelanza.application.inventory_service import InventoryService
 from fratelanza.application.module_catalog import MODULE_CATALOG, ModuleDefinition
+from fratelanza.application.partner_service import PartnerService
 from fratelanza.application.remote_admin_service import RemoteAdminService
+from fratelanza.application.reports_service import ReportsService
+from fratelanza.application.sales_service import SalesService
 from fratelanza.application.session import UserSession
+from fratelanza.application.settings_service import SettingsService
+from fratelanza.core.config import ApplicationSettings
 from fratelanza.core.i18n import Localizer
 from fratelanza.core.permissions import has_permission
 from fratelanza.presentation.components.sidebar import Sidebar
 from fratelanza.presentation.modules.admin_panel import AdminPanelView
+from fratelanza.presentation.modules.barcodes import BarcodesView
 from fratelanza.presentation.modules.dashboard import DashboardView
+from fratelanza.presentation.modules.finance import FinanceView
+from fratelanza.presentation.modules.inventory import InventoryView
+from fratelanza.presentation.modules.partners import PartnersView
 from fratelanza.presentation.modules.placeholders import ModulePlaceholderView
+from fratelanza.presentation.modules.reports import ReportsView
+from fratelanza.presentation.modules.sales import SalesView
+from fratelanza.presentation.modules.settings import SettingsView
 
 
 class MainWindow(QMainWindow):
@@ -36,14 +51,30 @@ class MainWindow(QMainWindow):
         session: UserSession,
         branding: BrandingProfile,
         localizer: Localizer,
+        settings: ApplicationSettings,
         dashboard_service: DashboardService,
+        inventory_service: InventoryService,
+        partner_service: PartnerService,
+        finance_service: FinanceService,
+        sales_service: SalesService,
+        reports_service: ReportsService,
+        settings_service: SettingsService,
+        barcode_service: BarcodeService,
         remote_admin_service: RemoteAdminService,
     ) -> None:
         super().__init__()
         self._session = session
         self._branding = branding
         self._localizer = localizer
+        self._settings = settings
         self._dashboard_service = dashboard_service
+        self._inventory_service = inventory_service
+        self._partner_service = partner_service
+        self._finance_service = finance_service
+        self._sales_service = sales_service
+        self._reports_service = reports_service
+        self._settings_service = settings_service
+        self._barcode_service = barcode_service
         self._remote_admin_service = remote_admin_service
         self._module_indexes: dict[str, int] = {}
         self._fade_animation: QPropertyAnimation | None = None
@@ -103,6 +134,20 @@ class MainWindow(QMainWindow):
     def _create_module_view(self, module: ModuleDefinition) -> QWidget:
         if module.key == "dashboard":
             return DashboardView(self._dashboard_service, self._localizer)
+        if module.key == "sales":
+            return SalesView(self._sales_service, self._session.user.id)
+        if module.key == "inventory":
+            return InventoryView(self._inventory_service)
+        if module.key == "finance":
+            return FinanceView(self._finance_service, self._session.user.id)
+        if module.key == "partners":
+            return PartnersView(self._partner_service)
+        if module.key == "reports":
+            return ReportsView(self._reports_service, self._settings.currency)
+        if module.key == "barcodes":
+            return BarcodesView(self._barcode_service, self._inventory_service)
+        if module.key == "settings":
+            return SettingsView(self._settings_service, self._settings)
         if module.key == "admin_panel":
             return AdminPanelView(
                 localizer=self._localizer,
