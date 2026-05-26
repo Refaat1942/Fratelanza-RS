@@ -62,7 +62,7 @@ After=network.target
 [Service]
 WorkingDirectory=$APP_DIR
 EnvironmentFile=$APP_DIR/.env.vps
-ExecStart=$APP_DIR/.venv/bin/uvicorn backend.vps_admin.main:app --host 127.0.0.1 --port $PORT
+ExecStart=$APP_DIR/.venv/bin/uvicorn backend.vps_admin.main:app --host 0.0.0.0 --port $PORT
 Restart=always
 RestartSec=5
 User=root
@@ -76,6 +76,8 @@ systemctl enable fratelanza-api
 systemctl restart fratelanza-api
 
 echo "==> Configuring Nginx reverse proxy"
+NGINX_CONFIGURED=0
+set +e
 cat > /etc/nginx/sites-available/fratelanza <<EOF
 server {
     listen 80;
@@ -90,10 +92,18 @@ server {
     }
 }
 EOF
-ln -sf /etc/nginx/sites-available/fratelanza /etc/nginx/sites-enabled/fratelanza
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl restart nginx
+NGINX_WRITE_EXIT=$?
+set -e
+if [ "$NGINX_WRITE_EXIT" -eq 0 ]; then
+  ln -sf /etc/nginx/sites-available/fratelanza /etc/nginx/sites-enabled/fratelanza || true
+  rm -f /etc/nginx/sites-enabled/default || true
+  if nginx -t; then
+    systemctl restart nginx || true
+    NGINX_CONFIGURED=1
+  fi
+else
+  echo "Nginx config was not permitted on this VPS panel. Continuing with direct port $PORT."
+fi
 
 echo "==> Opening local firewall if enabled"
 ufw allow 22/tcp || true
@@ -106,19 +116,29 @@ echo "==> Health checks"
 sleep 2
 curl -fsS "http://127.0.0.1:$PORT/health"
 echo
-curl -fsS "http://127.0.0.1/health"
-echo
+if [ "$NGINX_CONFIGURED" -eq 1 ]; then
+  curl -fsS "http://127.0.0.1/health"
+  echo
+fi
 
 PUBLIC_IP="$(curl -fsS https://api.ipify.org || true)"
 echo
 echo "Fratelanza VPS API is deployed."
 echo "Local API: http://127.0.0.1:$PORT/health"
 if [ -n "$PUBLIC_IP" ]; then
-  echo "Public API: http://$PUBLIC_IP/health"
-  echo "Admin EXE URL: http://$PUBLIC_IP"
+  echo "Direct public API: http://$PUBLIC_IP:$PORT/health"
+  echo "Direct Admin EXE URL: http://$PUBLIC_IP:$PORT"
+  if [ "$NGINX_CONFIGURED" -eq 1 ]; then
+    echo "Nginx public API: http://$PUBLIC_IP/health"
+    echo "Nginx Admin EXE URL: http://$PUBLIC_IP"
+  fi
 fi
 echo "Admin key: $ADMIN_KEY"
 echo
 echo "Put these in dist\\FratelanzaAdminConsole\\.env on your laptop:"
-echo "FRATELANZA_ADMIN_API_BASE_URL=http://${PUBLIC_IP:-YOUR_VPS_IP}"
+if [ "$NGINX_CONFIGURED" -eq 1 ]; then
+  echo "FRATELANZA_ADMIN_API_BASE_URL=http://${PUBLIC_IP:-YOUR_VPS_IP}"
+else
+  echo "FRATELANZA_ADMIN_API_BASE_URL=http://${PUBLIC_IP:-YOUR_VPS_IP}:$PORT"
+fi
 echo "FRATELANZA_ADMIN_KEY=$ADMIN_KEY"
