@@ -91,13 +91,4 @@ MODULE_CATALOG: tuple[ModuleDefinition, ...] = (
         "module.settings.title",
         "module.settings.description",
     ),
-    ModuleDefinition(
-        "admin_panel",
-        "Admin Panel",
-        "ADM",
-        Permission.ADMIN_PANEL_MANAGE,
-        "VPS connection, licensing, branding, remote control, support, and deployment settings.",
-        "module.admin_panel.title",
-        "module.admin_panel.description",
-    ),
 )

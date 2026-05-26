@@ -13,8 +13,6 @@
   "dashboard.analytics_workspace": "Analytics Workspace",
   "dashboard.subtitle": "Sales, inventory, finance, customer, supplier, and alert analytics in one place.",
   "dashboard.title": "Business Dashboard",
-  "module.admin_panel.description": "VPS connection, client license state, branding, remote control, support, and deployment settings.",
-  "module.admin_panel.title": "Admin Panel",
   "module.barcodes.description": "Automatic generation, scanner support, and printable barcode labels.",
   "module.barcodes.title": "Barcodes",
   "module.dashboard.description": "Executive overview with sales, stock, cashbox, and alerts.",
@@ -31,14 +29,5 @@
   "module.sales.title": "Sales",
   "module.settings.description": "Company, taxes, currency, backup, restore, language, and customization.",
   "module.settings.title": "Settings",
-  "module.shell_ready": "Module shell is ready for client-specific workflows.",
-  "remote.allow_remote_support": "Remote support enabled",
-  "remote.api_base": "VPS API base URL",
-  "remote.client_id": "Client ID",
-  "remote.installation_id": "Installation ID",
-  "remote.last_heartbeat": "Last heartbeat",
-  "remote.license_state": "License state",
-  "remote.not_configured": "VPS control is not configured yet.",
-  "remote.title": "VPS Admin Control",
-  "remote.warning": "Use HTTPS and per-client API keys when connecting sold installations to your VPS."
+  "module.shell_ready": "Module shell is ready for client-specific workflows."
 }

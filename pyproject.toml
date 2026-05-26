@@ -26,18 +26,12 @@ dev = [
   "pytest>=8.2",
   "ruff>=0.5",
 ]
-backend = [
-  "fastapi",
-  "uvicorn[standard]",
-  "pydantic",
-]
 exe = [
   "pyinstaller",
 ]
 
 [project.scripts]
 fratelanza = "fratelanza.main:main"
-fratelanza-admin = "fratelanza_admin.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

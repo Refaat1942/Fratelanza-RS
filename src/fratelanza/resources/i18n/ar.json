@@ -13,8 +13,6 @@
   "dashboard.analytics_workspace": "مساحة التحليلات",
   "dashboard.subtitle": "المبيعات والمخزون والمالية والعملاء والموردون والتنبيهات في مكان واحد.",
   "dashboard.title": "لوحة التحكم",
-  "module.admin_panel.description": "اتصال VPS، حالة ترخيص العميل، الهوية التجارية، التحكم عن بعد، الدعم، وإعدادات النشر.",
-  "module.admin_panel.title": "لوحة الإدارة",
   "module.barcodes.description": "إنشاء الباركود تلقائياً ودعم الماسح وطباعة ملصقات الباركود.",
   "module.barcodes.title": "الباركود",
   "module.dashboard.description": "نظرة تنفيذية على المبيعات والمخزون والصندوق والتنبيهات.",
@@ -31,14 +29,5 @@
   "module.sales.title": "المبيعات",
   "module.settings.description": "بيانات الشركة والضرائب والعملة والنسخ الاحتياطي والاستعادة واللغة والتخصيص.",
   "module.settings.title": "الإعدادات",
-  "module.shell_ready": "هيكل الوحدة جاهز لإضافة سير عمل خاص بكل عميل.",
-  "remote.allow_remote_support": "الدعم عن بعد مفعّل",
-  "remote.api_base": "رابط واجهة VPS",
-  "remote.client_id": "رقم العميل",
-  "remote.installation_id": "رقم التثبيت",
-  "remote.last_heartbeat": "آخر اتصال",
-  "remote.license_state": "حالة الترخيص",
-  "remote.not_configured": "لم يتم إعداد التحكم عبر VPS بعد.",
-  "remote.title": "تحكم الإدارة عبر VPS",
-  "remote.warning": "استخدم HTTPS ومفاتيح API منفصلة لكل عميل عند ربط النسخ المباعة بالـ VPS."
+  "module.shell_ready": "هيكل الوحدة جاهز لإضافة سير عمل خاص بكل عميل."
 }

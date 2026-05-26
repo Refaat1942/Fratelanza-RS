@@ -8,32 +8,11 @@ theme = "dark"
 auto_backup_enabled = true
 backup_directory = "backups"
 
-[data_access]
-# local_sql = desktop connects directly to SQL Server
-# cloud_api = desktop uses only your VPS API
-# hybrid_offline = desktop uses VPS API plus local offline cache for continuity
-mode = "local_sql"
-local_cache_path = "runtime/offline_cache.sqlite3"
-separate_database_per_customer = true
-require_vps_first_activation = true
-
 [branding]
 client_display_name = "Fratelanza Client Company"
 logo_path = ""
 primary_color = "#55d6be"
 allow_client_branding = true
-
-[remote_admin]
-enabled = false
-api_base_url = ""
-api_key = ""
-client_id = ""
-installation_id = ""
-allow_remote_support = false
-allow_remote_disable = true
-heartbeat_interval_seconds = 900
-offline_grace_hours = 72
-offline_license_cache_path = "runtime/license_cache.json"
 
 [database]
 driver = "ODBC Driver 18 for SQL Server"

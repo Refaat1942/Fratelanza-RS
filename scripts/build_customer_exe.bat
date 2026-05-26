@@ -18,7 +18,7 @@ echo.
 echo Customer EXE created at:
 echo dist\FratelanzaBusinessSuite\FratelanzaBusinessSuite.exe
 echo.
-echo Edit dist\FratelanzaBusinessSuite\.env for each customer before delivery.
+echo Edit dist\FratelanzaBusinessSuite\.env with local database settings before delivery.
 exit /b 0
 
 :failed

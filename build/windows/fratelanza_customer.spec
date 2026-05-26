@@ -10,7 +10,7 @@ src_root = project_root / "src"
 
 datas = collect_data_files("fratelanza")
 datas += [
-    (str(project_root / "config" / "customer_cloud.toml"), "config"),
+    (str(project_root / "config" / "app.toml"), "config"),
     (str(project_root / ".env.example"), "."),
 ]
 

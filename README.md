@@ -18,8 +18,6 @@ be customized per client and evolved toward ERP, SaaS, or web delivery later.
 - Offline-first local SQL Server deployment model
 - English and Arabic localization with right-to-left layout support
 - Client branding with custom name, logo path, and primary color
-- VPS remote admin foundation for licensing and sold-installation control
-- EXE-only cloud/hybrid deployment mode with per-customer VPS database assignment
 
 ## Project Structure
 
@@ -27,7 +25,6 @@ be customized per client and evolved toward ERP, SaaS, or web delivery later.
 config/                         Runtime configuration templates
 database/sqlserver/             SQL Server schema and seed scripts
 docs/                           Product and architecture documentation
-backend/vps_admin/              VPS admin/control API scaffold
 src/fratelanza/
   application/                  Use cases and business services
   core/                         Config, security, logging, permissions
@@ -61,12 +58,8 @@ tests/                          Focused validation tests
 
 To run your laptop admin console:
 
-```bash
-fratelanza-admin
-```
-
-To build Windows EXEs for your laptop/admin console and customer installs, see
-`docs/WINDOWS_EXE.md`.
+To build the Windows desktop EXE, run `scripts\build_customer_exe.bat` on
+Windows.
 
 The default seeded administrator is configured in
 `database/sqlserver/001_create_schema.sql`. Change the password immediately
@@ -99,8 +92,6 @@ FRATELANZA_DB_ENCRYPT=false
 - SQL Server connection factory and repository base classes
 - Dashboard layout with business KPI cards, module navigation, and placeholders
 - Inventory, sales, finance, CRM, reports, barcode, and settings module shells
-- Admin panel shell for VPS licensing/control state and client branding visibility
-- Cloud API and offline license-cache foundation for EXE-only customer deployments
 - Centralized configuration, logging, exception handling, and styling
 
 ## Language and Branding
@@ -114,35 +105,6 @@ FRATELANZA_CLIENT_DISPLAY_NAME="Customer Company"
 FRATELANZA_LOGO_PATH="/absolute/path/to/logo.png"
 FRATELANZA_PRIMARY_COLOR="#55d6be"
 ```
-
-## VPS Remote Admin Control
-
-Sold customer installations can be connected to your VPS by configuring:
-
-```env
-FRATELANZA_REMOTE_ENABLED=true
-FRATELANZA_REMOTE_API_BASE_URL=https://your-vps.example.com/api
-FRATELANZA_REMOTE_API_KEY=<per-customer-api-key>
-FRATELANZA_REMOTE_CLIENT_ID=<customer-id>
-FRATELANZA_REMOTE_INSTALLATION_ID=<installation-id>
-```
-
-The desktop app sends a heartbeat to `/installations/heartbeat`. The response
-can return license states such as `active`, `suspended`, or `expired`. If remote
-disable is enabled, suspended or expired installations are blocked before login.
-
-For customers who should install only the EXE and no SQL Server, use:
-
-```env
-FRATELANZA_DATA_MODE=hybrid_offline
-```
-
-In this mode the EXE talks to your VPS API and uses a cached offline license
-policy for temporary offline operation. Each customer is assigned a separate
-database key by the VPS. See `docs/COMMERCIAL_DEPLOYMENT.md`.
-
-For customer EXE builds with no local SQL Server, start from
-`config/customer_cloud.toml`.
 
 ## Commercial Customization Notes
 

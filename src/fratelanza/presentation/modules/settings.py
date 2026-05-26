@@ -101,8 +101,7 @@ class SettingsView(QWidget):
             f"Backup enabled: {self._settings.auto_backup_enabled}\n"
             f"Backup folder: {self._settings.backup_directory}\n"
             f"Client display name: {self._settings.branding.client_display_name}\n"
-            f"Configured logo: {self._settings.branding.logo_path or '-'}\n"
-            f"VPS enabled: {self._settings.remote_admin.enabled}"
+            f"Configured logo: {self._settings.branding.logo_path or '-'}"
         )
         text.setObjectName("Muted")
         layout = QVBoxLayout(page)

@@ -23,7 +23,6 @@ from fratelanza.application.finance_service import FinanceService
 from fratelanza.application.inventory_service import InventoryService
 from fratelanza.application.module_catalog import MODULE_CATALOG, ModuleDefinition
 from fratelanza.application.partner_service import PartnerService
-from fratelanza.application.remote_admin_service import RemoteAdminService
 from fratelanza.application.reports_service import ReportsService
 from fratelanza.application.sales_service import SalesService
 from fratelanza.application.session import UserSession
@@ -32,7 +31,6 @@ from fratelanza.core.config import ApplicationSettings
 from fratelanza.core.i18n import Localizer
 from fratelanza.core.permissions import has_permission
 from fratelanza.presentation.components.sidebar import Sidebar
-from fratelanza.presentation.modules.admin_panel import AdminPanelView
 from fratelanza.presentation.modules.barcodes import BarcodesView
 from fratelanza.presentation.modules.dashboard import DashboardView
 from fratelanza.presentation.modules.finance import FinanceView
@@ -63,7 +61,6 @@ class MainWindow(QMainWindow):
         reports_service: ReportsService,
         settings_service: SettingsService,
         barcode_service: BarcodeService,
-        remote_admin_service: RemoteAdminService,
     ) -> None:
         super().__init__()
         self._session = session
@@ -78,7 +75,6 @@ class MainWindow(QMainWindow):
         self._reports_service = reports_service
         self._settings_service = settings_service
         self._barcode_service = barcode_service
-        self._remote_admin_service = remote_admin_service
         self._module_indexes: dict[str, int] = {}
         self._fade_animation: QPropertyAnimation | None = None
 
@@ -159,12 +155,6 @@ class MainWindow(QMainWindow):
             return BarcodesView(self._barcode_service, self._inventory_service)
         if module.key == "settings":
             return SettingsView(self._settings_service, self._settings)
-        if module.key == "admin_panel":
-            return AdminPanelView(
-                localizer=self._localizer,
-                branding=self._branding,
-                remote_admin_service=self._remote_admin_service,
-            )
         return ModulePlaceholderView(module, self._localizer)
 
     def _allowed_modules(self) -> list[ModuleDefinition]:

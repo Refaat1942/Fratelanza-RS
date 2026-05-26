@@ -404,19 +404,6 @@ CREATE TABLE system.BackupHistory (
     CreatedAt datetime2(0) NOT NULL CONSTRAINT DF_BackupHistory_CreatedAt DEFAULT sysutcdatetime()
 );
 
-CREATE TABLE system.RemoteControlState (
-    RemoteControlStateId int IDENTITY(1,1) NOT NULL CONSTRAINT PK_RemoteControlState PRIMARY KEY,
-    ClientId nvarchar(120) NULL,
-    InstallationId nvarchar(120) NULL,
-    ApiBaseUrl nvarchar(500) NULL,
-    LicenseState nvarchar(40) NOT NULL CONSTRAINT DF_RemoteControlState_LicenseState DEFAULT N'not_configured',
-    AllowRemoteSupport bit NOT NULL CONSTRAINT DF_RemoteControlState_AllowSupport DEFAULT 0,
-    AllowRemoteDisable bit NOT NULL CONSTRAINT DF_RemoteControlState_AllowDisable DEFAULT 1,
-    LastHeartbeatAt datetime2(0) NULL,
-    LastMessage nvarchar(1000) NULL,
-    UpdatedAt datetime2(0) NOT NULL CONSTRAINT DF_RemoteControlState_UpdatedAt DEFAULT sysutcdatetime()
-);
-
 INSERT INTO security.Roles (RoleName, Description, IsSystemRole)
 VALUES
     (N'Admin', N'Full system administrator', 1),
@@ -440,8 +427,7 @@ VALUES
     (N'crm.manage', N'Manage customers and suppliers'),
     (N'reports.view', N'View reports'),
     (N'settings.manage', N'Manage system settings'),
-    (N'barcode.manage', N'Manage barcode labels'),
-    (N'admin_panel.manage', N'Manage VPS control, licensing, and branding');
+    (N'barcode.manage', N'Manage barcode labels');
 
 INSERT INTO security.RolePermissions (RoleId, PermissionId)
 SELECT r.RoleId, p.PermissionId
@@ -481,6 +467,3 @@ VALUES
 
 INSERT INTO settings.ClientBranding (ClientDisplayName, PreferredLocale, ThemeName)
 VALUES (N'Fratelanza Client Company', N'en', N'dark');
-
-INSERT INTO system.RemoteControlState (LicenseState, LastMessage)
-VALUES (N'not_configured', N'VPS control is not configured.');

@@ -1,1 +1,0 @@
-"""Fratelanza admin desktop console."""
