@@ -30,6 +30,28 @@ class MaintenanceUpdate(BaseModel):
     status: Optional[str] = None
 
 
+@router.get("/summary")
+async def property_summary(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    query = select(MaintenanceRequest)
+    if not current_user.is_super_admin:
+        if not current_user.company_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+        query = query.where(MaintenanceRequest.company_id == current_user.company_id)
+    requests = (await db.execute(query)).scalars().all()
+    by_status: dict[str, int] = {}
+    for r in requests:
+        by_status[r.status] = by_status.get(r.status, 0) + 1
+    return {
+        "total": len(requests),
+        "open": by_status.get("open", 0),
+        "in_progress": by_status.get("in_progress", 0),
+        "completed": by_status.get("completed", 0),
+    }
+
+
 @router.get("/maintenance")
 async def list_maintenance(
     db: Annotated[AsyncSession, Depends(get_db)],

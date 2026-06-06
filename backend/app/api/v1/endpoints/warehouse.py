@@ -120,21 +120,58 @@ async def delete_warehouse(
     return {"message": "Warehouse deactivated", "success": True}
 
 
+@router.get("/summary")
+async def warehouse_summary(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    wh_query = select(Warehouse).where(
+        Warehouse.company_id == current_user.company_id,
+        Warehouse.is_active == True,
+    )
+    warehouses = (await db.execute(wh_query)).scalars().all()
+    wh_ids = [w.id for w in warehouses]
+    items: list[InventoryItem] = []
+    if wh_ids:
+        items = (
+            await db.execute(
+                select(InventoryItem).where(InventoryItem.warehouse_id.in_(wh_ids))
+            )
+        ).scalars().all()
+    low_stock = sum(1 for i in items if float(i.quantity) <= float(i.min_stock_level))
+    total_qty = sum(float(i.quantity) for i in items)
+    return {
+        "warehouses_count": len(warehouses),
+        "items_count": len(items),
+        "low_stock_count": low_stock,
+        "total_quantity": total_qty,
+    }
+
+
 @router.get("/items")
 async def list_items(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
     warehouse_id: Optional[int] = None,
 ):
-    query = select(InventoryItem).order_by(InventoryItem.id.desc())
+    query = (
+        select(InventoryItem, Warehouse)
+        .join(Warehouse, InventoryItem.warehouse_id == Warehouse.id)
+        .order_by(InventoryItem.id.desc())
+    )
+    if not current_user.is_super_admin:
+        query = query.where(Warehouse.company_id == current_user.company_id)
     if warehouse_id:
         query = query.where(InventoryItem.warehouse_id == warehouse_id)
     result = await db.execute(query)
-    items = result.scalars().all()
     return [
         {
             "id": i.id,
             "warehouse_id": i.warehouse_id,
+            "warehouse_name": w.name_en,
+            "warehouse_code": w.code,
             "sku": i.sku,
             "name_ar": i.name_ar,
             "name_en": i.name_en,
@@ -143,7 +180,7 @@ async def list_items(
             "low_stock": float(i.quantity) <= float(i.min_stock_level),
             "unit": i.unit,
         }
-        for i in items
+        for i, w in result.all()
     ]
 
 

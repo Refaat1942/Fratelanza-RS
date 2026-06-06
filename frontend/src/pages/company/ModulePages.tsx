@@ -5,25 +5,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle, FileText, CreditCard } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
+import { useListData } from '@/hooks/useListData'
 import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UserFormModal } from '@/components/forms/UserFormModal'
 import {
   ReservationFormModal, ContractFormModal,
-  PaymentFormModal, BrokerFormModal, WarehouseFormModal, WarehouseItemFormModal,
+  PaymentFormModal, BrokerFormModal,
   VendorFormModal, ConstructionPhaseFormModal,
-  MaintenanceFormModal, TicketFormModal,
+  TicketFormModal,
 } from '@/components/forms/ModuleFormModals'
-import { cn } from '@/lib/utils'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
-
-function useListData<T>(key: string, endpoint: string) {
-  const { data, isLoading, refetch } = useModuleList<T[] | { items: T[] }>(key, endpoint)
-  const items = Array.isArray(data) ? data : (data as { items?: T[] })?.items ?? []
-  return { items, isLoading, refetch }
-}
 
 function EntityLink({ to, label }: { to: string; label: string }) {
   return <Link to={to} className="font-medium text-primary-600 hover:underline">{label}</Link>
@@ -283,104 +277,6 @@ export function ProcurementPage() {
         )}
       />
       <VendorFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-    </div>
-  )
-}
-
-export function WarehousePage() {
-  const { t } = useTranslation()
-  const [tab, setTab] = useState<'warehouses' | 'items'>('warehouses')
-  const modal = useCrudModal()
-  const [itemOpen, setItemOpen] = useState(false)
-  const deleteWh = useDeleteEntity('/warehouse', ['warehouse'])
-  const deleteItem = useDeleteEntity('/warehouse/items', ['warehouse-items'])
-  const { items: warehouses, isLoading: whLoading, refetch: refetchWh } = useListData<Record<string, unknown>>('warehouse', '/warehouse')
-  const { data: inventoryData, isLoading: itemsLoading, refetch: refetchItems } = useModuleList<Record<string, unknown>[]>('warehouse-items', '/warehouse/items')
-  const invItems = Array.isArray(inventoryData) ? inventoryData : []
-
-  return (
-    <div>
-      <div className="mb-4 flex gap-2">
-        <button onClick={() => setTab('warehouses')} className={cn('rounded-lg px-4 py-2 text-sm font-medium', tab === 'warehouses' ? 'bg-primary-700 text-white' : 'bg-white ring-1 ring-slate-200')}>{t('warehouse')}</button>
-        <button onClick={() => setTab('items')} className={cn('rounded-lg px-4 py-2 text-sm font-medium', tab === 'items' ? 'bg-primary-700 text-white' : 'bg-white ring-1 ring-slate-200')}>{t('inventory_items')}</button>
-      </div>
-      {tab === 'warehouses' ? (
-        <DataTable
-          title={t('warehouse')}
-          loading={whLoading}
-          exportFilename="warehouse"
-          data={warehouses}
-          actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_warehouse')}</Button>}
-          emptyActionLabel={t('add_warehouse')}
-          onEmptyAction={modal.openCreate}
-          columns={[
-            { key: 'code', label: 'Code' },
-            { key: 'name_ar', label: t('warehouse') },
-            { key: 'location', label: 'Location' },
-          ]}
-          rowActions={(row) => (
-            <RowActions
-              onEdit={() => modal.openEdit(row)}
-              onDelete={() => confirmDelete(t) && deleteWh.mutate(row.id as number, { onSuccess: () => { refetchWh() } })}
-            />
-          )}
-        />
-      ) : (
-        <DataTable
-          title={t('inventory_items')}
-          loading={itemsLoading}
-          exportFilename="inventory"
-          data={invItems}
-          actions={<Button onClick={() => setItemOpen(true)}><Plus className="me-2 h-4 w-4" />{t('add_item')}</Button>}
-          columns={[
-            { key: 'sku', label: 'SKU' },
-            { key: 'name_ar', label: t('name_ar') },
-            { key: 'quantity', label: t('quantity') },
-            { key: 'min_stock_level', label: 'Min Stock' },
-            { key: 'low_stock', label: 'Alert', render: (row) => row.low_stock ? '⚠️ Low' : 'OK' },
-          ]}
-          rowActions={(row) => (
-            <RowActions onDelete={() => confirmDelete(t) && deleteItem.mutate(row.id as number, { onSuccess: () => { refetchItems() } })} />
-          )}
-        />
-      )}
-      <WarehouseFormModal open={modal.open} onClose={() => { modal.close(); refetchWh() }} editRow={modal.editRow} />
-      <WarehouseItemFormModal open={itemOpen} onClose={() => { setItemOpen(false); refetchItems() }} />
-    </div>
-  )
-}
-
-export function PropertyPage() {
-  const { t } = useTranslation()
-  const modal = useCrudModal()
-  const deleteMaint = useDeleteEntity('/property/maintenance', ['maintenance'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('maintenance', '/property/maintenance')
-  return (
-    <div>
-      <DataTable
-        title={t('property')}
-        subtitle={t('property_help')}
-        loading={isLoading}
-        exportFilename="property"
-        data={items}
-        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_maintenance')}</Button>}
-        emptyActionLabel={t('add_maintenance')}
-        onEmptyAction={modal.openCreate}
-        columns={[
-          { key: 'title', label: t('request') },
-          { key: 'unit_code', label: t('units') },
-          { key: 'customer_name', label: t('customers') },
-          { key: 'priority', label: 'Priority' },
-          { key: 'status', label: t('status') },
-        ]}
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => modal.openEdit(row)}
-            onDelete={() => confirmDelete(t) && deleteMaint.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-          />
-        )}
-      />
-      <MaintenanceFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
     </div>
   )
 }

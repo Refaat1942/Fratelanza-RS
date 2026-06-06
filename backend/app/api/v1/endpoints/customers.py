@@ -11,6 +11,7 @@ from app.api.deps import get_company_user
 from app.core.database import get_db
 from app.models.customers import ActivityType, Customer, CustomerActivity
 from app.models.crm import Lead, LeadSource, LeadStage
+from app.models.sales import Contract, Reservation
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
@@ -190,7 +191,89 @@ async def onboard_client(
     return CustomerResponse.model_validate(customer)
 
 
-@router.get("", response_model=PaginatedResponse[CustomerResponse])
+async def _enrich_customers(db: AsyncSession, customers: list[Customer]) -> list[dict]:
+    if not customers:
+        return []
+    ids = [c.id for c in customers]
+    contracts = (
+        await db.execute(
+            select(Contract.customer_id, func.count())
+            .where(Contract.customer_id.in_(ids), Contract.is_deleted == False)
+            .group_by(Contract.customer_id)
+        )
+    ).all()
+    contract_map = {cid: cnt for cid, cnt in contracts}
+    reservations = (
+        await db.execute(
+            select(Reservation.customer_id, func.count())
+            .where(Reservation.customer_id.in_(ids), Reservation.is_deleted == False)
+            .group_by(Reservation.customer_id)
+        )
+    ).all()
+    reservation_map = {cid: cnt for cid, cnt in reservations}
+    leads = (
+        await db.execute(select(Lead).where(Lead.customer_id.in_(ids), Lead.is_deleted == False))
+    ).scalars().all()
+    lead_map = {l.customer_id: l for l in leads if l.customer_id}
+    rows = []
+    for c in customers:
+        lead = lead_map.get(c.id)
+        rows.append({
+            **CustomerResponse.model_validate(c).model_dump(),
+            "contracts_count": contract_map.get(c.id, 0),
+            "reservations_count": reservation_map.get(c.id, 0),
+            "lead_id": lead.id if lead else None,
+            "lead_stage": lead.stage.value if lead else None,
+        })
+    return rows
+
+
+@router.get("/summary")
+async def customers_summary(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    base = select(Customer).where(
+        Customer.company_id == current_user.company_id,
+        Customer.is_deleted == False,
+    )
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    with_contracts = (
+        await db.execute(
+            select(func.count(func.distinct(Contract.customer_id))).where(
+                Contract.company_id == current_user.company_id,
+                Contract.is_deleted == False,
+            )
+        )
+    ).scalar() or 0
+    with_reservations = (
+        await db.execute(
+            select(func.count(func.distinct(Reservation.customer_id))).where(
+                Reservation.company_id == current_user.company_id,
+                Reservation.is_deleted == False,
+            )
+        )
+    ).scalar() or 0
+    with_leads = (
+        await db.execute(
+            select(func.count()).select_from(Lead).where(
+                Lead.company_id == current_user.company_id,
+                Lead.customer_id.isnot(None),
+                Lead.is_deleted == False,
+            )
+        )
+    ).scalar() or 0
+    return {
+        "total": total,
+        "with_contracts": with_contracts,
+        "with_reservations": with_reservations,
+        "with_leads": with_leads,
+    }
+
+
+@router.get("")
 async def list_customers(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
@@ -216,7 +299,7 @@ async def list_customers(
     customers = result.scalars().all()
     pages = (total + page_size - 1) // page_size
     return PaginatedResponse(
-        items=[CustomerResponse.model_validate(c) for c in customers],
+        items=await _enrich_customers(db, list(customers)),
         total=total,
         page=page,
         page_size=page_size,
@@ -287,6 +370,95 @@ async def delete_customer(
     customer.soft_delete()
     await db.flush()
     return {"message": "Customer deleted", "success": True}
+
+
+class CustomerNoteCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+
+@router.post("/{customer_id}/notes")
+async def add_customer_note(
+    customer_id: int,
+    data: CustomerNoteCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    if not current_user.is_super_admin and customer.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    activity = CustomerActivity(
+        customer_id=customer_id,
+        activity_type=ActivityType.NOTE,
+        title=data.title,
+        description=data.description,
+        created_by_id=current_user.id,
+    )
+    db.add(activity)
+    await db.flush()
+    return {"id": activity.id, "success": True}
+
+
+@router.get("/{customer_id}/profile")
+async def get_customer_profile(
+    customer_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    if not current_user.is_super_admin and customer.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    contracts = (
+        await db.execute(
+            select(Contract).where(Contract.customer_id == customer_id, Contract.is_deleted == False).order_by(Contract.id.desc())
+        )
+    ).scalars().all()
+    reservations = (
+        await db.execute(
+            select(Reservation).where(Reservation.customer_id == customer_id, Reservation.is_deleted == False).order_by(Reservation.id.desc())
+        )
+    ).scalars().all()
+    lead = (
+        await db.execute(select(Lead).where(Lead.customer_id == customer_id, Lead.is_deleted == False).limit(1))
+    ).scalar_one_or_none()
+    activities = (
+        await db.execute(
+            select(CustomerActivity)
+            .where(CustomerActivity.customer_id == customer_id)
+            .order_by(CustomerActivity.id.desc())
+            .limit(30)
+        )
+    ).scalars().all()
+
+    return {
+        "customer": CustomerResponse.model_validate(customer).model_dump(),
+        "lead": {"id": lead.id, "stage": lead.stage.value, "score": lead.score} if lead else None,
+        "contracts": [
+            {"id": c.id, "contract_number": c.contract_number, "status": c.status.value, "total_price": float(c.total_price or 0)}
+            for c in contracts
+        ],
+        "reservations": [
+            {"id": r.id, "reservation_number": r.reservation_number, "status": r.status.value, "deposit_amount": float(r.deposit_amount or 0)}
+            for r in reservations
+        ],
+        "timeline": [
+            {
+                "id": a.id,
+                "activity_type": a.activity_type.value,
+                "title": a.title,
+                "description": a.description,
+                "created_at": str(a.created_at),
+            }
+            for a in activities
+        ],
+    }
 
 
 @router.get("/{customer_id}/timeline")

@@ -453,7 +453,7 @@ export function WarehouseFormModal({ open, onClose, editRow }: ModalProps) {
   )
 }
 
-export function WarehouseItemFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function WarehouseItemFormModal({ open, onClose, editRow }: ModalProps) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: warehouses = [] } = useWarehousesLookup()
@@ -461,16 +461,26 @@ export function WarehouseItemFormModal({ open, onClose }: { open: boolean; onClo
   const [form, setForm] = useState({ warehouse_id: '', sku: '', name_ar: '', name_en: '', quantity: '0', min_stock_level: '10', unit: 'pcs' })
 
   useEffect(() => {
-    if (open && warehouses.length && !form.warehouse_id) {
-      setForm((f) => ({ ...f, warehouse_id: String(warehouses[0].id) }))
+    if (editRow) {
+      setForm({
+        warehouse_id: String(editRow.warehouse_id ?? ''),
+        sku: String(editRow.sku ?? ''),
+        name_ar: String(editRow.name_ar ?? ''),
+        name_en: String(editRow.name_en ?? ''),
+        quantity: String(editRow.quantity ?? '0'),
+        min_stock_level: String(editRow.min_stock_level ?? '10'),
+        unit: String(editRow.unit ?? 'pcs'),
+      })
+    } else if (open) {
+      setForm({ warehouse_id: warehouses.length ? String(warehouses[0].id) : '', sku: '', name_ar: '', name_en: '', quantity: '0', min_stock_level: '10', unit: 'pcs' })
     }
-  }, [open, warehouses, form.warehouse_id])
+  }, [editRow, open, warehouses])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post('/warehouse/items', {
+      const payload = {
         warehouse_id: Number(form.warehouse_id),
         sku: form.sku,
         name_ar: form.name_ar,
@@ -478,8 +488,20 @@ export function WarehouseItemFormModal({ open, onClose }: { open: boolean; onClo
         quantity: form.quantity,
         min_stock_level: form.min_stock_level,
         unit: form.unit,
-      })
+      }
+      if (editRow?.id) {
+        await api.put(`/warehouse/items/${editRow.id}`, {
+          name_ar: payload.name_ar,
+          name_en: payload.name_en,
+          quantity: payload.quantity,
+          min_stock_level: payload.min_stock_level,
+          unit: payload.unit,
+        })
+      } else {
+        await api.post('/warehouse/items', payload)
+      }
       qc.invalidateQueries({ queryKey: ['warehouse-items'] })
+      qc.invalidateQueries({ queryKey: ['warehouse-summary'] })
       onClose()
     } finally {
       setLoading(false)
@@ -487,7 +509,7 @@ export function WarehouseItemFormModal({ open, onClose }: { open: boolean; onClo
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('add_item')}>
+    <Modal open={open} onClose={onClose} title={editRow ? t('edit_item') : t('add_item')}>
       <form onSubmit={submit} className="space-y-4">
         <SelectField label={t('warehouse')} value={form.warehouse_id} onChange={(v) => setForm({ ...form, warehouse_id: v })} required
           options={warehouses.map((w) => ({ value: String(w.id), label: String(w.name_ar) }))} />

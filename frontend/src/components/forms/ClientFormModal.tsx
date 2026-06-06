@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/Modal'
@@ -6,12 +6,25 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import api from '@/lib/api'
 
+interface CustomerEdit {
+  id: number
+  full_name_ar: string
+  full_name_en: string
+  mobile: string
+  email?: string
+  whatsapp?: string
+  city?: string
+  national_id?: string
+  notes?: string
+}
+
 interface ClientFormModalProps {
   open: boolean
   onClose: () => void
+  editCustomer?: CustomerEdit | null
 }
 
-export function ClientFormModal({ open, onClose }: ClientFormModalProps) {
+export function ClientFormModal({ open, onClose, editCustomer }: ClientFormModalProps) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [loading, setLoading] = useState(false)
@@ -28,22 +41,56 @@ export function ClientFormModal({ open, onClose }: ClientFormModalProps) {
     create_lead: true,
   })
 
+  useEffect(() => {
+    if (editCustomer && open) {
+      setForm({
+        full_name_ar: editCustomer.full_name_ar,
+        full_name_en: editCustomer.full_name_en,
+        mobile: editCustomer.mobile,
+        email: editCustomer.email ?? '',
+        whatsapp: editCustomer.whatsapp ?? '',
+        city: editCustomer.city ?? '',
+        national_id: editCustomer.national_id ?? '',
+        source: 'walk_in',
+        notes: editCustomer.notes ?? '',
+        create_lead: false,
+      })
+    } else if (open && !editCustomer) {
+      setForm({ full_name_ar: '', full_name_en: '', mobile: '', email: '', whatsapp: '', city: '', national_id: '', source: 'walk_in', notes: '', create_lead: true })
+    }
+  }, [editCustomer, open])
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post('/customers/onboard', form)
+      if (editCustomer) {
+        await api.put(`/customers/${editCustomer.id}`, {
+          full_name_ar: form.full_name_ar,
+          full_name_en: form.full_name_en,
+          mobile: form.mobile,
+          email: form.email || undefined,
+          whatsapp: form.whatsapp || undefined,
+          city: form.city || undefined,
+          national_id: form.national_id || undefined,
+          notes: form.notes || undefined,
+        })
+      } else {
+        await api.post('/customers/onboard', form)
+        qc.invalidateQueries({ queryKey: ['leads'] })
+      }
       qc.invalidateQueries({ queryKey: ['customers'] })
-      qc.invalidateQueries({ queryKey: ['leads'] })
       onClose()
-      setForm({ full_name_ar: '', full_name_en: '', mobile: '', email: '', whatsapp: '', city: '', national_id: '', source: 'walk_in', notes: '', create_lead: true })
+      if (!editCustomer) {
+        setForm({ full_name_ar: '', full_name_en: '', mobile: '', email: '', whatsapp: '', city: '', national_id: '', source: 'walk_in', notes: '', create_lead: true })
+      }
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('add_client')}>
+    <Modal open={open} onClose={onClose} title={editCustomer ? t('edit_customer') : t('add_client')}>
       <form onSubmit={submit} className="space-y-4">
         <Input label={t('name_ar')} value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required />
         <Input label={t('name_en')} value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} required />
@@ -63,10 +110,12 @@ export function ClientFormModal({ open, onClose }: ClientFormModalProps) {
             <option value="website">Website</option>
           </select>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.create_lead} onChange={(e) => setForm({ ...form, create_lead: e.target.checked })} />
-          {t('create_lead_auto')}
-        </label>
+        {!editCustomer && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.create_lead} onChange={(e) => setForm({ ...form, create_lead: e.target.checked })} />
+            {t('create_lead_auto')}
+          </label>
+        )}
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>

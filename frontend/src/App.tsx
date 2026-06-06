@@ -20,10 +20,12 @@ import { FinancePage } from '@/pages/company/FinancePage'
 import { FollowUpsPage } from '@/pages/company/FollowUpsPage'
 import { BrandingPage } from '@/pages/company/BrandingPage'
 import { ProjectsPage } from '@/pages/company/ProjectsPage'
+import { WarehousePage } from '@/pages/company/WarehousePage'
+import { PropertyPage } from '@/pages/company/PropertyPage'
 import {
   ReservationsPage, ContractsPage, CollectionsPage,
   BrokersPage, ConstructionPage, ProcurementPage,
-  WarehousePage, PropertyPage, CustomerServicePage, CompanyUsersPage,
+  CustomerServicePage, CompanyUsersPage,
   AuditLogsPage,
 } from '@/pages/company/ModulePages'
 
