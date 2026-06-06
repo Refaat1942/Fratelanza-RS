@@ -21,6 +21,16 @@ class VendorCreate(BaseModel):
     email: Optional[str] = None
 
 
+class VendorUpdate(BaseModel):
+    name_ar: Optional[str] = None
+    name_en: Optional[str] = None
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    rating: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
 @router.get("/vendors")
 async def list_vendors(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -31,7 +41,19 @@ async def list_vendors(
         query = query.where(Vendor.company_id == current_user.company_id)
     result = await db.execute(query)
     vendors = result.scalars().all()
-    return [{"id": v.id, "name_ar": v.name_ar, "name_en": v.name_en, "rating": v.rating} for v in vendors]
+    return [
+        {
+            "id": v.id,
+            "name_ar": v.name_ar,
+            "name_en": v.name_en,
+            "contact_person": v.contact_person,
+            "phone": v.phone,
+            "email": v.email,
+            "rating": v.rating,
+            "is_active": v.is_active,
+        }
+        for v in vendors
+    ]
 
 
 @router.post("/vendors")
@@ -46,6 +68,42 @@ async def create_vendor(
     db.add(vendor)
     await db.flush()
     return {"id": vendor.id}
+
+
+@router.put("/vendors/{vendor_id}")
+async def update_vendor(
+    vendor_id: int,
+    data: VendorUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
+    if not current_user.is_super_admin and vendor.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(vendor, field, value)
+    await db.flush()
+    return {"id": vendor.id, "success": True}
+
+
+@router.delete("/vendors/{vendor_id}")
+async def delete_vendor(
+    vendor_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vendor not found")
+    if not current_user.is_super_admin and vendor.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    vendor.is_active = False
+    await db.flush()
+    return {"message": "Vendor deactivated", "success": True}
 
 
 @router.get("/rfqs")

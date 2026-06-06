@@ -18,6 +18,18 @@ class ProjectCreate(BaseModel):
     branch_id: Optional[int] = None
 
 
+class ProjectUpdate(BaseModel):
+    name_ar: Optional[str] = None
+    name_en: Optional[str] = None
+    code: Optional[str] = None
+    description_ar: Optional[str] = None
+    description_en: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
+    status: Optional[ProjectStatus] = None
+
+
 class ProjectResponse(ProjectCreate):
     id: int
     company_id: int
@@ -61,11 +73,30 @@ class ReservationCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class ReservationUpdate(BaseModel):
+    customer_id: Optional[int] = None
+    deposit_amount: Optional[Decimal] = None
+    reservation_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+
 class ContractCreate(BaseModel):
     customer_id: int
     unit_id: int
     reservation_id: Optional[int] = None
     total_price: Decimal
     contract_date: str
+    contract_ar: Optional[str] = None
+    contract_en: Optional[str] = None
+
+
+class ContractUpdate(BaseModel):
+    customer_id: Optional[int] = None
+    total_price: Optional[Decimal] = None
+    contract_date: Optional[str] = None
+    status: Optional[str] = None
+    is_signed: Optional[bool] = None
     contract_ar: Optional[str] = None
     contract_en: Optional[str] = None

@@ -23,6 +23,7 @@ interface DataTableProps {
   data: Record<string, unknown>[]
   loading?: boolean
   actions?: React.ReactNode
+  rowActions?: (row: Record<string, unknown>) => React.ReactNode
   searchable?: boolean
   exportFilename?: string
   subtitle?: string
@@ -39,7 +40,7 @@ function StatusCell({ value }: { value: unknown }) {
   return <span className={cls}>{String(value)}</span>
 }
 
-export function DataTable({ title, columns, data, loading, actions, searchable = true, exportFilename, subtitle }: DataTableProps) {
+export function DataTable({ title, columns, data, loading, actions, rowActions, searchable = true, exportFilename, subtitle }: DataTableProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const [search, setSearch] = useState('')
@@ -119,7 +120,7 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
               <thead>
                 <tr className="table-head-gradient border-b border-slate-200">
                   {columns.map((col) => (
-                    <th key={col.key} className="px-3 py-3 text-start">
+                    <th key={col.key} className="px-3 py-3 text-start" scope="col">
                       {col.sortable !== false ? (
                         <button
                           onClick={() => toggleSort(col.key)}
@@ -138,12 +139,13 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
                       ) : col.label}
                     </th>
                   ))}
+                  {rowActions && <th className="px-3 py-3 text-start" scope="col">{t('actions')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row, i) => (
                   <tr
-                    key={i}
+                    key={String(row.id ?? i)}
                     className="table-row-animate border-b border-slate-100"
                     style={{ animationDelay: `${Math.min(i * 0.04, 0.6)}s` }}
                   >
@@ -156,6 +158,7 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
                             : String(row[col.key] ?? '-')}
                       </td>
                     ))}
+                    {rowActions && <td className="px-3 py-3">{rowActions(row)}</td>}
                   </tr>
                 ))}
               </tbody>

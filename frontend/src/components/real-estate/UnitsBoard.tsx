@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { Plus } from 'lucide-react'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -22,7 +23,11 @@ interface UnitCard {
   area_sqm: number
 }
 
-export function UnitsBoard() {
+interface UnitsBoardProps {
+  onUnitClick?: (unitId: number, status: string) => void
+}
+
+export function UnitsBoard({ onUnitClick }: UnitsBoardProps) {
   const { t } = useTranslation()
   const { formatEGP, formatInteger, formatNumber, localizeDigits } = useFormatNumber()
   const { data, isLoading } = useQuery({
@@ -37,6 +42,7 @@ export function UnitsBoard() {
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-slate-500">{t('units_board_help')}</p>
       {Object.entries(data ?? {}).map(([status, units]) => (
         <div key={status}>
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold capitalize">
@@ -46,12 +52,26 @@ export function UnitsBoard() {
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {units.map((u) => (
-              <div key={u.id} className={cn('rounded-xl border-2 p-4 transition hover:shadow-md', STATUS_STYLES[status] ?? 'border-slate-200')}>
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => onUnitClick?.(u.id, status)}
+                className={cn(
+                  'rounded-xl border-2 p-4 text-start transition hover:shadow-md',
+                  STATUS_STYLES[status] ?? 'border-slate-200',
+                  onUnitClick && 'cursor-pointer hover:scale-[1.02]',
+                )}
+              >
                 <p className="font-bold">{u.unit_code}</p>
                 <p className="text-xs opacity-75">#{localizeDigits(u.unit_number)} · {u.unit_type}</p>
                 <p className="mt-2 text-sm font-semibold">{formatEGP(u.price)}</p>
                 <p className="text-xs opacity-75">{formatNumber(u.area_sqm)} m²</p>
-              </div>
+                {status === 'available' && onUnitClick && (
+                  <p className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700">
+                    <Plus className="h-3 w-3" /> {t('reserve_unit')}
+                  </p>
+                )}
+              </button>
             ))}
           </div>
         </div>

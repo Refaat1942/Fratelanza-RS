@@ -411,11 +411,128 @@ async def seed_database() -> None:
                     )
                 )
 
+            from app.models.brokers import Broker
+            from app.models.warehouse import Warehouse, InventoryItem
+            from app.models.procurement import Vendor
+            from app.models.construction import ConstructionPhase
+            from app.models.sales import Reservation, ReservationStatus
+
+            if not (await db.execute(select(Broker).where(Broker.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    Broker(
+                        company_id=company.id,
+                        name_ar="محمد الوسيط",
+                        name_en="Mohamed Broker",
+                        mobile="+201055566677",
+                        email="broker@example.com",
+                        commission_rate=Decimal("3.0"),
+                        rank_score=85,
+                    )
+                )
+
+            wh = (await db.execute(select(Warehouse).where(Warehouse.company_id == company.id).limit(1))).scalar_one_or_none()
+            if not wh:
+                wh = Warehouse(
+                    company_id=company.id,
+                    name_ar="المخزن الرئيسي",
+                    name_en="Main Warehouse",
+                    code="WH-001",
+                    location="New Cairo Site",
+                )
+                db.add(wh)
+                await db.flush()
+                db.add(
+                    InventoryItem(
+                        warehouse_id=wh.id,
+                        sku="CEM-001",
+                        name_ar="أسمنت",
+                        name_en="Cement",
+                        quantity=Decimal("500"),
+                        min_stock_level=Decimal("100"),
+                        unit="bags",
+                    )
+                )
+                db.add(
+                    InventoryItem(
+                        warehouse_id=wh.id,
+                        sku="STL-001",
+                        name_ar="حديد تسليح",
+                        name_en="Steel Rebar",
+                        quantity=Decimal("50"),
+                        min_stock_level=Decimal("80"),
+                        unit="tons",
+                    )
+                )
+
+            if not (await db.execute(select(Vendor).where(Vendor.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    Vendor(
+                        company_id=company.id,
+                        name_ar="شركة مواد البناء",
+                        name_en="Building Materials Co.",
+                        contact_person="Ali Vendor",
+                        phone="+201033344455",
+                        email="vendor@example.com",
+                        rating=4,
+                    )
+                )
+
+            if not (await db.execute(select(ConstructionPhase).where(ConstructionPhase.project_id == project.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    ConstructionPhase(
+                        project_id=project.id,
+                        name_ar="الهيكل الخرساني",
+                        name_en="Concrete Structure",
+                        planned_start="2025-01-01",
+                        planned_end="2025-06-30",
+                        progress_percent=65,
+                        planned_cost=Decimal("5000000"),
+                        actual_cost=Decimal("3200000"),
+                    )
+                )
+                db.add(
+                    ConstructionPhase(
+                        project_id=project.id,
+                        name_ar="التشطيبات",
+                        name_en="Finishing",
+                        planned_start="2025-07-01",
+                        planned_end="2025-12-31",
+                        progress_percent=20,
+                        planned_cost=Decimal("3000000"),
+                        actual_cost=Decimal("400000"),
+                    )
+                )
+
+            unit2_r = await db.execute(
+                select(Unit).join(Floor).join(Building).where(
+                    Building.project_id == project.id, Unit.unit_code == "A1-02"
+                )
+            )
+            unit2 = unit2_r.scalar_one_or_none()
+            if unit2 and customer and not (await db.execute(select(Reservation).where(Reservation.company_id == company.id).limit(1))).scalar_one_or_none():
+                unit2.is_locked = True
+                unit2.status = UnitStatus.RESERVED
+                db.add(
+                    Reservation(
+                        company_id=company.id,
+                        reservation_number="RES-DEMO-001",
+                        customer_id=customer.id,
+                        unit_id=unit2.id,
+                        deposit_amount=Decimal("100000"),
+                        reservation_date=date.today().isoformat(),
+                        expiry_date=(date.today() + timedelta(days=14)).isoformat(),
+                        status=ReservationStatus.PENDING_APPROVAL,
+                        notes="Demo reservation from Sara Ali lead",
+                    )
+                )
+
             unit_r = await db.execute(
-                select(Unit).join(Floor).join(Building).where(Building.project_id == project.id).limit(1)
+                select(Unit).join(Floor).join(Building).where(Building.project_id == project.id, Unit.unit_code == "A1-01")
             )
             unit = unit_r.scalar_one_or_none()
             if unit and customer and not (await db.execute(select(Contract).where(Contract.company_id == company.id).limit(1))).scalar_one_or_none():
+                unit.is_locked = True
+                unit.status = UnitStatus.CONTRACTED
                 contract = Contract(
                     company_id=company.id,
                     contract_number="CNT-DEMO-001",

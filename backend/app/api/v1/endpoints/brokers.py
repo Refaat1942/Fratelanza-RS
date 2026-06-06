@@ -23,6 +23,16 @@ class BrokerCreate(BaseModel):
     commission_rate: Decimal = Decimal("2.5")
 
 
+class BrokerUpdate(BaseModel):
+    name_ar: Optional[str] = None
+    name_en: Optional[str] = None
+    mobile: Optional[str] = None
+    email: Optional[str] = None
+    license_number: Optional[str] = None
+    commission_rate: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+
+
 @router.get("")
 async def list_brokers(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -39,6 +49,7 @@ async def list_brokers(
             "name_ar": b.name_ar,
             "name_en": b.name_en,
             "mobile": b.mobile,
+            "email": b.email,
             "commission_rate": float(b.commission_rate),
             "total_sales": float(b.total_sales),
             "rank_score": b.rank_score,
@@ -62,6 +73,42 @@ async def create_broker(
     return {"id": broker.id, "name_ar": broker.name_ar}
 
 
+@router.put("/{broker_id}")
+async def update_broker(
+    broker_id: int,
+    data: BrokerUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Broker).where(Broker.id == broker_id, Broker.is_deleted == False))
+    broker = result.scalar_one_or_none()
+    if not broker:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broker not found")
+    if not current_user.is_super_admin and broker.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(broker, field, value)
+    await db.flush()
+    return {"id": broker.id, "name_ar": broker.name_ar, "success": True}
+
+
+@router.delete("/{broker_id}")
+async def delete_broker(
+    broker_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Broker).where(Broker.id == broker_id, Broker.is_deleted == False))
+    broker = result.scalar_one_or_none()
+    if not broker:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Broker not found")
+    if not current_user.is_super_admin and broker.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    broker.soft_delete()
+    await db.flush()
+    return {"message": "Broker deleted", "success": True}
+
+
 @router.get("/commissions")
 async def list_commissions(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -78,6 +125,7 @@ async def list_commissions(
     return [
         {
             "id": c.id,
+            "broker_id": c.broker_id,
             "broker_name": b.name_ar,
             "amount": float(c.amount),
             "status": c.status.value,

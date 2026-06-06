@@ -129,6 +129,23 @@ async def leads_kanban(
     return board
 
 
+@router.delete("/{lead_id}")
+async def delete_lead(
+    lead_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not current_user.is_super_admin and lead.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    lead.soft_delete()
+    await db.flush()
+    return {"message": "Lead deleted", "success": True}
+
+
 @router.put("/{lead_id}", response_model=LeadResponse)
 async def update_lead(
     lead_id: int,

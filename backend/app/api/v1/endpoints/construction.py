@@ -22,6 +22,16 @@ class PhaseCreate(BaseModel):
     planned_end: Optional[str] = None
 
 
+class PhaseUpdate(BaseModel):
+    name_ar: Optional[str] = None
+    name_en: Optional[str] = None
+    planned_start: Optional[str] = None
+    planned_end: Optional[str] = None
+    progress_percent: Optional[int] = None
+    planned_cost: Optional[float] = None
+    actual_cost: Optional[float] = None
+
+
 @router.get("/phases")
 async def list_phases(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -29,7 +39,7 @@ async def list_phases(
     project_id: Optional[int] = None,
 ):
     query = (
-        select(ConstructionPhase)
+        select(ConstructionPhase, Project)
         .join(Project, ConstructionPhase.project_id == Project.id)
         .order_by(ConstructionPhase.id.desc())
     )
@@ -38,18 +48,20 @@ async def list_phases(
     if project_id:
         query = query.where(ConstructionPhase.project_id == project_id)
     result = await db.execute(query)
-    phases = result.scalars().all()
     return [
         {
             "id": p.id,
             "project_id": p.project_id,
+            "project_name": proj.name_ar,
             "name_ar": p.name_ar,
             "name_en": p.name_en,
             "progress_percent": p.progress_percent,
             "planned_cost": float(p.planned_cost),
             "actual_cost": float(p.actual_cost),
+            "planned_start": p.planned_start,
+            "planned_end": p.planned_end,
         }
-        for p in phases
+        for p, proj in result.all()
     ]
 
 
@@ -63,6 +75,38 @@ async def create_phase(
     db.add(phase)
     await db.flush()
     return {"id": phase.id, "name_ar": phase.name_ar}
+
+
+@router.put("/phases/{phase_id}")
+async def update_phase(
+    phase_id: int,
+    data: PhaseUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(ConstructionPhase).where(ConstructionPhase.id == phase_id))
+    phase = result.scalar_one_or_none()
+    if not phase:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(phase, field, value)
+    await db.flush()
+    return {"id": phase.id, "success": True}
+
+
+@router.delete("/phases/{phase_id}")
+async def delete_phase(
+    phase_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(ConstructionPhase).where(ConstructionPhase.id == phase_id))
+    phase = result.scalar_one_or_none()
+    if not phase:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+    await db.delete(phase)
+    await db.flush()
+    return {"message": "Phase deleted", "success": True}
 
 
 @router.get("/tasks")

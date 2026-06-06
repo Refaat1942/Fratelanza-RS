@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Phone, Calendar } from 'lucide-react'
+import { Phone, Calendar, Pencil } from 'lucide-react'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
@@ -31,7 +31,11 @@ interface LeadCard {
   pending_call_date?: string
 }
 
-export function LeadKanban() {
+interface LeadKanbanProps {
+  onEdit?: (lead: LeadCard) => void
+}
+
+export function LeadKanban({ onEdit }: LeadKanbanProps) {
   const { t } = useTranslation()
   const { formatInteger, formatPhone, localizeDigits } = useFormatNumber()
   const qc = useQueryClient()
@@ -96,6 +100,16 @@ export function LeadKanban() {
                     >
                       <Phone className="h-3 w-3" />{t('schedule_call')}
                     </button>
+                    {onEdit && (
+                      <button
+                        type="button"
+                        onClick={() => onEdit(lead)}
+                        className="flex items-center justify-center rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                        title={t('edit')}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                   <select
                     className="mt-2 w-full rounded border border-slate-200 text-xs"
