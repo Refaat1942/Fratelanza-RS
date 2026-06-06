@@ -1,13 +1,21 @@
 version: "3.9"
 
 # FRATELANZA Production — Hostinger VPS (Port 9000)
-# Isolated from other projects on the VPS
+# FULLY ISOLATED from other projects on the VPS:
+# - Own folder: /opt/fratelanza
+# - Own port: 9000 only (NOT 80, 443, 3000, etc.)
+# - Own Docker project name: fratelanza
+# - Own network, database, redis (no host ports exposed)
+# - Does NOT modify system nginx or other projects
+
+name: fratelanza
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: fratelanza_postgres
     restart: unless-stopped
+    # NO ports exposed to host — only accessible inside fratelanza network
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fratelanza}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

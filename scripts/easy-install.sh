@@ -25,14 +25,12 @@ mkdir -p /opt
 if [ -d /opt/fratelanza/.git ]; then
   cd /opt/fratelanza
   git fetch origin
-  git checkout cursor/hostinger-deploy-all-phases-8cb9 2>/dev/null || git checkout main
-  git pull
+  git checkout main 2>/dev/null || true
+  git pull origin main
 else
   rm -rf /opt/fratelanza
-  git clone -b cursor/hostinger-deploy-all-phases-8cb9 https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza || \
-    git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
+  git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
   cd /opt/fratelanza
-  git checkout cursor/hostinger-deploy-all-phases-8cb9 2>/dev/null || true
 fi
 
 # 3. Create .env with auto-generated passwords
@@ -82,21 +80,35 @@ EOF
   echo ""
 fi
 
-# 4. Open firewall port
-echo "[4/6] Opening port 9000..."
+# 4. Check port 9000 is free (won't touch ports 80, 443, etc.)
+echo "[4/6] Checking port 9000 is available..."
+if ss -tlnp 2>/dev/null | grep -q ':9000 '; then
+  echo "ERROR: Port 9000 is already used by another app."
+  echo "Your other projects are safe — install stopped."
+  echo "Run: ss -tlnp | grep 9000   to see what uses it"
+  exit 1
+fi
+echo "  Port 9000 is free. Your other projects will NOT be affected."
+
+# 5. Open firewall port 9000 only
 if command -v ufw &>/dev/null; then
-  ufw allow 9000/tcp 2>/dev/null || true
+  ufw allow 9000/tcp comment 'FRATELANZA only' 2>/dev/null || true
 fi
 
-# 5. Build and start
+# 6. Build and start (isolated Docker project 'fratelanza')
 echo "[5/6] Building and starting (this takes 3-5 minutes)..."
 export APP_PORT=9000
-docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
+export COMPOSE_PROJECT_NAME=fratelanza
+docker compose -p fratelanza -f docker-compose.prod.yml down 2>/dev/null || true
+docker compose -p fratelanza -f docker-compose.prod.yml build
+docker compose -p fratelanza -f docker-compose.prod.yml up -d
 
 # 6. Wait and test
 echo "[6/6] Waiting for app to start..."
+echo ""
+echo "  ISOLATION: FRATELANZA runs alone on port 9000"
+echo "  Your other projects on ports 80/443/etc. are untouched."
+echo ""
 sleep 20
 for i in 1 2 3 4 5; do
   if curl -sf http://localhost:9000/health >/dev/null; then
@@ -117,5 +129,5 @@ for i in 1 2 3 4 5; do
 done
 
 echo "Install finished but health check pending."
-echo "Check logs: cd /opt/fratelanza && docker compose -f docker-compose.prod.yml logs"
+echo "Check logs: cd /opt/fratelanza && docker compose -p fratelanza -f docker-compose.prod.yml logs"
 exit 0
