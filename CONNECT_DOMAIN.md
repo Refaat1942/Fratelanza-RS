@@ -48,7 +48,7 @@ Go to: **https://erp.yourdomain.com**
 
 Login same as before:
 - Super Admin: `admin@fratelanza.com`
-- Demo company: `admin@demo.fratelanza.com` / `Demo@123456`
+- Demo company: `admin@demo.fratelanza.com` / `Demo123456`
 
 ---
 

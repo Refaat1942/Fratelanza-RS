@@ -84,7 +84,7 @@ cd frontend && npm install && npm run dev
 | Role | Email | Password |
 |------|-------|----------|
 | Super Admin | admin@fratelanza.com | Admin@123456 |
-| Demo Company Admin | admin@demo.fratelanza.com | Demo@123456 |
+| Demo Company Admin | admin@demo.fratelanza.com | Demo123456 |
 
 > Change these immediately in production.
 
@@ -107,6 +107,9 @@ cd frontend && npm install && npm run dev
 | Database Schema | [docs/13-database-schema.sql](docs/13-database-schema.sql) |
 | Development Roadmap | [docs/14-development-roadmap.md](docs/14-development-roadmap.md) |
 | Deployment Guide | [docs/15-production-deployment-guide.md](docs/15-production-deployment-guide.md) |
+| **Demo User Manual (EN)** | [docs/DEMO-USER-MANUAL.md](docs/DEMO-USER-MANUAL.md) |
+| **Demo User Manual (AR)** | [docs/DEMO-USER-MANUAL-AR.md](docs/DEMO-USER-MANUAL-AR.md) |
+| Demo Quick Start Card | [docs/DEMO-QUICK-START.md](docs/DEMO-QUICK-START.md) |
 
 ## Project Structure
 
