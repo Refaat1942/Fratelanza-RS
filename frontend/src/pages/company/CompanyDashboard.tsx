@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { DollarSign, Wallet, Home, Target } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { DollarSign, Wallet, Home, Target, BarChart3 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { StatCard } from '@/components/ui/StatCard'
 import { SalesChart } from '@/components/dashboard/SalesChart'
 import { PipelineChart } from '@/components/dashboard/PipelineChart'
@@ -9,6 +11,7 @@ import type { DashboardData } from '@/types'
 
 export function CompanyDashboard() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['company-dashboard'],
     queryFn: async () => {
@@ -27,7 +30,13 @@ export function CompanyDashboard() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('dashboard')}</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">{t('dashboard')}</h1>
+        <Button variant="secondary" onClick={() => navigate('/reports')}>
+          <BarChart3 className="me-2 h-4 w-4" />
+          {t('view_reports')}
+        </Button>
+      </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={formatKpi(0, t('total_sales'))}

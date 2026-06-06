@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Building2, Users, UserCircle, Target, FolderKanban,
   FileText, Wallet, HardHat, ShoppingCart, Warehouse, Home, Headphones,
-  Settings, ScrollText, CreditCard, Bot,
+  Settings, ScrollText, CreditCard, Bot, BarChart3,
 } from 'lucide-react'
 
 const superAdminLinks = [
@@ -15,6 +15,7 @@ const superAdminLinks = [
   { to: '/super-admin/subscriptions', icon: CreditCard, label: 'subscriptions' },
   { to: '/super-admin/audit-logs', icon: ScrollText, label: 'audit_logs' },
   { to: '/super-admin/settings', icon: Settings, label: 'settings' },
+  { to: '/super-admin/reports', icon: BarChart3, label: 'reports' },
 ]
 
 const companyLinks = [
@@ -33,6 +34,7 @@ const companyLinks = [
   { to: '/property', icon: Home, label: 'property' },
   { to: '/customer-service', icon: Headphones, label: 'customer_service' },
   { to: '/users', icon: Users, label: 'users' },
+  { to: '/reports', icon: BarChart3, label: 'reports' },
   { to: '/ai-assistant', icon: Bot, label: 'ai_assistant' },
 ]
 

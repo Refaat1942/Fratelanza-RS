@@ -11,6 +11,7 @@ import { CompanyDashboard } from '@/pages/company/CompanyDashboard'
 import { CustomersPage } from '@/pages/company/CustomersPage'
 import { LeadsPage } from '@/pages/company/LeadsPage'
 import { AIAssistantPage } from '@/pages/company/AIAssistantPage'
+import { ReportsPage } from '@/pages/company/ReportsPage'
 import {
   ProjectsPage, ReservationsPage, ContractsPage, CollectionsPage,
   BrokersPage, FinancePage, ConstructionPage, ProcurementPage,
@@ -38,6 +39,7 @@ function AppRoutes() {
         <Route path="/super-admin/subscriptions" element={<ProtectedRoute superAdminOnly><SubscriptionsPage /></ProtectedRoute>} />
         <Route path="/super-admin/audit-logs" element={<ProtectedRoute superAdminOnly><AuditLogsPage /></ProtectedRoute>} />
         <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly><SettingsPage /></ProtectedRoute>} />
+        <Route path="/super-admin/reports" element={<ProtectedRoute superAdminOnly><ReportsPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<CompanyDashboard />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/leads" element={<LeadsPage />} />
@@ -53,6 +55,7 @@ function AppRoutes() {
         <Route path="/property" element={<PropertyPage />} />
         <Route path="/customer-service" element={<CustomerServicePage />} />
         <Route path="/users" element={<CompanyUsersPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { UserPlus } from 'lucide-react'
+import { Search, UserPlus } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ClientFormModal } from '@/components/forms/ClientFormModal'
@@ -11,6 +11,7 @@ import type { Customer, Paginated } from '@/types'
 export function CustomersPage() {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
@@ -18,6 +19,14 @@ export function CustomersPage() {
       return data
     },
   })
+
+  const filtered = useMemo(() => {
+    if (!data?.items || !search) return data?.items ?? []
+    const q = search.toLowerCase()
+    return data.items.filter((c) =>
+      [c.full_name_ar, c.full_name_en, c.mobile, c.email].some((v) => v?.toLowerCase().includes(q)),
+    )
+  }, [data, search])
 
   return (
     <div>
@@ -29,6 +38,16 @@ export function CustomersPage() {
         </Button>
       </div>
       <Card>
+        <div className="relative mb-4 max-w-md">
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('search_table')}
+            className="input-field ps-10"
+          />
+        </div>
         {isLoading ? (
           <p className="text-slate-500">{t('loading')}</p>
         ) : (
@@ -43,7 +62,7 @@ export function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {data?.items.map((c) => (
+              {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="py-3">{c.id}</td>
                   <td className="py-3 font-medium">

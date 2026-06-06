@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     procurement,
     projects,
     property,
+    reports,
     reservations,
     search,
     super_admin,
@@ -51,6 +52,7 @@ api_router.include_router(hr.router, prefix="/hr", tags=["HR"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["Customer Service"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard & BI"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
+api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(exports.router, prefix="/exports", tags=["Exports"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI Features"])
