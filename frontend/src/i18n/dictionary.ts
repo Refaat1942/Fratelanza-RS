@@ -1,0 +1,80 @@
+export type Locale = "ar" | "en";
+
+type Dictionary = Record<string, string>;
+
+export const dictionaries: Record<Locale, Dictionary> = {
+  ar: {
+    appName: "منصة فراتيلانزا العقارية",
+    subtitle: "ERP وCRM وإدارة تطوير عقاري SaaS",
+    superAdmin: "لوحة تحكم Super Admin",
+    dashboard: "لوحة المؤشرات",
+    crm: "المبيعات وCRM",
+    inventory: "المخزون العقاري",
+    collections: "التحصيل",
+    construction: "إدارة الإنشاءات",
+    finance: "المالية",
+    customerService: "خدمة العملاء",
+    aiInsights: "رؤى الذكاء الاصطناعي",
+    switchLanguage: "English",
+    totalSales: "إجمالي المبيعات",
+    collected: "المحصل",
+    overdue: "المتأخرات",
+    availableUnits: "وحدات متاحة",
+    leads: "عملاء محتملون",
+    reservations: "حجوزات",
+    contracts: "عقود",
+    brokers: "وسطاء",
+    newLead: "جديد",
+    contacted: "تم التواصل",
+    siteVisit: "زيارة موقع",
+    negotiation: "تفاوض",
+    reservation: "حجز",
+    unitCode: "كود الوحدة",
+    project: "المشروع",
+    status: "الحالة",
+    price: "السعر",
+    nextActions: "إجراءات تشغيلية مقترحة",
+    tenantIsolation: "عزل بيانات الشركات",
+    rbac: "صلاحيات RBAC",
+    bilingual: "عربي RTL / إنجليزي LTR"
+  },
+  en: {
+    appName: "FRATELANZA Real Estate Platform",
+    subtitle: "SaaS Real Estate ERP, CRM, and Development Management",
+    superAdmin: "Super Admin Control Panel",
+    dashboard: "Dashboard",
+    crm: "Sales & CRM",
+    inventory: "Real Estate Inventory",
+    collections: "Collections",
+    construction: "Construction Management",
+    finance: "Finance",
+    customerService: "Customer Service",
+    aiInsights: "AI Insights",
+    switchLanguage: "العربية",
+    totalSales: "Total Sales",
+    collected: "Collected",
+    overdue: "Overdue",
+    availableUnits: "Available Units",
+    leads: "Leads",
+    reservations: "Reservations",
+    contracts: "Contracts",
+    brokers: "Brokers",
+    newLead: "New",
+    contacted: "Contacted",
+    siteVisit: "Site Visit",
+    negotiation: "Negotiation",
+    reservation: "Reservation",
+    unitCode: "Unit Code",
+    project: "Project",
+    status: "Status",
+    price: "Price",
+    nextActions: "Recommended Operational Actions",
+    tenantIsolation: "Company Data Isolation",
+    rbac: "RBAC Permissions",
+    bilingual: "Arabic RTL / English LTR"
+  }
+};
+
+export function direction(locale: Locale): "rtl" | "ltr" {
+  return locale === "ar" ? "rtl" : "ltr";
+}

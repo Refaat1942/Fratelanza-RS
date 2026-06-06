@@ -1,0 +1,1 @@
+"""FRATELANZA backend application package."""
