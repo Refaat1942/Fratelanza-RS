@@ -12,9 +12,13 @@ import { CustomersPage } from '@/pages/company/CustomersPage'
 import { LeadsPage } from '@/pages/company/LeadsPage'
 import { AIAssistantPage } from '@/pages/company/AIAssistantPage'
 import { ReportsPage } from '@/pages/company/ReportsPage'
+import { HRPage } from '@/pages/company/HRPage'
+import { FinancePage } from '@/pages/company/FinancePage'
+import { FollowUpsPage } from '@/pages/company/FollowUpsPage'
+import { BrandingPage } from '@/pages/company/BrandingPage'
 import {
   ProjectsPage, ReservationsPage, ContractsPage, CollectionsPage,
-  BrokersPage, FinancePage, ConstructionPage, ProcurementPage,
+  BrokersPage, ConstructionPage, ProcurementPage,
   WarehousePage, PropertyPage, CustomerServicePage, CompanyUsersPage,
   AuditLogsPage, SubscriptionsPage, SettingsPage,
 } from '@/pages/company/ModulePages'
@@ -49,6 +53,9 @@ function AppRoutes() {
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/brokers" element={<BrokersPage />} />
         <Route path="/finance" element={<FinancePage />} />
+        <Route path="/hr" element={<HRPage />} />
+        <Route path="/follow-ups" element={<FollowUpsPage />} />
+        <Route path="/branding" element={<BrandingPage />} />
         <Route path="/construction" element={<ConstructionPage />} />
         <Route path="/procurement" element={<ProcurementPage />} />
         <Route path="/warehouse" element={<WarehousePage />} />

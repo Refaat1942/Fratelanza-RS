@@ -42,6 +42,7 @@ class CompanyService:
             commercial_register=data.commercial_register,
             default_language=data.default_language,
             theme=data.theme,
+            currency=getattr(data, "currency", "EGP") or "EGP",
             storage_limit_mb=data.storage_limit_mb,
             status=CompanyStatus.TRIAL,
         )

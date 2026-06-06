@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
 import { UserFormModal } from '@/components/forms/UserFormModal'
 import { cn } from '@/lib/utils'
+import { formatEGP } from '@/lib/currency'
 import api from '@/lib/api'
 
 function useListData<T>(key: string, endpoint: string) {
@@ -44,6 +45,7 @@ export function ProjectsPage() {
         <DataTable
           title={t('projects')}
           loading={isLoading}
+          exportFilename="projects"
           data={items}
           columns={[
             { key: 'id', label: '#' },
@@ -65,6 +67,7 @@ export function ReservationsPage() {
     <DataTable
       title={t('reservations')}
       loading={isLoading}
+      exportFilename="reservations"
       data={items}
       columns={[
         { key: 'reservation_number', label: '#' },
@@ -84,11 +87,12 @@ export function ContractsPage() {
     <DataTable
       title={t('contracts')}
       loading={isLoading}
+      exportFilename="contracts"
       data={items}
       columns={[
         { key: 'contract_number', label: '#' },
         { key: 'customer_id', label: t('customers') },
-        { key: 'total_price', label: t('total_sales') },
+        { key: 'total_price', label: t('total_sales'), render: (row) => formatEGP(row.total_price as number) },
         { key: 'status', label: t('status') },
         { key: 'contract_date', label: 'Date' },
       ]}
@@ -103,12 +107,13 @@ export function CollectionsPage() {
     <DataTable
       title={t('collections')}
       loading={isLoading}
+      exportFilename="collections"
       data={items}
       columns={[
         { key: 'contract_number', label: t('contracts') },
         { key: 'installment_number', label: '#' },
         { key: 'due_date', label: 'Due' },
-        { key: 'due_amount', label: 'Amount' },
+        { key: 'due_amount', label: 'Amount (EGP)', render: (row) => formatEGP(row.due_amount as number) },
         { key: 'status', label: t('status') },
       ]}
     />
@@ -122,6 +127,7 @@ export function BrokersPage() {
     <DataTable
       title={t('brokers')}
       loading={isLoading}
+      exportFilename="brokers"
       data={items}
       columns={[
         { key: 'id', label: '#' },
@@ -138,23 +144,6 @@ export function BrokersPage() {
   )
 }
 
-export function FinancePage() {
-  const { t } = useTranslation()
-  const { items, isLoading } = useListData<Record<string, unknown>>('accounts', '/finance/accounts')
-  return (
-    <DataTable
-      title={t('finance')}
-      loading={isLoading}
-      data={items}
-      columns={[
-        { key: 'code', label: 'Code' },
-        { key: 'name_ar', label: t('finance') },
-        { key: 'account_type', label: 'Type' },
-      ]}
-    />
-  )
-}
-
 export function ConstructionPage() {
   const { t } = useTranslation()
   const { items, isLoading } = useListData<Record<string, unknown>>('phases', '/construction/phases')
@@ -162,6 +151,7 @@ export function ConstructionPage() {
     <DataTable
       title={t('construction')}
       loading={isLoading}
+      exportFilename="construction"
       data={items}
       columns={[
         { key: 'name_ar', label: t('construction') },
@@ -180,6 +170,7 @@ export function ProcurementPage() {
     <DataTable
       title={t('procurement')}
       loading={isLoading}
+      exportFilename="procurement"
       data={items}
       columns={[
         { key: 'name_ar', label: 'Vendor' },
@@ -196,6 +187,7 @@ export function WarehousePage() {
     <DataTable
       title={t('warehouse')}
       loading={isLoading}
+      exportFilename="warehouse"
       data={items}
       columns={[
         { key: 'code', label: 'Code' },
@@ -213,6 +205,7 @@ export function PropertyPage() {
     <DataTable
       title={t('property')}
       loading={isLoading}
+      exportFilename="property"
       data={items}
       columns={[
         { key: 'title', label: 'Request' },
@@ -231,6 +224,7 @@ export function CustomerServicePage() {
     <DataTable
       title={t('customer_service')}
       loading={isLoading}
+      exportFilename="tickets"
       data={items}
       columns={[
         { key: 'ticket_number', label: '#' },
@@ -253,6 +247,7 @@ export function CompanyUsersPage() {
       <DataTable
         title={t('users')}
         loading={isLoading}
+        exportFilename="users"
         data={rows}
         columns={[
           { key: 'email', label: t('email') },

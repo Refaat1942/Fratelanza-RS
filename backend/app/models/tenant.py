@@ -36,6 +36,7 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
     storage_used_mb: Mapped[int] = mapped_column(Integer, default=0)
     default_language: Mapped[str] = mapped_column(String(5), default="ar")
     theme: Mapped[str] = mapped_column(String(50), default="default")
+    currency: Mapped[str] = mapped_column(String(10), default="EGP")
 
     branches: Mapped[list["Branch"]] = relationship(back_populates="company", lazy="selectin")
     subscription: Mapped[Optional["CompanySubscription"]] = relationship(

@@ -11,6 +11,35 @@ from app.models.users import SystemRole, User, UserStatus
 
 async def seed_database() -> None:
     async with AsyncSessionLocal() as db:
+        try:
+            from sqlalchemy import text
+            await db.execute(text(
+                "ALTER TABLE companies ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'EGP'"
+            ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS customer_reminders ("
+                "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL, customer_id INTEGER, "
+                "lead_id INTEGER, title VARCHAR(255) NOT NULL, reminder_type VARCHAR(50), "
+                "due_date VARCHAR(20) NOT NULL, due_time VARCHAR(10), status VARCHAR(50), "
+                "notes TEXT, assigned_to_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), "
+                "updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS payroll_runs ("
+                "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL, period_month VARCHAR(7) NOT NULL, "
+                "status VARCHAR(50), total_gross NUMERIC(14,2), total_deductions NUMERIC(14,2), "
+                "total_net NUMERIC(14,2), created_by_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), "
+                "updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS payslips ("
+                "id SERIAL PRIMARY KEY, payroll_run_id INTEGER NOT NULL, employee_id INTEGER NOT NULL, "
+                "basic_salary NUMERIC(12,2), allowances NUMERIC(12,2), deductions NUMERIC(12,2), "
+                "social_insurance NUMERIC(12,2), net_salary NUMERIC(12,2), status VARCHAR(50), "
+                "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+        except Exception:
+            pass
         # Subscription plans
         result = await db.execute(select(SubscriptionPlan).limit(1))
         if not result.scalar_one_or_none():
@@ -193,5 +222,42 @@ async def seed_database() -> None:
                         account_type=acc_type,
                     )
                 )
+
+            from app.models.hr import Employee
+            from app.models.crm import CustomerReminder, ReminderType
+            from datetime import date, timedelta
+
+            for code, name_ar, name_en, dept, pos, sal in [
+                ("EMP-001", "محمود حسن", "Mahmoud Hassan", "Sales", "Sales Agent", "15000"),
+                ("EMP-002", "نورا أحمد", "Noura Ahmed", "Finance", "Accountant", "18000"),
+                ("EMP-003", "كريم سامي", "Karim Samy", "HR", "HR Officer", "12000"),
+            ]:
+                db.add(
+                    Employee(
+                        company_id=company.id,
+                        employee_code=code,
+                        full_name_ar=name_ar,
+                        full_name_en=name_en,
+                        department=dept,
+                        position=pos,
+                        salary=Decimal(sal),
+                        hire_date="2024-01-01",
+                    )
+                )
+
+            tomorrow = (date.today() + timedelta(days=1)).isoformat()
+            db.add(
+                CustomerReminder(
+                    company_id=company.id,
+                    title="Call Ahmed Mohamed - unit follow up",
+                    reminder_type=ReminderType.CALL,
+                    due_date=tomorrow,
+                    due_time="10:00",
+                    notes="Interested in A1-02 apartment",
+                )
+            )
+
+        if company:
+            company.currency = "EGP"
 
         await db.commit()

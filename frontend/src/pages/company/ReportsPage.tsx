@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
-  BarChart3, Building2, FileSpreadsheet, HandCoins, Headphones, Target, Users,
+  BarChart3, Building2, FileSpreadsheet, HandCoins, Headphones, Target, Users, Wallet,
 } from 'lucide-react'
 import { SortableTable } from '@/components/ui/SortableTable'
 import { downloadReport } from '@/lib/download'
@@ -34,6 +34,8 @@ const CATEGORY_ICONS: Record<string, typeof BarChart3> = {
   brokers: Users,
   service: Headphones,
   platform: BarChart3,
+  finance: Wallet,
+  hr: Users,
 }
 
 export function ReportsPage() {

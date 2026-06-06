@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Bell, LogOut } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useCompanyStore } from '@/stores/companyStore'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { GlobalSearch } from './GlobalSearch'
 
@@ -9,8 +10,10 @@ export function Header() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const clearCompany = useCompanyStore((s) => s.clear)
 
   const handleLogout = () => {
+    clearCompany()
     logout()
     navigate('/login')
   }

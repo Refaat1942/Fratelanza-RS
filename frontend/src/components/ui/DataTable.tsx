@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Card } from './Card'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search } from 'lucide-react'
+import { Button } from './Button'
+import { exportRowsToExcel } from '@/lib/exportTable'
 import { cn } from '@/lib/utils'
 
 interface Column {
@@ -18,9 +20,10 @@ interface DataTableProps {
   loading?: boolean
   actions?: React.ReactNode
   searchable?: boolean
+  exportFilename?: string
 }
 
-export function DataTable({ title, columns, data, loading, actions, searchable = true }: DataTableProps) {
+export function DataTable({ title, columns, data, loading, actions, searchable = true, exportFilename }: DataTableProps) {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
@@ -60,7 +63,14 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        {actions}
+        <div className="flex items-center gap-2">
+          {exportFilename && data.length > 0 && (
+            <Button variant="secondary" onClick={() => exportRowsToExcel(filtered, exportFilename)}>
+              <Download className="me-2 h-4 w-4" />{t('export_excel')}
+            </Button>
+          )}
+          {actions}
+        </div>
       </div>
       <Card>
         {searchable && (

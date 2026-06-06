@@ -12,6 +12,9 @@ from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.sales import Contract, Installment, Payment, PaymentPlan, Reservation
 from app.models.tenant import Company
 from app.models.users import User
+from app.models.hr import Employee, PayrollRun, Payslip
+from app.models.crm import CustomerReminder
+from app.services.finance_service import FinanceService
 
 
 REPORT_CATALOG: list[dict[str, Any]] = [
@@ -28,6 +31,13 @@ REPORT_CATALOG: list[dict[str, Any]] = [
     {"key": "tickets", "category": "service", "name_en": "Support Tickets", "name_ar": "تذاكر الدعم"},
     {"key": "companies_overview", "category": "platform", "name_en": "Companies Overview", "name_ar": "نظرة عامة على الشركات", "super_admin_only": True},
     {"key": "platform_users", "category": "platform", "name_en": "Platform Users", "name_ar": "مستخدمو المنصة", "super_admin_only": True},
+    {"key": "finance_trial_balance", "category": "finance", "name_en": "Trial Balance", "name_ar": "ميزان المراجعة"},
+    {"key": "finance_profit_loss", "category": "finance", "name_en": "Profit & Loss Summary", "name_ar": "ملخص الأرباح والخسائر"},
+    {"key": "finance_cash_position", "category": "finance", "name_en": "Cash & Bank Position", "name_ar": "المركز النقدي والبنوك"},
+    {"key": "finance_journal", "category": "finance", "name_en": "Journal Register", "name_ar": "سجل القيود اليومية"},
+    {"key": "hr_employees", "category": "hr", "name_en": "Employees Register", "name_ar": "سجل الموظفين"},
+    {"key": "hr_payroll", "category": "hr", "name_en": "Payroll Summary", "name_ar": "ملخص الرواتب"},
+    {"key": "customer_reminders", "category": "crm", "name_en": "Call Reminders", "name_ar": "تذكيرات المكالمات"},
 ]
 
 
@@ -94,6 +104,13 @@ class ReportsService:
             "tickets": ReportsService._tickets,
             "companies_overview": ReportsService._companies_overview,
             "platform_users": ReportsService._platform_users,
+            "finance_trial_balance": ReportsService._finance_trial_balance,
+            "finance_profit_loss": ReportsService._finance_profit_loss,
+            "finance_cash_position": ReportsService._finance_cash_position,
+            "finance_journal": ReportsService._finance_journal,
+            "hr_employees": ReportsService._hr_employees,
+            "hr_payroll": ReportsService._hr_payroll,
+            "customer_reminders": ReportsService._customer_reminders,
         }
         if report_key not in fetchers:
             return [], []
@@ -486,6 +503,97 @@ class ReportsService:
                 "users_count": count,
             })
         return rows
+
+    @staticmethod
+    async def _finance_trial_balance(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        return await FinanceService.trial_balance(db, company_id)
+
+    @staticmethod
+    async def _finance_profit_loss(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        return await FinanceService.profit_loss_summary(db, company_id)
+
+    @staticmethod
+    async def _finance_cash_position(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        return await FinanceService.cash_position(db, company_id)
+
+    @staticmethod
+    async def _finance_journal(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        return await FinanceService.journal_register(db, company_id)
+
+    @staticmethod
+    async def _hr_employees(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        employees = (
+            await db.execute(
+                select(Employee).where(Employee.company_id == company_id, Employee.is_deleted == False)
+            )
+        ).scalars().all()
+        return [
+            {
+                "employee_code": e.employee_code,
+                "full_name_en": e.full_name_en,
+                "department": e.department or "",
+                "position": e.position or "",
+                "salary_egp": float(e.salary or 0),
+                "hire_date": e.hire_date or "",
+                "status": "active" if e.is_active else "inactive",
+            }
+            for e in employees
+        ]
+
+    @staticmethod
+    async def _hr_payroll(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        result = await db.execute(
+            select(Payslip, Employee, PayrollRun)
+            .join(Employee, Payslip.employee_id == Employee.id)
+            .join(PayrollRun, Payslip.payroll_run_id == PayrollRun.id)
+            .where(PayrollRun.company_id == company_id)
+            .order_by(PayrollRun.period_month.desc())
+        )
+        return [
+            {
+                "period": run.period_month,
+                "employee_code": emp.employee_code,
+                "employee_name": emp.full_name_en,
+                "basic_salary_egp": float(ps.basic_salary),
+                "social_insurance_egp": float(ps.social_insurance),
+                "net_salary_egp": float(ps.net_salary),
+                "status": ps.status,
+            }
+            for ps, emp, run in result.all()
+        ]
+
+    @staticmethod
+    async def _customer_reminders(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        reminders = (
+            await db.execute(
+                select(CustomerReminder).where(CustomerReminder.company_id == company_id)
+            )
+        ).scalars().all()
+        return [
+            {
+                "title": r.title,
+                "type": r.reminder_type.value,
+                "due_date": r.due_date,
+                "due_time": r.due_time or "",
+                "status": r.status.value,
+                "notes": r.notes or "",
+            }
+            for r in reminders
+        ]
 
     @staticmethod
     async def _platform_users(db: AsyncSession, _: Optional[int], is_super_admin: bool) -> list[dict]:

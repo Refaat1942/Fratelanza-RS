@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     projects,
     property,
     reports,
+    reminders,
     reservations,
     search,
     super_admin,
@@ -36,6 +37,7 @@ api_router.include_router(companies.router, prefix="/companies", tags=["Companie
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
 api_router.include_router(customers.router, prefix="/customers", tags=["Customers"])
 api_router.include_router(leads.router, prefix="/leads", tags=["CRM & Leads"])
+api_router.include_router(reminders.router, prefix="/reminders", tags=["Reminders"])
 api_router.include_router(projects.router, prefix="/projects", tags=["Projects & Units"])
 api_router.include_router(reservations.router, prefix="/reservations", tags=["Reservations"])
 api_router.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])

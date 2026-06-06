@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_company_user
 from app.core.database import get_db
 from app.models.construction import ConstructionMilestone, ConstructionPhase, ConstructionTask
+from app.models.real_estate import Project
 from app.models.users import User
 
 router = APIRouter()
@@ -27,7 +28,13 @@ async def list_phases(
     current_user: Annotated[User, Depends(get_company_user)],
     project_id: Optional[int] = None,
 ):
-    query = select(ConstructionPhase).order_by(ConstructionPhase.id.desc())
+    query = (
+        select(ConstructionPhase)
+        .join(Project, ConstructionPhase.project_id == Project.id)
+        .order_by(ConstructionPhase.id.desc())
+    )
+    if not current_user.is_super_admin and current_user.company_id:
+        query = query.where(Project.company_id == current_user.company_id)
     if project_id:
         query = query.where(ConstructionPhase.project_id == project_id)
     result = await db.execute(query)

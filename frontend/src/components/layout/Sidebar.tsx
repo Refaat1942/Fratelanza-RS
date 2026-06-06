@@ -1,12 +1,16 @@
+import { useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
+import { useCompanyStore } from '@/stores/companyStore'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Building2, Users, UserCircle, Target, FolderKanban,
   FileText, Wallet, HardHat, ShoppingCart, Warehouse, Home, Headphones,
-  Settings, ScrollText, CreditCard, Bot, BarChart3,
+  Settings, ScrollText, CreditCard, Bot, BarChart3, Phone, Palette,
 } from 'lucide-react'
+
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 const superAdminLinks = [
   { to: '/super-admin', icon: LayoutDashboard, label: 'dashboard' },
@@ -22,6 +26,7 @@ const companyLinks = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'dashboard' },
   { to: '/customers', icon: UserCircle, label: 'customers' },
   { to: '/leads', icon: Target, label: 'leads' },
+  { to: '/follow-ups', icon: Phone, label: 'follow_ups' },
   { to: '/projects', icon: FolderKanban, label: 'projects' },
   { to: '/reservations', icon: FileText, label: 'reservations' },
   { to: '/contracts', icon: FileText, label: 'contracts' },
@@ -35,23 +40,41 @@ const companyLinks = [
   { to: '/customer-service', icon: Headphones, label: 'customer_service' },
   { to: '/users', icon: Users, label: 'users' },
   { to: '/reports', icon: BarChart3, label: 'reports' },
+  { to: '/hr', icon: Users, label: 'hr' },
+  { to: '/branding', icon: Palette, label: 'branding' },
   { to: '/ai-assistant', icon: Bot, label: 'ai_assistant' },
 ]
 
 export function Sidebar() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
+  const { company, fetchCompany } = useCompanyStore()
   const links = user?.is_super_admin ? superAdminLinks : companyLinks
+
+  useEffect(() => {
+    if (user && !user.is_super_admin) fetchCompany()
+  }, [user, fetchCompany])
+
+  const displayName = company
+    ? (i18n.language === 'ar' ? company.name_ar : company.name_en)
+    : t('platform')
+  const logoSrc = company?.logo_url
+    ? (company.logo_url.startsWith('http') ? company.logo_url : `${API_URL}${company.logo_url}`)
+    : null
 
   return (
     <aside className="flex h-full w-64 flex-col border-e border-slate-200 bg-white">
       <div className="border-b border-slate-200 p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-700 text-lg font-bold text-accent-500">
-            F
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-primary-800">{t('platform')}</h1>
+          {logoSrc ? (
+            <img src={logoSrc} alt="" className="h-10 w-10 rounded-xl border object-contain" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-700 text-lg font-bold text-accent-500">
+              {(displayName || 'F').charAt(0)}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold text-primary-800">{displayName}</h1>
             <p className="text-xs text-slate-500">{user?.is_super_admin ? t('super_admin') : t('company_admin')}</p>
           </div>
         </div>

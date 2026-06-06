@@ -18,6 +18,7 @@ class CompanyBase(BaseModel):
     commercial_register: Optional[str] = None
     default_language: str = "ar"
     theme: str = "default"
+    currency: str = "EGP"
     storage_limit_mb: int = 5120
 
 
@@ -41,6 +42,8 @@ class CompanyUpdate(BaseModel):
     storage_limit_mb: Optional[int] = None
     default_language: Optional[str] = None
     theme: Optional[str] = None
+    currency: Optional[str] = None
+    logo_url: Optional[str] = None
 
 
 class CompanyResponse(CompanyBase):

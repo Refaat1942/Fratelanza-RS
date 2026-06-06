@@ -57,6 +57,37 @@ class Lead(Base, TimestampMixin, SoftDeleteMixin):
     activities: Mapped[list["LeadActivity"]] = relationship(back_populates="lead", lazy="selectin")
 
 
+class ReminderStatus(str, enum.Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    OVERDUE = "overdue"
+
+
+class ReminderType(str, enum.Enum):
+    CALL = "call"
+    VISIT = "visit"
+    MEETING = "meeting"
+    PAYMENT = "payment"
+    FOLLOW_UP = "follow_up"
+
+
+class CustomerReminder(Base, TimestampMixin):
+    __tablename__ = "customer_reminders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
+    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"))
+    lead_id: Mapped[Optional[int]] = mapped_column(ForeignKey("leads.id"))
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    reminder_type: Mapped[ReminderType] = mapped_column(Enum(ReminderType), default=ReminderType.CALL)
+    due_date: Mapped[str] = mapped_column(String(20), nullable=False)
+    due_time: Mapped[Optional[str]] = mapped_column(String(10))
+    status: Mapped[ReminderStatus] = mapped_column(Enum(ReminderStatus), default=ReminderStatus.PENDING)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    assigned_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+
+
 class LeadActivity(Base, TimestampMixin):
     __tablename__ = "lead_activities"
 

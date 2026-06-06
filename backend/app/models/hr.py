@@ -35,6 +35,33 @@ class Attendance(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), default="present")
 
 
+class PayrollRun(Base, TimestampMixin):
+    __tablename__ = "payroll_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
+    period_month: Mapped[str] = mapped_column(String(7), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="draft")
+    total_gross: Mapped[Optional[Numeric]] = mapped_column(Numeric(14, 2), default=0)
+    total_deductions: Mapped[Optional[Numeric]] = mapped_column(Numeric(14, 2), default=0)
+    total_net: Mapped[Optional[Numeric]] = mapped_column(Numeric(14, 2), default=0)
+    created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+
+
+class Payslip(Base, TimestampMixin):
+    __tablename__ = "payslips"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    payroll_run_id: Mapped[int] = mapped_column(ForeignKey("payroll_runs.id"), nullable=False, index=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), nullable=False)
+    basic_salary: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
+    allowances: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
+    deductions: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
+    social_insurance: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
+    net_salary: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
+    status: Mapped[str] = mapped_column(String(50), default="pending")
+
+
 class LeaveRequest(Base, TimestampMixin):
     __tablename__ = "leave_requests"
 

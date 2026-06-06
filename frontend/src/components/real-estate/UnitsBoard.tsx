@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { formatEGP } from '@/lib/currency'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -47,7 +48,7 @@ export function UnitsBoard() {
               <div key={u.id} className={cn('rounded-xl border-2 p-4 transition hover:shadow-md', STATUS_STYLES[status] ?? 'border-slate-200')}>
                 <p className="font-bold">{u.unit_code}</p>
                 <p className="text-xs opacity-75">#{u.unit_number} · {u.unit_type}</p>
-                <p className="mt-2 text-sm font-semibold">{u.price.toLocaleString()} EGP</p>
+                <p className="mt-2 text-sm font-semibold">{formatEGP(u.price)}</p>
                 <p className="text-xs opacity-75">{u.area_sqm} m²</p>
               </div>
             ))}
