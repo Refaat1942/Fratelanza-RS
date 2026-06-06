@@ -5,6 +5,8 @@ import { Phone, Search, Upload, UserPlus } from 'lucide-react'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
 import { CustomerImportModal } from '@/components/forms/CustomerImportModal'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { Button } from '@/components/ui/Button'
 import { ClientFormModal } from '@/components/forms/ClientFormModal'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
@@ -37,19 +39,23 @@ export function CustomersPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t('customers')}</h1>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <Upload className="me-2 h-4 w-4" />
-            {t('bulk_import')}
-          </Button>
-          <Button onClick={() => setOpen(true)}>
-            <UserPlus className="me-2 h-4 w-4" />
-            {t('add_client')}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={t('customers')}
+        icon={UserPlus}
+        accentIndex={1}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              <Upload className="me-2 h-4 w-4" />
+              {t('bulk_import')}
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <UserPlus className="me-2 h-4 w-4" />
+              {t('add_client')}
+            </Button>
+          </>
+        }
+      />
       <Card>
         <div className="relative mb-4 max-w-md">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -62,11 +68,11 @@ export function CustomersPage() {
           />
         </div>
         {isLoading ? (
-          <p className="text-slate-500">{t('loading')}</p>
+          <LoadingState />
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
+              <tr className="table-head-gradient border-b border-slate-200 text-slate-600">
                 <th className="pb-3 text-start">#</th>
                 <th className="pb-3 text-start">{t('customers')}</th>
                 <th className="pb-3 text-start">Mobile</th>
@@ -76,8 +82,8 @@ export function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
+              {filtered.map((c, i) => (
+                <tr key={c.id} className="table-row-animate border-b border-slate-100" style={{ animationDelay: `${Math.min(i * 0.04, 0.5)}s` }}>
                   <td className="py-3">{formatInteger(c.id)}</td>
                   <td className="py-3 font-medium">
                     {i18n.language === 'ar' ? c.full_name_ar : c.full_name_en}

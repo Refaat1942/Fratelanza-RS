@@ -79,19 +79,19 @@ export function Sidebar() {
     : null
 
   return (
-    <aside className="flex h-full w-64 flex-col border-e border-slate-200 bg-white">
-      <div className="border-b border-slate-200 p-6">
+    <aside className="sidebar-shell">
+      <div className="border-b border-white/10 p-6">
         <div className="flex items-center gap-3">
           {logoSrc ? (
-            <img src={logoSrc} alt="" className="h-10 w-10 rounded-xl border object-contain" />
+            <img src={logoSrc} alt="" className="h-10 w-10 rounded-xl border border-white/20 object-contain shadow-lg" />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-700 text-lg font-bold text-accent-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent-500 to-primary-400 text-lg font-bold text-white shadow-lg animate-glow">
               {(displayName || 'F').charAt(0)}
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold text-primary-800">{displayName}</h1>
-            <p className="text-xs text-slate-500">{user?.is_super_admin ? t('super_admin') : t('company_admin')}</p>
+            <h1 className="truncate text-lg font-bold text-white">{displayName}</h1>
+            <p className="text-xs text-primary-200/80">{user?.is_super_admin ? t('super_admin') : t('company_admin')}</p>
           </div>
         </div>
       </div>

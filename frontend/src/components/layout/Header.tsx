@@ -28,7 +28,7 @@ export function Header() {
   const displayName = i18n.language === 'ar' ? user?.full_name_ar : user?.full_name_en
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
+    <header className="flex h-16 items-center justify-between border-b border-primary-100/80 bg-white/80 px-6 shadow-sm backdrop-blur-md">
       <GlobalSearch />
       <div className="flex items-center gap-2">
         <LanguageSwitcher />

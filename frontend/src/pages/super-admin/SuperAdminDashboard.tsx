@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, Users, UserCircle } from 'lucide-react'
+import { Building2, Users, UserCircle, LayoutDashboard } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { StatCard } from '@/components/ui/StatCard'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
@@ -17,12 +19,12 @@ export function SuperAdminDashboard() {
     },
   })
 
-  if (isLoading) return <p className="text-slate-500">{t('loading')}</p>
+  if (isLoading) return <LoadingState />
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('dashboard')}</h1>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <PageHeader title={t('dashboard')} subtitle={t('platform')} icon={LayoutDashboard} accentIndex={0} />
+      <div className="grid-stagger grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard title={t('companies')} value={formatInteger(data?.stats.total_companies)} icon={Building2} />
         <StatCard title={t('users')} value={formatInteger(data?.stats.total_users)} icon={Users} color="bg-emerald-50 text-emerald-700" />
         <StatCard title={t('customers')} value={formatInteger(data?.stats.total_customers)} icon={UserCircle} color="bg-amber-50 text-amber-700" />

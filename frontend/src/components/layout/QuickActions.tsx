@@ -25,8 +25,8 @@ export function QuickActions() {
     }
     return (
       <>
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-6 py-3">
-          <button onClick={() => setCompanyOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-3 py-2 text-sm font-medium text-white hover:bg-primary-800">
+        <div className="quick-actions-bar">
+          <button onClick={() => setCompanyOpen(true)} className="btn-primary gap-2 px-3 py-2 text-sm">
             <Building2 className="h-4 w-4" />{t('add_company')}
           </button>
         </div>
@@ -37,9 +37,9 @@ export function QuickActions() {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-6 py-3">
+      <div className="quick-actions-bar">
         {isEnabled('customers') && (
-          <button onClick={() => setClientOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-primary-700 px-3 py-2 text-sm font-medium text-white hover:bg-primary-800">
+          <button onClick={() => setClientOpen(true)} className="btn-primary gap-2 px-3 py-2 text-sm">
             <UserPlus className="h-4 w-4" />{t('add_client')}
           </button>
         )}

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Pencil } from 'lucide-react'
+import { CreditCard, Pencil } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { Button } from '@/components/ui/Button'
 import { SubscriptionPlanModal, type SubscriptionPlan } from '@/components/forms/SubscriptionPlanModal'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
@@ -24,14 +26,13 @@ export function SubscriptionPlansPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('subscriptions')}</h1>
-      <p className="mb-6 text-sm text-slate-600">{t('subscriptions_help')}</p>
-      <div className="grid gap-4 md:grid-cols-3">
+      <PageHeader title={t('subscriptions')} subtitle={t('subscriptions_help')} icon={CreditCard} accentIndex={4} />
+      <div className="grid-stagger grid gap-4 md:grid-cols-3">
         {isLoading ? (
-          <p className="text-slate-500">{t('loading')}</p>
+          <LoadingState />
         ) : (
           plans.map((plan) => (
-            <Card key={plan.id} className="flex flex-col">
+            <Card key={plan.id} className="flex flex-col" gradient>
               <div className="mb-3 flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">

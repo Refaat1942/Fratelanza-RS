@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Card } from './Card'
+import { PageHeader } from './PageHeader'
+import { LoadingState } from './LoadingState'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search, Table2 } from 'lucide-react'
 import { Button } from './Button'
 import { exportRowsToExcel } from '@/lib/exportTable'
+import { accentForPath } from '@/lib/pageAccent'
 import { cn } from '@/lib/utils'
 
 interface Column {
@@ -21,10 +25,23 @@ interface DataTableProps {
   actions?: React.ReactNode
   searchable?: boolean
   exportFilename?: string
+  subtitle?: string
 }
 
-export function DataTable({ title, columns, data, loading, actions, searchable = true, exportFilename }: DataTableProps) {
+function StatusCell({ value }: { value: unknown }) {
+  const str = String(value ?? '').toLowerCase()
+  const cls =
+    ['active', 'paid', 'available', 'completed'].some((s) => str.includes(s)) ? 'status-active'
+    : ['pending', 'trial', 'partial'].some((s) => str.includes(s)) ? 'status-pending'
+    : ['overdue', 'suspended', 'expired', 'cancelled'].some((s) => str.includes(s)) ? 'status-overdue'
+    : ''
+  if (!cls) return <>{String(value ?? '-')}</>
+  return <span className={cls}>{String(value)}</span>
+}
+
+export function DataTable({ title, columns, data, loading, actions, searchable = true, exportFilename, subtitle }: DataTableProps) {
   const { t } = useTranslation()
+  const { pathname } = useLocation()
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -59,23 +76,30 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
     else { setSortKey(key); setSortDir('asc') }
   }
 
+  const headerActions = (
+    <>
+      {exportFilename && data.length > 0 && (
+        <Button variant="secondary" onClick={() => exportRowsToExcel(filtered, exportFilename)}>
+          <Download className="me-2 h-4 w-4" />{t('export_excel')}
+        </Button>
+      )}
+      {actions}
+    </>
+  )
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <div className="flex items-center gap-2">
-          {exportFilename && data.length > 0 && (
-            <Button variant="secondary" onClick={() => exportRowsToExcel(filtered, exportFilename)}>
-              <Download className="me-2 h-4 w-4" />{t('export_excel')}
-            </Button>
-          )}
-          {actions}
-        </div>
-      </div>
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        icon={Table2}
+        accentIndex={accentForPath(pathname)}
+        actions={headerActions}
+      />
       <Card>
         {searchable && (
           <div className="relative mb-4 max-w-md">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-400" />
             <input
               type="search"
               value={search}
@@ -86,21 +110,21 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
           </div>
         )}
         {loading ? (
-          <p className="text-slate-500">{t('loading')}</p>
+          <LoadingState />
         ) : filtered.length === 0 ? (
-          <p className="text-slate-500">{t('no_data')}</p>
+          <p className="py-8 text-center text-slate-500">{t('no_data')}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
+                <tr className="table-head-gradient border-b border-slate-200 text-slate-600">
                   {columns.map((col) => (
-                    <th key={col.key} className="pb-3 text-start font-medium">
+                    <th key={col.key} className="px-3 py-3 text-start font-semibold">
                       {col.sortable !== false ? (
                         <button
                           onClick={() => toggleSort(col.key)}
                           className={cn(
-                            'inline-flex items-center gap-1 hover:text-slate-700',
+                            'inline-flex items-center gap-1 transition-colors hover:text-primary-700',
                             sortKey === col.key && 'text-primary-700',
                           )}
                         >
@@ -118,10 +142,18 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
               </thead>
               <tbody>
                 {filtered.map((row, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr
+                    key={i}
+                    className="table-row-animate border-b border-slate-100"
+                    style={{ animationDelay: `${Math.min(i * 0.04, 0.6)}s` }}
+                  >
                     {columns.map((col) => (
-                      <td key={col.key} className="py-3">
-                        {col.render ? col.render(row) : String(row[col.key] ?? '-')}
+                      <td key={col.key} className="px-3 py-3">
+                        {col.render
+                          ? col.render(row)
+                          : col.key === 'status'
+                            ? <StatusCell value={row[col.key]} />
+                            : String(row[col.key] ?? '-')}
                       </td>
                     ))}
                   </tr>

@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { AnimatedPage } from '@/components/ui/AnimatedPage'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { QuickActions } from './QuickActions'
@@ -10,8 +11,10 @@ export function DashboardLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <QuickActions />
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
-          <Outlet />
+        <main className="main-canvas">
+          <AnimatedPage>
+            <Outlet />
+          </AnimatedPage>
         </main>
       </div>
     </div>

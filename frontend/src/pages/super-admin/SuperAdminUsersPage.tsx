@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Pencil, KeyRound, Users, Building2, AlertTriangle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { Button } from '@/components/ui/Button'
 import { UserEditModal } from '@/components/forms/UserEditModal'
 import { ResetPasswordModal } from '@/components/forms/ResetPasswordModal'
@@ -32,17 +34,10 @@ interface AdminUser {
 
 function PaymentBadge({ status, t }: { status?: string; t: (k: string) => string }) {
   if (!status) return <span className="text-slate-400">—</span>
-  const styles: Record<string, string> = {
-    paid: 'bg-emerald-50 text-emerald-700',
-    pending: 'bg-amber-50 text-amber-700',
-    overdue: 'bg-red-50 text-red-700',
-    trial: 'bg-sky-50 text-sky-700',
+  const cls: Record<string, string> = {
+    paid: 'status-paid', pending: 'status-pending', overdue: 'status-overdue', trial: 'status-pending',
   }
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] || 'bg-slate-100 text-slate-600'}`}>
-      {t(status)}
-    </span>
-  )
+  return <span className={cls[status] || 'status-badge bg-slate-100 text-slate-600'}>{t(status)}</span>
 }
 
 export function SuperAdminUsersPage() {
@@ -81,12 +76,9 @@ export function SuperAdminUsersPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t('users')}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t('users_admin_help')}</p>
-      </div>
+      <PageHeader title={t('users')} subtitle={t('users_admin_help')} icon={Users} accentIndex={3} />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid-stagger mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="flex items-center gap-3 p-4">
           <div className="rounded-lg bg-primary-50 p-2 text-primary-700"><Users className="h-5 w-5" /></div>
           <div>
@@ -119,7 +111,7 @@ export function SuperAdminUsersPage() {
 
       <Card>
         {isLoading ? (
-          <p className="text-slate-500">{t('loading')}</p>
+          <LoadingState />
         ) : data?.items.length === 0 ? (
           <p className="text-slate-500">{t('no_data')}</p>
         ) : (

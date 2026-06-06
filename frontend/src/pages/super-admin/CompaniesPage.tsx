@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Building2, SlidersHorizontal, Pencil, CreditCard, Bell } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { Button } from '@/components/ui/Button'
 import { CompanyFormModal } from '@/components/forms/CompanyFormModal'
 import { CompanyEditModal } from '@/components/forms/CompanyEditModal'
@@ -13,17 +15,10 @@ import api from '@/lib/api'
 import type { CompanyWithBilling, Paginated } from '@/types'
 
 function PaymentStatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
-  const styles: Record<string, string> = {
-    paid: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-    pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-    overdue: 'bg-red-50 text-red-700 ring-red-600/20',
-    trial: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+  const cls: Record<string, string> = {
+    paid: 'status-paid', pending: 'status-pending', overdue: 'status-overdue', trial: 'status-pending',
   }
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${styles[status] || 'bg-slate-50 text-slate-600'}`}>
-      {t(status)}
-    </span>
-  )
+  return <span className={cls[status] || 'status-badge bg-slate-50 text-slate-600 ring-slate-500/20'}>{t(status)}</span>
 }
 
 export function CompaniesPage() {
@@ -62,18 +57,20 @@ export function CompaniesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t('companies')}</h1>
-          <p className="mt-1 text-sm text-slate-600">{t('companies_billing_help')}</p>
-        </div>
-        <Button onClick={() => setOpen(true)}>
-          <Building2 className="me-2 h-4 w-4" />
-          {t('add_company')}
-        </Button>
-      </div>
+      <PageHeader
+        title={t('companies')}
+        subtitle={t('companies_billing_help')}
+        icon={Building2}
+        accentIndex={2}
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Building2 className="me-2 h-4 w-4" />
+            {t('add_company')}
+          </Button>
+        }
+      />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="grid-stagger mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
           <p className="text-sm text-slate-500">{t('total_companies')}</p>
           <p className="text-2xl font-bold text-slate-900">{data?.total ?? 0}</p>
@@ -92,7 +89,7 @@ export function CompaniesPage() {
 
       <Card>
         {isLoading ? (
-          <p className="text-slate-500">{t('loading')}</p>
+          <LoadingState />
         ) : data?.items.length === 0 ? (
           <p className="text-slate-500">{t('no_data')}</p>
         ) : (
