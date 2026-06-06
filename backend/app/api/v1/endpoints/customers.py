@@ -1,21 +1,133 @@
-from typing import Annotated, Optional
+import json
+from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_company_user
 from app.core.database import get_db
-from app.models.customers import Customer, CustomerActivity
+from app.models.customers import ActivityType, Customer, CustomerActivity
+from app.models.crm import Lead, LeadSource, LeadStage
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
-from app.models.crm import Lead, LeadSource, LeadStage
-from app.models.customers import ActivityType, CustomerActivity
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.schemas.user import ClientOnboard
 from app.services.ai_service import AIService
+from app.services.customer_import_service import CUSTOMER_FIELDS, CustomerImportService
+from app.services.export_service import ExportService
 
 router = APIRouter()
+
+
+class ImportConfirmRequest(BaseModel):
+    session_id: Optional[str] = None
+    rows: Optional[list[dict[str, Any]]] = None
+    duplicate_strategy: str = "skip"
+    create_leads: bool = False
+    default_source: str = "walk_in"
+
+
+@router.get("/import/template")
+async def download_import_template(
+    current_user: Annotated[User, Depends(get_company_user)],
+    format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    rows = CustomerImportService.get_template_rows()
+    filename = "customer_import_template"
+    if format == "xlsx":
+        content, fname = ExportService.to_excel(rows, f"{filename}.xlsx")
+        return Response(
+            content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={fname}"},
+        )
+    content, fname = ExportService.to_csv(rows, f"{filename}.csv")
+    return Response(content, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@router.get("/import/fields")
+async def import_field_reference(
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    from app.services.customer_import_service import FIELD_ALIASES
+    return {
+        "fields": CUSTOMER_FIELDS,
+        "aliases": FIELD_ALIASES,
+    }
+
+
+@router.post("/import/preview")
+async def preview_customer_import(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+    file: UploadFile = File(...),
+    column_mapping: Optional[str] = Form(None),
+):
+    """Smart preview: auto-detect columns from any company's export format."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
+    override = None
+    if column_mapping:
+        try:
+            override = json.loads(column_mapping)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid column_mapping JSON")
+
+    result = CustomerImportService.preview_file(content, file.filename or "upload.csv", override)
+    if result.get("error"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
+
+    result["rows"] = await CustomerImportService.check_duplicates(
+        db, current_user.company_id, result["rows"]
+    )
+    dupes = sum(1 for r in result["rows"] if r["status"] == "duplicate")
+    result["summary"]["duplicates"] = dupes
+    result["summary"]["valid"] = sum(1 for r in result["rows"] if r["status"] == "valid")
+    return result
+
+
+@router.post("/import/confirm")
+async def confirm_customer_import(
+    data: ImportConfirmRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+
+    rows = data.rows
+    if data.session_id and not rows:
+        session = CustomerImportService.get_session(data.session_id)
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session expired — upload again")
+        rows = session["rows"]
+
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No rows to import")
+
+    importable = [r for r in rows if r.get("status") in ("valid", "duplicate")]
+    if data.duplicate_strategy == "skip":
+        importable = [r for r in importable if r.get("status") != "duplicate"]
+
+    return await CustomerImportService.confirm_import(
+        db,
+        current_user.company_id,
+        current_user,
+        importable,
+        duplicate_strategy=data.duplicate_strategy,
+        create_leads=data.create_leads,
+        default_source=data.default_source,
+    )
 
 
 @router.post("/onboard", response_model=CustomerResponse)

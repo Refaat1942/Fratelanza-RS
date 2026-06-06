@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Phone, Search, UserPlus } from 'lucide-react'
+import { Phone, Search, Upload, UserPlus } from 'lucide-react'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
+import { CustomerImportModal } from '@/components/forms/CustomerImportModal'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ClientFormModal } from '@/components/forms/ClientFormModal'
@@ -12,6 +13,7 @@ import type { Customer, Paginated } from '@/types'
 export function CustomersPage() {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderCustomer, setReminderCustomer] = useState<{ id: number; name: string } | null>(null)
   const [search, setSearch] = useState('')
@@ -35,10 +37,16 @@ export function CustomersPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">{t('customers')}</h1>
-        <Button onClick={() => setOpen(true)}>
-          <UserPlus className="me-2 h-4 w-4" />
-          {t('add_client')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setImportOpen(true)}>
+            <Upload className="me-2 h-4 w-4" />
+            {t('bulk_import')}
+          </Button>
+          <Button onClick={() => setOpen(true)}>
+            <UserPlus className="me-2 h-4 w-4" />
+            {t('add_client')}
+          </Button>
+        </div>
       </div>
       <Card>
         <div className="relative mb-4 max-w-md">
@@ -93,6 +101,7 @@ export function CustomersPage() {
         )}
       </Card>
       <ClientFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
+      <CustomerImportModal open={importOpen} onClose={() => { setImportOpen(false); refetch() }} />
       <ReminderFormModal
         open={reminderOpen}
         onClose={() => { setReminderOpen(false); setReminderCustomer(null) }}
