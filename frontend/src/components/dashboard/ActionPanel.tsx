@@ -16,10 +16,11 @@ export function ActionPanel() {
     queryFn: async () => (await api.get('/reminders/summary')).data,
   })
 
-  const { data: todayReminders = [] } = useQuery({
-    queryKey: ['reminders-today'],
-    queryFn: async () => (await api.get('/reminders', { params: { due_today: true } })).data,
+  const { data: queue } = useQuery({
+    queryKey: ['reminders-queue'],
+    queryFn: async () => (await api.get('/reminders/queue')).data,
   })
+  const todayReminders = queue?.today_and_overdue ?? []
 
   const { data: dashboard } = useQuery({
     queryKey: ['company-dashboard'],
@@ -38,8 +39,10 @@ export function ActionPanel() {
       icon: Phone,
       color: 'text-primary-600 bg-primary-50',
       title: t('follow_ups_today'),
-      value: String(reminderSummary?.today ?? 0),
-      desc: reminderSummary?.overdue ? `${reminderSummary.overdue} ${t('overdue')}` : t('no_overdue_calls'),
+      value: String((queue?.counts?.due_today ?? 0) + (queue?.counts?.overdue ?? 0)),
+      desc: (queue?.counts?.overdue ?? reminderSummary?.overdue)
+        ? `${queue?.counts?.overdue ?? reminderSummary?.overdue} ${t('overdue')}`
+        : t('no_overdue_calls'),
       onClick: () => navigate('/follow-ups'),
     },
     {
@@ -105,10 +108,18 @@ export function ActionPanel() {
           <p className="text-sm text-slate-500">{t('no_calls_today')}</p>
         ) : (
           <ul className="space-y-2">
-            {todayReminders.slice(0, 5).map((r: { id: number; title: string; due_time: string; linked_to?: string }) => (
-              <li key={r.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                <p className="font-medium text-slate-800">{r.title}</p>
-                <p className="text-xs text-slate-500">{r.due_time}{r.linked_to ? ` · ${r.linked_to}` : ''}</p>
+            {todayReminders.slice(0, 5).map((r: { id: number; title: string; due_time: string; linked_to?: string; status?: string }) => (
+              <li key={r.id}>
+                <button
+                  onClick={() => navigate('/follow-ups')}
+                  className="w-full rounded-lg bg-slate-50 px-3 py-2 text-start text-sm hover:bg-primary-50"
+                >
+                  <p className="font-medium text-slate-800">{r.linked_to || r.title}</p>
+                  <p className="text-xs text-slate-500">
+                    {r.due_time}
+                    {r.status === 'overdue' ? ` · ${t('overdue')}` : ''}
+                  </p>
+                </button>
               </li>
             ))}
           </ul>

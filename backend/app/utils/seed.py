@@ -21,8 +21,18 @@ async def seed_database() -> None:
                 "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL, customer_id INTEGER, "
                 "lead_id INTEGER, title VARCHAR(255) NOT NULL, reminder_type VARCHAR(50), "
                 "due_date VARCHAR(20) NOT NULL, due_time VARCHAR(10), status VARCHAR(50), "
-                "notes TEXT, assigned_to_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), "
+                "notes TEXT, call_outcome VARCHAR(50), outcome_notes TEXT, completed_at TIMESTAMP, "
+                "assigned_to_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), "
                 "updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "ALTER TABLE customer_reminders ADD COLUMN IF NOT EXISTS call_outcome VARCHAR(50)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE customer_reminders ADD COLUMN IF NOT EXISTS outcome_notes TEXT"
+            ))
+            await db.execute(text(
+                "ALTER TABLE customer_reminders ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP"
             ))
             await db.execute(text(
                 "CREATE TABLE IF NOT EXISTS payroll_runs ("

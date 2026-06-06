@@ -2,7 +2,9 @@ import enum
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -85,6 +87,9 @@ class CustomerReminder(Base, TimestampMixin):
     due_time: Mapped[Optional[str]] = mapped_column(String(10))
     status: Mapped[ReminderStatus] = mapped_column(Enum(ReminderStatus), default=ReminderStatus.PENDING)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    call_outcome: Mapped[Optional[str]] = mapped_column(String(50))
+    outcome_notes: Mapped[Optional[str]] = mapped_column(Text)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     assigned_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
 
 

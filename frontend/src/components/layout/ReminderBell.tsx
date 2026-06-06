@@ -17,11 +17,12 @@ export function ReminderBell() {
     refetchInterval: 60000,
   })
 
-  const { data: today = [] } = useQuery({
-    queryKey: ['reminders-today'],
-    queryFn: async () => (await api.get('/reminders', { params: { due_today: true } })).data,
+  const { data: queue } = useQuery({
+    queryKey: ['reminders-queue'],
+    queryFn: async () => (await api.get('/reminders/queue')).data,
     enabled: open,
   })
+  const today = queue?.today_and_overdue ?? []
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -53,10 +54,17 @@ export function ReminderBell() {
             <p className="p-4 text-sm text-slate-500">{t('no_calls_today')}</p>
           ) : (
             <ul className="max-h-60 overflow-y-auto py-2">
-              {today.map((r: { id: number; title: string; due_time: string }) => (
-                <li key={r.id} className="px-4 py-2 text-sm hover:bg-slate-50">
-                  <p className="font-medium">{r.title}</p>
-                  <p className="text-xs text-slate-500">{r.due_time}</p>
+              {today.map((r: { id: number; title: string; due_time: string; linked_to?: string; status?: string }) => (
+                <li key={r.id}>
+                  <button
+                    onClick={() => { navigate('/follow-ups'); setOpen(false) }}
+                    className="w-full px-4 py-2 text-start text-sm hover:bg-slate-50"
+                  >
+                    <p className="font-medium">{r.linked_to || r.title}</p>
+                    <p className="text-xs text-slate-500">
+                      {r.due_time}{r.status === 'overdue' ? ` · ${t('overdue')}` : ''}
+                    </p>
+                  </button>
                 </li>
               ))}
             </ul>

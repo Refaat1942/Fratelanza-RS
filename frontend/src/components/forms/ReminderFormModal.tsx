@@ -66,6 +66,9 @@ export function ReminderFormModal({ open, onClose, customerId, leadId, defaultTi
         lead_id: form.lead_id ? Number(form.lead_id) : undefined,
       })
       qc.invalidateQueries({ queryKey: ['reminders'] })
+      qc.invalidateQueries({ queryKey: ['reminders-queue'] })
+      qc.invalidateQueries({ queryKey: ['reminders-summary'] })
+      qc.invalidateQueries({ queryKey: ['leads-kanban'] })
       onClose()
     } finally {
       setLoading(false)

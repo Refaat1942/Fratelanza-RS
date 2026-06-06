@@ -6,11 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_company_user
 from app.core.database import get_db
-from app.models.crm import Lead, LeadStage
+from app.models.crm import CustomerReminder, Lead, LeadStage, ReminderStatus
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.lead import LeadCreate, LeadResponse, LeadUpdate
 from app.services.ai_service import AIService
+from app.services.follow_up_service import FollowUpService
 
 router = APIRouter()
 
@@ -79,6 +80,8 @@ async def update_lead_stage(
     lead.score = score
     lead.ai_score = ai_score
     lead.ai_qualification = qualification
+    if stage not in (LeadStage.CONTRACT_SIGNED, LeadStage.LOST):
+        await FollowUpService.auto_schedule_for_lead(db, lead, current_user.id)
     await db.flush()
     return LeadResponse.model_validate(lead)
 
@@ -93,8 +96,23 @@ async def leads_kanban(
         query = query.where(Lead.company_id == current_user.company_id)
     result = await db.execute(query.order_by(Lead.score.desc()))
     leads = result.scalars().all()
+    lead_ids = [l.id for l in leads]
+    pending_by_lead: dict[int, CustomerReminder] = {}
+    if lead_ids:
+        rem_result = await db.execute(
+            select(CustomerReminder)
+            .where(
+                CustomerReminder.lead_id.in_(lead_ids),
+                CustomerReminder.status == ReminderStatus.PENDING,
+            )
+            .order_by(CustomerReminder.due_date)
+        )
+        for rem in rem_result.scalars().all():
+            if rem.lead_id and rem.lead_id not in pending_by_lead:
+                pending_by_lead[rem.lead_id] = rem
     board: dict[str, list] = {s.value: [] for s in LeadStage}
     for lead in leads:
+        pending = pending_by_lead.get(lead.id)
         board[lead.stage.value].append(
             {
                 "id": lead.id,
@@ -103,6 +121,9 @@ async def leads_kanban(
                 "source": lead.source.value,
                 "score": lead.score,
                 "ai_qualification": lead.ai_qualification,
+                "next_follow_up": lead.next_follow_up or (pending.due_date if pending else None),
+                "pending_call_id": pending.id if pending else None,
+                "pending_call_date": pending.due_date if pending else None,
             }
         )
     return board
