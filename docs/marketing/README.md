@@ -1,12 +1,26 @@
 # FRATELANZA Subscription Plans — Customer Brochure
 
-## Customer demo video (all features, no admin)
+## Customer demo screenshots (recommended — bilingual AR + EN)
 
-**File:** `fratelanza-customer-demo.mp4` (~3 min, Arabic UI)
+**Folder:** `docs/demo-screenshots/` (26 PNG files)  
+**Guides:** [DEMO-SCREENSHOTS-GUIDE.md](../DEMO-SCREENSHOTS-GUIDE.md) · [DEMO-SCREENSHOTS-GUIDE-AR.md](../DEMO-SCREENSHOTS-GUIDE-AR.md)
 
-Customer-facing walkthrough of **all 20 company modules** — no Super Admin screens.
+Every screenshot covers **one company module** (no Super Admin) with a **bilingual overlay** explaining all features in English and Arabic.
 
 **Regenerate:**
+
+```bash
+./scripts/build-demo-screenshots.sh
+# or: DEMO_URL=https://rs.fratelanza.com npm run demo-screenshots
+```
+
+**Login for capture:** `admin@demo.fratelanza.com` or `demo_admin` · password `Demo123456`
+
+---
+
+## Customer demo video (optional)
+
+**File:** `fratelanza-customer-demo.mp4` (~3 min, Arabic UI)
 
 ```bash
 ./scripts/build-customer-demo-video.sh

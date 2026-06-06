@@ -8,7 +8,11 @@
 | | |
 |---|---|
 | **URL** | Your demo site `/login` |
-| **Username** | `demo_admin` |
+| **Username** | `demo_admin` (or `admin@demo.fratelanza.com`) |
+
+## Screenshots guide (bilingual AR + EN)
+
+See **[DEMO-SCREENSHOTS-GUIDE.md](./DEMO-SCREENSHOTS-GUIDE.md)** — 26 annotated screenshots for every company module (no Super Admin).
 | **Password** | `Demo123456` |
 
 ---

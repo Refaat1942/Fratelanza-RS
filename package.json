@@ -1,0 +1,11 @@
+{
+  "name": "fratelanza-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "demo-screenshots": "./scripts/build-demo-screenshots.sh"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
