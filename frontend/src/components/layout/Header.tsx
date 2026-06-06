@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Bell, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
+import { ReminderBell } from './ReminderBell'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
 import { LanguageSwitcher } from './LanguageSwitcher'
@@ -25,9 +26,7 @@ export function Header() {
       <GlobalSearch />
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
-        <button className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
-          <Bell className="h-5 w-5" />
-        </button>
+        {!user?.is_super_admin && <ReminderBell />}
         <div className="ms-2 flex items-center gap-3 border-s border-slate-200 ps-4">
           <div className="text-end">
             <p className="text-sm font-medium text-slate-900">{displayName}</p>

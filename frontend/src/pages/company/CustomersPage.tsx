@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Search, UserPlus } from 'lucide-react'
+import { Phone, Search, UserPlus } from 'lucide-react'
+import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ClientFormModal } from '@/components/forms/ClientFormModal'
@@ -11,6 +12,8 @@ import type { Customer, Paginated } from '@/types'
 export function CustomersPage() {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [reminderOpen, setReminderOpen] = useState(false)
+  const [reminderCustomer, setReminderCustomer] = useState<{ id: number; name: string } | null>(null)
   const [search, setSearch] = useState('')
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['customers'],
@@ -59,6 +62,7 @@ export function CustomersPage() {
                 <th className="pb-3 text-start">Mobile</th>
                 <th className="pb-3 text-start">{t('email')}</th>
                 <th className="pb-3 text-start">{t('city')}</th>
+                <th className="pb-3 text-start">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -71,6 +75,17 @@ export function CustomersPage() {
                   <td className="py-3">{c.mobile}</td>
                   <td className="py-3 text-slate-500">{c.email || '-'}</td>
                   <td className="py-3 text-slate-500">{(c as Customer & { city?: string }).city || '-'}</td>
+                  <td className="py-3">
+                    <button
+                      onClick={() => {
+                        setReminderCustomer({ id: c.id, name: i18n.language === 'ar' ? c.full_name_ar : c.full_name_en })
+                        setReminderOpen(true)
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:underline"
+                    >
+                      <Phone className="h-3.5 w-3.5" />{t('schedule_call')}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -78,6 +93,12 @@ export function CustomersPage() {
         )}
       </Card>
       <ClientFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
+      <ReminderFormModal
+        open={reminderOpen}
+        onClose={() => { setReminderOpen(false); setReminderCustomer(null) }}
+        customerId={reminderCustomer?.id}
+        defaultTitle={reminderCustomer ? `${t('schedule_call')}: ${reminderCustomer.name}` : ''}
+      />
     </div>
   )
 }

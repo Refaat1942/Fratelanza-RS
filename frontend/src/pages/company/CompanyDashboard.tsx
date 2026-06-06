@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { StatCard } from '@/components/ui/StatCard'
 import { SalesChart } from '@/components/dashboard/SalesChart'
 import { PipelineChart } from '@/components/dashboard/PipelineChart'
+import { ActionPanel } from '@/components/dashboard/ActionPanel'
 import api from '@/lib/api'
 import type { DashboardData } from '@/types'
 
@@ -62,6 +63,7 @@ export function CompanyDashboard() {
           color="bg-violet-50 text-violet-700"
         />
       </div>
+      <ActionPanel />
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <SalesChart data={data?.sales_chart ?? []} />
         <PipelineChart pipeline={data?.leads_pipeline ?? {}} />

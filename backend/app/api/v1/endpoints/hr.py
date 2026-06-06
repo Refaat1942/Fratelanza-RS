@@ -26,6 +26,14 @@ class EmployeeCreate(BaseModel):
     salary: Optional[float] = None
 
 
+class AttendanceCreate(BaseModel):
+    employee_id: int
+    date: str
+    check_in: Optional[str] = "09:00"
+    check_out: Optional[str] = "17:00"
+    status: str = "present"
+
+
 class LeaveCreate(BaseModel):
     employee_id: int
     leave_type: str
@@ -73,6 +81,30 @@ async def create_employee(
     db.add(employee)
     await db.flush()
     return {"id": employee.id, "employee_code": employee.employee_code}
+
+
+@router.post("/attendance")
+async def record_attendance(
+    data: AttendanceCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    emp = (
+        await db.execute(
+            select(Employee).where(
+                Employee.id == data.employee_id,
+                Employee.company_id == current_user.company_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
+    record = Attendance(**data.model_dump())
+    db.add(record)
+    await db.flush()
+    return {"id": record.id, "status": record.status}
 
 
 @router.get("/attendance")

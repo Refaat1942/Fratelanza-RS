@@ -144,49 +144,52 @@ async def seed_database() -> None:
             from app.models.finance import ChartOfAccount
 
             pe = await db.execute(select(Project).where(Project.company_id == company.id).limit(1))
-            if pe.scalar_one_or_none():
-                await db.commit()
-                return
-
-            project = Project(
-                company_id=company.id,
-                name_ar="مشروع فراتيلانزا ريزيدنس",
-                name_en="Fratelanza Residence",
-                code="FR-001",
-                city="القاهرة الجديدة",
-                country="Egypt",
-                status=ProjectStatus.ACTIVE,
-                total_units=10,
-                available_units=8,
-            )
-            db.add(project)
-            await db.flush()
-
-            building = Building(project_id=project.id, name_ar="المبنى أ", name_en="Building A", code="A", total_floors=5)
-            db.add(building)
-            await db.flush()
-
-            floor = Floor(building_id=building.id, floor_number=1, name_ar="الدور الأول", name_en="First Floor")
-            db.add(floor)
-            await db.flush()
-
-            for i in range(1, 6):
-                db.add(
-                    Unit(
-                        floor_id=floor.id,
-                        unit_code=f"A1-{i:02d}",
-                        unit_number=str(i),
-                        unit_type=UnitType.APARTMENT,
-                        area_sqm=Decimal("120"),
-                        bedrooms=2,
-                        bathrooms=2,
-                        price=Decimal("2500000"),
-                        status=UnitStatus.AVAILABLE,
-                    )
+            project = pe.scalar_one_or_none()
+            if not project:
+                project = Project(
+                    company_id=company.id,
+                    name_ar="مشروع فراتيلانزا ريزيدنس",
+                    name_en="Fratelanza Residence",
+                    code="FR-001",
+                    city="القاهرة الجديدة",
+                    country="Egypt",
+                    status=ProjectStatus.ACTIVE,
+                    total_units=10,
+                    available_units=8,
                 )
+                db.add(project)
+                await db.flush()
 
-            db.add(
-                Customer(
+            if not (await db.execute(select(Building).where(Building.project_id == project.id).limit(1))).scalar_one_or_none():
+                building = Building(project_id=project.id, name_ar="المبنى أ", name_en="Building A", code="A", total_floors=5)
+                db.add(building)
+                await db.flush()
+
+                floor = Floor(building_id=building.id, floor_number=1, name_ar="الدور الأول", name_en="First Floor")
+                db.add(floor)
+                await db.flush()
+
+                for i in range(1, 6):
+                    db.add(
+                        Unit(
+                            floor_id=floor.id,
+                            unit_code=f"A1-{i:02d}",
+                            unit_number=str(i),
+                            unit_type=UnitType.APARTMENT,
+                            area_sqm=Decimal("120"),
+                            bedrooms=2,
+                            bathrooms=2,
+                            price=Decimal("2500000"),
+                            status=UnitStatus.AVAILABLE,
+                        )
+                    )
+
+            cust_result = await db.execute(
+                select(Customer).where(Customer.company_id == company.id, Customer.mobile == "+201012345678")
+            )
+            customer = cust_result.scalar_one_or_none()
+            if not customer:
+                customer = Customer(
                     company_id=company.id,
                     full_name_ar="أحمد محمد",
                     full_name_en="Ahmed Mohamed",
@@ -194,18 +197,22 @@ async def seed_database() -> None:
                     email="ahmed@example.com",
                     city="القاهرة",
                 )
-            )
-            db.add(
-                Lead(
-                    company_id=company.id,
-                    full_name="سارة علي",
-                    mobile="+201098765432",
-                    source=LeadSource.FACEBOOK,
-                    stage=LeadStage.INTERESTED,
-                    project_id=project.id,
-                    score=45,
+                db.add(customer)
+                await db.flush()
+
+            if not (await db.execute(select(Lead).where(Lead.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    Lead(
+                        company_id=company.id,
+                        full_name="سارة علي",
+                        mobile="+201098765432",
+                        source=LeadSource.FACEBOOK,
+                        stage=LeadStage.INTERESTED,
+                        project_id=project.id,
+                        score=45,
+                    )
                 )
-            )
+
             for code, name_ar, name_en, acc_type in [
                 ("1000", "الأصول", "Assets", "asset"),
                 ("2000", "الخصوم", "Liabilities", "liability"),
@@ -213,27 +220,38 @@ async def seed_database() -> None:
                 ("4000", "الإيرادات", "Revenue", "revenue"),
                 ("5000", "المصروفات", "Expenses", "expense"),
             ]:
-                db.add(
-                    ChartOfAccount(
-                        company_id=company.id,
-                        code=code,
-                        name_ar=name_ar,
-                        name_en=name_en,
-                        account_type=acc_type,
-                    )
+                exists = await db.execute(
+                    select(ChartOfAccount).where(ChartOfAccount.company_id == company.id, ChartOfAccount.code == code)
                 )
+                if not exists.scalar_one_or_none():
+                    db.add(
+                        ChartOfAccount(
+                            company_id=company.id,
+                            code=code,
+                            name_ar=name_ar,
+                            name_en=name_en,
+                            account_type=acc_type,
+                        )
+                    )
 
-            from app.models.hr import Employee
+            from app.models.hr import Employee, Attendance, LeaveRequest
             from app.models.crm import CustomerReminder, ReminderType
+            from app.models.finance import BankAccount, JournalEntry, JournalLine
+            from app.models.sales import Contract, ContractStatus, Payment, PaymentPlan, Installment, InstallmentStatus, PaymentPlanType
             from datetime import date, timedelta
 
+            employees_created = []
             for code, name_ar, name_en, dept, pos, sal in [
                 ("EMP-001", "محمود حسن", "Mahmoud Hassan", "Sales", "Sales Agent", "15000"),
                 ("EMP-002", "نورا أحمد", "Noura Ahmed", "Finance", "Accountant", "18000"),
                 ("EMP-003", "كريم سامي", "Karim Samy", "HR", "HR Officer", "12000"),
             ]:
-                db.add(
-                    Employee(
+                er = await db.execute(
+                    select(Employee).where(Employee.company_id == company.id, Employee.employee_code == code)
+                )
+                emp = er.scalar_one_or_none()
+                if not emp:
+                    emp = Employee(
                         company_id=company.id,
                         employee_code=code,
                         full_name_ar=name_ar,
@@ -243,19 +261,139 @@ async def seed_database() -> None:
                         salary=Decimal(sal),
                         hire_date="2024-01-01",
                     )
+                    db.add(emp)
+                    await db.flush()
+                employees_created.append(emp)
+
+            if employees_created and not (
+                await db.execute(
+                    select(Attendance).join(Employee).where(Employee.company_id == company.id).limit(1)
+                )
+            ).scalar_one_or_none():
+                today = date.today().isoformat()
+                for emp in employees_created[:2]:
+                    db.add(Attendance(employee_id=emp.id, date=today, check_in="09:00", check_out="17:00", status="present"))
+
+            if employees_created and not (
+                await db.execute(
+                    select(LeaveRequest).join(Employee).where(Employee.company_id == company.id).limit(1)
+                )
+            ).scalar_one_or_none():
+                db.add(
+                    LeaveRequest(
+                        employee_id=employees_created[0].id,
+                        leave_type="annual",
+                        start_date=(date.today() + timedelta(days=14)).isoformat(),
+                        end_date=(date.today() + timedelta(days=16)).isoformat(),
+                        reason="Family vacation",
+                        status="pending",
+                    )
                 )
 
-            tomorrow = (date.today() + timedelta(days=1)).isoformat()
-            db.add(
-                CustomerReminder(
-                    company_id=company.id,
-                    title="Call Ahmed Mohamed - unit follow up",
-                    reminder_type=ReminderType.CALL,
-                    due_date=tomorrow,
-                    due_time="10:00",
-                    notes="Interested in A1-02 apartment",
+            if not (await db.execute(select(CustomerReminder).where(CustomerReminder.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    CustomerReminder(
+                        company_id=company.id,
+                        customer_id=customer.id if customer else None,
+                        title="Call Ahmed Mohamed about unit A1-02",
+                        reminder_type=ReminderType.CALL,
+                        due_date=date.today().isoformat(),
+                        due_time="11:00",
+                        notes="Interested in 2.5M EGP apartment — follow up on payment plan",
+                    )
                 )
+                db.add(
+                    CustomerReminder(
+                        company_id=company.id,
+                        title="Site visit with Sara Ali",
+                        reminder_type=ReminderType.VISIT,
+                        due_date=(date.today() + timedelta(days=2)).isoformat(),
+                        due_time="14:00",
+                        notes="Facebook lead — show Fratelanza Residence",
+                    )
+                )
+
+            if not (await db.execute(select(BankAccount).where(BankAccount.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    BankAccount(
+                        company_id=company.id,
+                        bank_name="CIB",
+                        account_number="1234567890",
+                        currency="EGP",
+                        balance=Decimal("850000"),
+                    )
+                )
+
+            unit_r = await db.execute(
+                select(Unit).join(Floor).join(Building).where(Building.project_id == project.id).limit(1)
             )
+            unit = unit_r.scalar_one_or_none()
+            if unit and customer and not (await db.execute(select(Contract).where(Contract.company_id == company.id).limit(1))).scalar_one_or_none():
+                contract = Contract(
+                    company_id=company.id,
+                    contract_number="CNT-DEMO-001",
+                    customer_id=customer.id,
+                    unit_id=unit.id,
+                    total_price=Decimal("2500000"),
+                    contract_date=date.today().isoformat(),
+                    status=ContractStatus.ACTIVE,
+                    is_signed=True,
+                )
+                db.add(contract)
+                await db.flush()
+                plan = PaymentPlan(
+                    contract_id=contract.id,
+                    plan_type=PaymentPlanType.QUARTERLY,
+                    down_payment=Decimal("500000"),
+                    total_amount=Decimal("2500000"),
+                    number_of_installments=4,
+                    start_date=date.today().isoformat(),
+                )
+                db.add(plan)
+                await db.flush()
+                inst = Installment(
+                    payment_plan_id=plan.id,
+                    installment_number=1,
+                    due_date=date.today().isoformat(),
+                    due_amount=Decimal("500000"),
+                    paid_amount=Decimal("250000"),
+                    remaining_balance=Decimal("250000"),
+                    status=InstallmentStatus.PARTIAL,
+                )
+                db.add(inst)
+                await db.flush()
+                db.add(
+                    Payment(
+                        company_id=company.id,
+                        installment_id=inst.id,
+                        customer_id=customer.id,
+                        amount=Decimal("250000"),
+                        payment_date=date.today().isoformat(),
+                        payment_method="bank_transfer",
+                        reference_number="PAY-DEMO-001",
+                    )
+                )
+                revenue = (
+                    await db.execute(
+                        select(ChartOfAccount).where(ChartOfAccount.company_id == company.id, ChartOfAccount.code == "4000")
+                    )
+                ).scalar_one_or_none()
+                cash = (
+                    await db.execute(
+                        select(ChartOfAccount).where(ChartOfAccount.company_id == company.id, ChartOfAccount.code == "1000")
+                    )
+                ).scalar_one_or_none()
+                if revenue and cash and not (await db.execute(select(JournalEntry).where(JournalEntry.company_id == company.id).limit(1))).scalar_one_or_none():
+                    entry = JournalEntry(
+                        company_id=company.id,
+                        entry_number="JE-DEMO-001",
+                        entry_date=date.today().isoformat(),
+                        description="Down payment received - Ahmed Mohamed",
+                    )
+                    db.add(entry)
+                    await db.flush()
+                    db.add(JournalLine(journal_entry_id=entry.id, account_id=cash.id, debit=Decimal("250000"), credit=Decimal("0")))
+                    db.add(JournalLine(journal_entry_id=entry.id, account_id=revenue.id, debit=Decimal("0"), credit=Decimal("250000")))
 
         if company:
             company.currency = "EGP"

@@ -14,6 +14,7 @@ export function BrandingPage() {
   const { company, fetchCompany, setCompany } = useCompanyStore()
   const [form, setForm] = useState({ name_ar: '', name_en: '', phone: '', city: '', currency: 'EGP' })
   const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => { fetchCompany() }, [fetchCompany])
 
@@ -35,6 +36,8 @@ export function BrandingPage() {
     try {
       const { data } = await api.put('/companies/me/branding', form)
       setCompany(data)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
     } finally {
       setLoading(false)
     }
@@ -93,6 +96,7 @@ export function BrandingPage() {
               </select>
             </div>
             <p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">{t('tenant_isolation_note')}</p>
+            {saved && <p className="rounded-lg bg-emerald-50 p-2 text-sm text-emerald-700">{t('saved_success')}</p>}
             <Button type="submit" loading={loading}>{t('save')}</Button>
           </form>
         </Card>

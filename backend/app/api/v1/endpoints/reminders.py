@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_company_user
 from app.core.database import get_db
-from app.models.crm import CustomerReminder, ReminderStatus, ReminderType
+from app.models.crm import CustomerReminder, Lead, ReminderStatus, ReminderType
+from app.models.customers import Customer
 from app.models.users import User
 
 router = APIRouter()
@@ -31,6 +32,32 @@ class ReminderUpdate(BaseModel):
     due_time: Optional[str] = None
 
 
+@router.get("/summary")
+async def reminders_summary(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    today = date.today().isoformat()
+    result = await db.execute(
+        select(CustomerReminder).where(CustomerReminder.company_id == current_user.company_id)
+    )
+    reminders = result.scalars().all()
+    today_count = sum(1 for r in reminders if r.due_date == today and r.status == ReminderStatus.PENDING)
+    overdue_count = sum(
+        1 for r in reminders
+        if r.status == ReminderStatus.PENDING and r.due_date < today
+    )
+    pending_count = sum(1 for r in reminders if r.status == ReminderStatus.PENDING)
+    return {
+        "today": today_count,
+        "overdue": overdue_count,
+        "pending": pending_count,
+        "total": len(reminders),
+    }
+
+
 @router.get("")
 async def list_reminders(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -49,13 +76,26 @@ async def list_reminders(
     reminders = result.scalars().all()
     today = date.today().isoformat()
     rows = []
+    customer_ids = {r.customer_id for r in reminders if r.customer_id}
+    lead_ids = {r.lead_id for r in reminders if r.lead_id}
+    customers_map: dict[int, str] = {}
+    leads_map: dict[int, str] = {}
+    if customer_ids:
+        cr = await db.execute(select(Customer).where(Customer.id.in_(customer_ids)))
+        customers_map = {c.id: c.full_name_en for c in cr.scalars().all()}
+    if lead_ids:
+        lr = await db.execute(select(Lead).where(Lead.id.in_(lead_ids)))
+        leads_map = {l.id: l.full_name for l in lr.scalars().all()}
+
     for r in reminders:
         st = r.status.value
         if st == "pending" and r.due_date < today:
             st = "overdue"
+        linked = customers_map.get(r.customer_id) or leads_map.get(r.lead_id) or ""
         rows.append({
             "id": r.id,
             "title": r.title,
+            "linked_to": linked,
             "reminder_type": r.reminder_type.value,
             "due_date": r.due_date,
             "due_time": r.due_time or "",
