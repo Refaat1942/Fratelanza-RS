@@ -1,5 +1,21 @@
 # FRATELANZA Subscription Plans — Customer Brochure
 
+## Customer demo video (all features, no admin)
+
+**File:** `fratelanza-customer-demo.mp4` (~3 min, Arabic UI)
+
+Customer-facing walkthrough of **all 20 company modules** — no Super Admin screens.
+
+**Regenerate:**
+
+```bash
+./scripts/build-customer-demo-video.sh
+```
+
+Output: `/opt/cursor/artifacts/fratelanza-customer-demo.mp4`
+
+---
+
 ## PDF for customer service
 
 **File:** `fratelanza-subscription-plans.pdf`
