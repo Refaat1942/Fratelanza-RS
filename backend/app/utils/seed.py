@@ -68,7 +68,8 @@ async def seed_database() -> None:
 
         # Demo company
         result = await db.execute(select(Company).where(Company.code == "DEMO"))
-        if not result.scalar_one_or_none():
+        company = result.scalar_one_or_none()
+        if not company:
             plan_result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.code == "professional"))
             plan = plan_result.scalar_one_or_none()
             company = Company(
@@ -85,21 +86,41 @@ async def seed_database() -> None:
             await db.flush()
             if plan:
                 db.add(CompanySubscription(company_id=company.id, plan_id=plan.id, is_active=True))
-            admin = User(
-                email="admin@demo.fratelanza.com",
-                password_hash=get_password_hash("Demo@123456"),
+
+        # Demo admin — always ensure exists with known password
+        demo_email = "admin@demo.fratelanza.com"
+        demo_password = "Demo123456"
+        demo_result = await db.execute(select(User).where(User.email == demo_email))
+        demo_admin = demo_result.scalar_one_or_none()
+        if not demo_admin:
+            demo_admin = User(
+                email=demo_email,
+                password_hash=get_password_hash(demo_password),
                 full_name_ar="مدير الشركة",
                 full_name_en="Company Administrator",
                 system_role=SystemRole.COMPANY_ADMIN,
-                company_id=company.id,
+                company_id=company.id if company else None,
                 status=UserStatus.ACTIVE,
             )
-            db.add(admin)
+            db.add(demo_admin)
+        else:
+            demo_admin.password_hash = get_password_hash(demo_password)
+            demo_admin.status = UserStatus.ACTIVE
+            demo_admin.is_deleted = False
+            if company and not demo_admin.company_id:
+                demo_admin.company_id = company.id
 
+        # Demo data (only if no project yet)
+        if company and company.id:
             from app.models.customers import Customer
             from app.models.crm import Lead, LeadSource, LeadStage
             from app.models.real_estate import Building, Floor, Project, ProjectStatus, Unit, UnitStatus, UnitType
             from app.models.finance import ChartOfAccount
+
+            pe = await db.execute(select(Project).where(Project.company_id == company.id).limit(1))
+            if pe.scalar_one_or_none():
+                await db.commit()
+                return
 
             project = Project(
                 company_id=company.id,

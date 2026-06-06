@@ -6,7 +6,7 @@ cd /opt/fratelanza
 SUPER_EMAIL="admin@fratelanza.com"
 SUPER_PASS="Admin@Fratelanza2026"
 DEMO_EMAIL="admin@demo.fratelanza.com"
-DEMO_PASS="Demo@123456"
+DEMO_PASS="Demo123456"
 
 echo "============================================"
 echo " Resetting ALL login accounts..."
@@ -115,7 +115,17 @@ HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9000/api/
 if [ "$HTTP" = "200" ]; then
   echo "✓ Super Admin login: OK"
 else
-  echo "✗ Super Admin login test failed (HTTP $HTTP) — wait 30s and try browser"
+  echo "✗ Super Admin login test failed (HTTP $HTTP)"
+fi
+
+HTTP2=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"${DEMO_EMAIL}\",\"password\":\"${DEMO_PASS}\"}")
+
+if [ "$HTTP2" = "200" ]; then
+  echo "✓ Demo Company login: OK"
+else
+  echo "✗ Demo login failed (HTTP $HTTP2) — run: bash scripts/fix-demo-login.sh"
 fi
 
 cat /opt/fratelanza/LOGINS.txt
