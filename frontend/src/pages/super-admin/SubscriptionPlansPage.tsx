@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { CreditCard, Pencil } from 'lucide-react'
+import { CreditCard, Download, Pencil } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
@@ -24,9 +24,30 @@ export function SubscriptionPlansPage() {
     },
   })
 
+  const downloadBrochure = async () => {
+    const { data } = await api.get('/super-admin/subscription-plans/brochure.pdf', { responseType: 'blob' })
+    const url = URL.createObjectURL(data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'fratelanza-subscription-plans.pdf'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div>
-      <PageHeader title={t('subscriptions')} subtitle={t('subscriptions_help')} icon={CreditCard} accentIndex={4} />
+      <PageHeader
+        title={t('subscriptions')}
+        subtitle={t('subscriptions_help')}
+        icon={CreditCard}
+        accentIndex={4}
+        actions={
+          <Button variant="secondary" onClick={downloadBrochure}>
+            <Download className="me-2 h-4 w-4" />
+            {t('download_plans_pdf')}
+          </Button>
+        }
+      />
       <div className="grid-stagger grid gap-4 md:grid-cols-3">
         {isLoading ? (
           <LoadingState />

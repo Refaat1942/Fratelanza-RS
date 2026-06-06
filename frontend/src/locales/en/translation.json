@@ -316,5 +316,6 @@
   "send_payment_reminder": "Send payment reminder",
   "last_reminder_sent": "Last reminder sent",
   "remind": "Remind",
-  "amount": "Amount"
+  "amount": "Amount",
+  "download_plans_pdf": "Download customer brochure (PDF)"
 }

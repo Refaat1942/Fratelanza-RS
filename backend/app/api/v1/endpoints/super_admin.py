@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,7 @@ from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
 from app.services.platform_billing_service import PlatformBillingService
 from app.schemas.subscription import SubscriptionPlanUpdate
 from app.services.company_service import CompanyService
+from app.services.plan_brochure_service import PlanBrochureService
 from app.services.subscription_service import SubscriptionService
 
 router = APIRouter()
@@ -153,6 +155,23 @@ async def list_subscription_plans(
     result = await db.execute(select(SubscriptionPlan).order_by(SubscriptionPlan.id))
     plans = result.scalars().all()
     return [SubscriptionService.plan_to_dict(p) for p in plans]
+
+
+@router.get("/subscription-plans/brochure.pdf")
+async def download_subscription_plans_brochure(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.is_active == True).order_by(SubscriptionPlan.id))
+    plans = list(result.scalars().all())
+    if not plans:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription plans found")
+    pdf_bytes = PlanBrochureService.generate_pdf(plans)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="fratelanza-subscription-plans.pdf"'},
+    )
 
 
 @router.get("/subscription-plans/{plan_id}")

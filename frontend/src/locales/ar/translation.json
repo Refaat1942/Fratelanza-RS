@@ -316,5 +316,6 @@
   "send_payment_reminder": "إرسال تذكير بالدفع",
   "last_reminder_sent": "آخر تذكير مرسل",
   "remind": "تذكير",
-  "amount": "المبلغ"
+  "amount": "المبلغ",
+  "download_plans_pdf": "تحميل كتيب الباقات للعملاء (PDF)"
 }
