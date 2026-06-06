@@ -100,6 +100,7 @@ async def create_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
     user = await AuthService.create_user(
         db,
+        username=data.username,
         email=data.email,
         password=data.password,
         full_name_ar=data.full_name_ar,
@@ -155,6 +156,25 @@ async def suspend_user(
     user.status = UserStatus.SUSPENDED
     await db.flush()
     return {"message": "User suspended", "success": True}
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot delete super admin")
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    user.soft_delete()
+    await db.flush()
+    return {"message": "User deleted", "success": True}
 
 
 @router.post("/{user_id}/activate")

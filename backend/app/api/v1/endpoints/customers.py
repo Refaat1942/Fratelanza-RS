@@ -272,6 +272,23 @@ async def update_customer(
     return CustomerResponse.model_validate(customer)
 
 
+@router.delete("/{customer_id}")
+async def delete_customer(
+    customer_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    if not current_user.is_super_admin and customer.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    customer.soft_delete()
+    await db.flush()
+    return {"message": "Customer deleted", "success": True}
+
+
 @router.get("/{customer_id}/timeline")
 async def get_customer_timeline(
     customer_id: int,

@@ -139,4 +139,4 @@ docker exec -i fratelanza_postgres psql -U fratelanza fratelanza_db < backup.sql
 | Role | Email | Password |
 |------|-------|----------|
 | Super Admin | admin@fratelanza.com | Admin@123456 |
-| Demo Company Admin | admin@demo.fratelanza.com | Demo123456 |
+| Demo Company Admin | demo_admin | Demo123456 |

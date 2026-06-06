@@ -20,6 +20,7 @@ export function UserFormModal({ open, onClose }: UserFormModalProps) {
   const user = useAuthStore((s) => s.user)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
+    username: '',
     email: '',
     password: '',
     full_name_ar: '',
@@ -43,6 +44,7 @@ export function UserFormModal({ open, onClose }: UserFormModalProps) {
   return (
     <Modal open={open} onClose={onClose} title={t('add_user')}>
       <form onSubmit={submit} className="space-y-4">
+        <Input label={t('username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} required placeholder="sales_agent_1" />
         <Input label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
         <Input label={t('password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
         <Input label={t('name_ar')} value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required />

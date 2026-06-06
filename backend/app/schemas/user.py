@@ -6,6 +6,7 @@ from app.models.users import SystemRole
 
 
 class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=100, pattern=r"^[a-zA-Z0-9_.-]+$")
     email: EmailStr
     password: str = Field(min_length=6)
     full_name_ar: str = Field(min_length=2)
@@ -16,6 +17,7 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = Field(default=None, min_length=3, max_length=100, pattern=r"^[a-zA-Z0-9_.-]+$")
     email: Optional[EmailStr] = None
     full_name_ar: Optional[str] = None
     full_name_en: Optional[str] = None

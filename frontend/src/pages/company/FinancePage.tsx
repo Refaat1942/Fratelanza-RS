@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { SortableTable } from '@/components/ui/SortableTable'
@@ -17,8 +17,14 @@ export function FinancePage() {
   const { t, i18n } = useTranslation()
   const { formatEGP } = useFormatNumber()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [tab, setTab] = useState<FinanceTab>('overview')
   const [exporting, setExporting] = useState(false)
+
+  const deleteAccount = useMutation({
+    mutationFn: (id: number) => api.delete(`/finance/accounts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance-accounts'] }),
+  })
 
   const reportKey: Record<FinanceTab, string | null> = {
     overview: null,
@@ -129,11 +135,21 @@ export function FinancePage() {
               { key: 'code', label_en: 'Code', label_ar: 'الكود' },
               { key: 'name', label_en: 'Account', label_ar: 'الحساب' },
               { key: 'type', label_en: 'Type', label_ar: 'النوع' },
+              { key: 'actions', label_en: 'Actions', label_ar: 'إجراءات' },
             ]}
             rows={accounts.map((a: Record<string, unknown>) => ({
               code: a.code,
               name: i18n.language === 'ar' ? a.name_ar : a.name_en,
               type: a.account_type,
+              actions: (
+                <button
+                  type="button"
+                  onClick={() => window.confirm(t('confirm_delete')) && deleteAccount.mutate(a.id as number)}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  {t('delete')}
+                </button>
+              ),
             }))}
             onExport={() => downloadReport('finance_trial_balance')}
           />

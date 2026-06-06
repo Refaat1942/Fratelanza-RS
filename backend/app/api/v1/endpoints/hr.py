@@ -83,6 +83,30 @@ async def create_employee(
     return {"id": employee.id, "employee_code": employee.employee_code}
 
 
+@router.delete("/employees/{employee_id}")
+async def delete_employee(
+    employee_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    result = await db.execute(
+        select(Employee).where(
+            Employee.id == employee_id,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted == False,
+        )
+    )
+    emp = result.scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
+    emp.soft_delete()
+    emp.is_active = False
+    await db.flush()
+    return {"message": "Employee deleted", "success": True}
+
+
 @router.post("/attendance")
 async def record_attendance(
     data: AttendanceCreate,
@@ -186,6 +210,46 @@ async def create_leave(
     return {"id": leave.id, "status": leave.status}
 
 
+@router.delete("/leaves/{leave_id}")
+async def delete_leave(
+    leave_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(
+        select(LeaveRequest, Employee)
+        .join(Employee, LeaveRequest.employee_id == Employee.id)
+        .where(LeaveRequest.id == leave_id, Employee.company_id == current_user.company_id)
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave not found")
+    leave, _ = row
+    await db.delete(leave)
+    await db.flush()
+    return {"message": "Leave deleted", "success": True}
+
+
+@router.delete("/attendance/{record_id}")
+async def delete_attendance(
+    record_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(
+        select(Attendance, Employee)
+        .join(Employee, Attendance.employee_id == Employee.id)
+        .where(Attendance.id == record_id, Employee.company_id == current_user.company_id)
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attendance not found")
+    record, _ = row
+    await db.delete(record)
+    await db.flush()
+    return {"message": "Attendance deleted", "success": True}
+
+
 @router.post("/leaves/{leave_id}/approve")
 async def approve_leave(
     leave_id: int,
@@ -204,6 +268,38 @@ async def approve_leave(
     leave.status = "approved"
     await db.flush()
     return {"id": leave.id, "status": leave.status}
+
+
+@router.get("/payslips")
+async def list_all_payslips(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    result = await db.execute(
+        select(Payslip, Employee, PayrollRun)
+        .join(Employee, Payslip.employee_id == Employee.id)
+        .join(PayrollRun, Payslip.payroll_run_id == PayrollRun.id)
+        .where(PayrollRun.company_id == current_user.company_id)
+        .order_by(PayrollRun.period_month.desc(), Employee.employee_code)
+    )
+    return [
+        {
+            "id": p.id,
+            "period_month": run.period_month,
+            "employee_code": e.employee_code,
+            "employee_name": e.full_name_ar,
+            "department": e.department or "",
+            "basic_salary": float(p.basic_salary),
+            "allowances": float(p.allowances),
+            "social_insurance": float(p.social_insurance),
+            "deductions": float(p.deductions),
+            "net_salary": float(p.net_salary),
+            "status": p.status,
+        }
+        for p, e, run in result.all()
+    ]
 
 
 @router.get("/payroll")

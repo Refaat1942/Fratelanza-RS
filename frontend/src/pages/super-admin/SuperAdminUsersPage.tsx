@@ -14,6 +14,7 @@ import type { Paginated } from '@/types'
 
 interface AdminUser {
   id: number
+  username?: string
   email: string
   full_name_ar: string
   full_name_en: string
@@ -143,7 +144,7 @@ export function SuperAdminUsersPage() {
                     <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50/50">
                       <td className="px-2 py-4">
                         <p className="font-semibold text-slate-900">{name}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+                        <p className="text-xs text-slate-500">{user.username || user.email}</p>
                       </td>
                       <td className="px-2 py-4 capitalize">
                         {user.is_super_admin ? t('super_admin') : user.system_role.replace(/_/g, ' ')}

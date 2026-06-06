@@ -262,6 +262,26 @@ async def reschedule_call(
     return {"id": reminder.id, "due_date": data.due_date, "due_time": data.due_time}
 
 
+@router.delete("/{reminder_id}")
+async def delete_reminder(
+    reminder_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(
+        select(CustomerReminder).where(
+            CustomerReminder.id == reminder_id,
+            CustomerReminder.company_id == current_user.company_id,
+        )
+    )
+    reminder = result.scalar_one_or_none()
+    if not reminder:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reminder not found")
+    await db.delete(reminder)
+    await db.flush()
+    return {"message": "Reminder deleted", "success": True}
+
+
 @router.patch("/{reminder_id}")
 async def update_reminder(
     reminder_id: int,

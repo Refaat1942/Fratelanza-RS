@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Phone, Plus, MessageCircle, Calendar, CheckCircle, Clock } from 'lucide-react'
+import { Phone, Plus, MessageCircle, Calendar, CheckCircle, Clock, Trash2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
@@ -73,6 +73,16 @@ export function FollowUpsPage() {
   const list = tab === 'queue' ? queueItems : history
   const selected = list.find((r) => r.id === selectedId) ?? detail
   const isLoading = tab === 'queue' ? queueLoading : historyLoading
+
+  const deleteReminder = useMutation({
+    mutationFn: (id: number) => api.delete(`/reminders/${id}`),
+    onSuccess: () => {
+      setSelectedId(null)
+      qc.invalidateQueries({ queryKey: ['reminders-queue'] })
+      qc.invalidateQueries({ queryKey: ['reminders-history'] })
+      qc.invalidateQueries({ queryKey: ['reminders-summary'] })
+    },
+  })
 
   const reschedule = useMutation({
     mutationFn: async ({ id, due_date }: { id: number; due_date: string }) => {
@@ -234,23 +244,32 @@ export function FollowUpsPage() {
                 </div>
               )}
 
-              {tab === 'queue' && selected.status !== 'completed' && (
-                <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                  <Button onClick={() => setCompleteOpen(true)}>
-                    <CheckCircle className="me-2 h-4 w-4" />{t('complete_call')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      const tomorrow = new Date()
-                      tomorrow.setDate(tomorrow.getDate() + 1)
-                      reschedule.mutate({ id: selected.id, due_date: tomorrow.toISOString().slice(0, 10) })
-                    }}
-                  >
-                    <Calendar className="me-2 h-4 w-4" />{t('reschedule_tomorrow')}
-                  </Button>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                {tab === 'queue' && selected.status !== 'completed' && (
+                  <>
+                    <Button onClick={() => setCompleteOpen(true)}>
+                      <CheckCircle className="me-2 h-4 w-4" />{t('complete_call')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        const tomorrow = new Date()
+                        tomorrow.setDate(tomorrow.getDate() + 1)
+                        reschedule.mutate({ id: selected.id, due_date: tomorrow.toISOString().slice(0, 10) })
+                      }}
+                    >
+                      <Calendar className="me-2 h-4 w-4" />{t('reschedule_tomorrow')}
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="secondary"
+                  className="!text-red-600"
+                  onClick={() => window.confirm(t('confirm_delete')) && deleteReminder.mutate(selected.id)}
+                >
+                  <Trash2 className="me-2 h-4 w-4" />{t('delete')}
+                </Button>
+              </div>
             </div>
           )}
         </div>

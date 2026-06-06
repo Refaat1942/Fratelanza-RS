@@ -19,8 +19,9 @@ import { HRPage } from '@/pages/company/HRPage'
 import { FinancePage } from '@/pages/company/FinancePage'
 import { FollowUpsPage } from '@/pages/company/FollowUpsPage'
 import { BrandingPage } from '@/pages/company/BrandingPage'
+import { ProjectsPage } from '@/pages/company/ProjectsPage'
 import {
-  ProjectsPage, ReservationsPage, ContractsPage, CollectionsPage,
+  ReservationsPage, ContractsPage, CollectionsPage,
   BrokersPage, ConstructionPage, ProcurementPage,
   WarehousePage, PropertyPage, CustomerServicePage, CompanyUsersPage,
   AuditLogsPage,

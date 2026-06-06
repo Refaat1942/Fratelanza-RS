@@ -47,7 +47,8 @@ PLAN_MODULE_DEFAULTS: dict[str, list[str]] = {
     "professional": [
         "dashboard", "customers", "leads", "follow_ups", "projects",
         "reservations", "contracts", "collections", "brokers", "finance", "hr",
-        "users", "reports", "branding", "customer_service",
+        "construction", "procurement", "warehouse", "property", "customer_service",
+        "users", "reports", "branding",
     ],
     "enterprise": ALL_MODULE_KEYS,
 }

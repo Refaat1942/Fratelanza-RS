@@ -8,7 +8,7 @@
 | | |
 |---|---|
 | **URL** | Your demo site `/login` |
-| **Email** | `admin@demo.fratelanza.com` |
+| **Username** | `demo_admin` |
 | **Password** | `Demo123456` |
 
 ---

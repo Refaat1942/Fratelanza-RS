@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Plus, Wallet, Calendar, Clock, Users } from 'lucide-react'
+import { Plus, Wallet, Calendar, Clock, Users, FileText, Download } from 'lucide-react'
 import { SortableTable } from '@/components/ui/SortableTable'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
@@ -12,7 +12,7 @@ import { exportRowsToExcel } from '@/lib/exportTable'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type Tab = 'employees' | 'payroll' | 'leaves' | 'attendance'
+type Tab = 'employees' | 'payroll' | 'payslips' | 'leaves' | 'attendance'
 
 export function HRPage() {
   const { t } = useTranslation()
@@ -78,18 +78,34 @@ export function HRPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['hr-leaves'] }),
   })
 
+  const deleteEmployee = useMutation({
+    mutationFn: (id: number) => api.delete(`/hr/employees/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr-employees'] }),
+  })
+
+  const deleteLeave = useMutation({
+    mutationFn: (id: number) => api.delete(`/hr/leaves/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr-leaves'] }),
+  })
+
+  const deleteAttendance = useMutation({
+    mutationFn: (id: number) => api.delete(`/hr/attendance/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['hr-attendance'] }),
+  })
+
+  const { data: allPayslips = [], isLoading: payslipsLoading } = useQuery({
+    queryKey: ['hr-all-payslips'],
+    queryFn: async () => (await api.get('/hr/payslips')).data,
+    enabled: tab === 'payslips',
+  })
+
   const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
     { key: 'employees', label: t('employees'), icon: Users },
     { key: 'payroll', label: t('payroll'), icon: Wallet },
+    { key: 'payslips', label: t('payslips'), icon: FileText },
     { key: 'leaves', label: t('leaves'), icon: Calendar },
     { key: 'attendance', label: t('attendance'), icon: Clock },
   ]
-
-  const empRows = employees.map((e: Record<string, unknown>) => ({
-    ...e,
-    salary: formatEGP(e.salary as number),
-    status: e.is_active ? t('active') : t('inactive'),
-  }))
 
   return (
     <div>
@@ -125,14 +141,23 @@ export function HRPage() {
         employees.length === 0 && !empLoading ? (
           <EmptyState icon={<Users className="h-10 w-10" />} title={t('no_employees')} description={t('no_employees_help')} actionLabel={t('add_employee')} onAction={() => setEmpOpen(true)} />
         ) : (
-          <SortableTable columns={[
-            { key: 'employee_code', label_en: 'Code', label_ar: 'الكود' },
-            { key: 'full_name_en', label_en: 'Name', label_ar: 'الاسم' },
-            { key: 'department', label_en: 'Department', label_ar: 'القسم' },
-            { key: 'position', label_en: 'Position', label_ar: 'الوظيفة' },
-            { key: 'salary', label_en: 'Salary', label_ar: 'الراتب' },
-            { key: 'status', label_en: 'Status', label_ar: 'الحالة' },
-          ]} rows={empRows} loading={empLoading} onExport={() => exportRowsToExcel(employees, 'employees')} />
+          <div className="space-y-2">
+            {employees.map((e: Record<string, unknown>) => (
+              <div key={e.id as number} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+                <div>
+                  <p className="font-medium">{e.full_name_en as string} <span className="text-slate-400">({e.employee_code as string})</span></p>
+                  <p className="text-xs text-slate-500">{e.department as string} · {formatEGP(e.salary as number)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => window.confirm(t('confirm_delete')) && deleteEmployee.mutate(e.id as number)}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  {t('delete')}
+                </button>
+              </div>
+            ))}
+          </div>
         )
       )}
 
@@ -181,6 +206,35 @@ export function HRPage() {
         </>
       )}
 
+      {tab === 'payslips' && (
+        allPayslips.length === 0 && !payslipsLoading ? (
+          <EmptyState icon={<FileText className="h-10 w-10" />} title={t('no_payslips')} description={t('no_payslips_help')} actionLabel={t('generate_payroll')} onAction={() => generatePayroll.mutate()} />
+        ) : (
+          <>
+            <div className="mb-4 flex justify-end">
+              <Button variant="secondary" onClick={() => exportRowsToExcel(allPayslips, 'payslips')}>
+                <Download className="me-2 h-4 w-4" />{t('export_excel')}
+              </Button>
+            </div>
+            <SortableTable columns={[
+              { key: 'period_month', label_en: 'Month', label_ar: 'الشهر' },
+              { key: 'employee_code', label_en: 'Code', label_ar: 'الكود' },
+              { key: 'employee_name', label_en: 'Employee', label_ar: 'الموظف' },
+              { key: 'department', label_en: 'Dept', label_ar: 'القسم' },
+              { key: 'basic_salary', label_en: 'Basic', label_ar: 'الأساسي' },
+              { key: 'social_insurance', label_en: 'Insurance', label_ar: 'التأمينات' },
+              { key: 'net_salary', label_en: 'Net', label_ar: 'الصافي' },
+              { key: 'status', label_en: 'Status', label_ar: 'الحالة' },
+            ]} rows={allPayslips.map((s: Record<string, unknown>) => ({
+              ...s,
+              basic_salary: formatEGP(s.basic_salary as number),
+              social_insurance: formatEGP(s.social_insurance as number),
+              net_salary: formatEGP(s.net_salary as number),
+            }))} loading={payslipsLoading} onExport={() => exportRowsToExcel(allPayslips, 'payslips')} />
+          </>
+        )
+      )}
+
       {tab === 'leaves' && (
         leaves.length === 0 && !leaveLoading ? (
           <EmptyState icon={<Calendar className="h-10 w-10" />} title={t('no_leaves')} description={t('no_leaves_help')} actionLabel={t('request_leave')} onAction={() => setLeaveOpen(true)} />
@@ -192,9 +246,18 @@ export function HRPage() {
                   <p className="font-medium">{l.employee_name as string} — {l.leave_type as string}</p>
                   <p className="text-xs text-slate-500">{l.start_date as string} → {l.end_date as string} · {l.status as string}</p>
                 </div>
-                {l.status === 'pending' && (
-                  <Button variant="secondary" onClick={() => approveLeave.mutate(l.id as number)}>{t('approve')}</Button>
-                )}
+                <div className="flex gap-2">
+                  {l.status === 'pending' && (
+                    <Button variant="secondary" onClick={() => approveLeave.mutate(l.id as number)}>{t('approve')}</Button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => window.confirm(t('confirm_delete')) && deleteLeave.mutate(l.id as number)}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    {t('delete')}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -211,7 +274,19 @@ export function HRPage() {
             { key: 'check_in', label_en: 'In', label_ar: 'حضور' },
             { key: 'check_out', label_en: 'Out', label_ar: 'انصراف' },
             { key: 'status', label_en: 'Status', label_ar: 'الحالة' },
-          ]} rows={attendance} loading={attLoading} onExport={() => exportRowsToExcel(attendance, 'attendance')} />
+            { key: 'actions', label_en: 'Actions', label_ar: 'إجراءات' },
+          ]} rows={attendance.map((a: Record<string, unknown>) => ({
+            ...a,
+            actions: (
+              <button
+                type="button"
+                onClick={() => window.confirm(t('confirm_delete')) && deleteAttendance.mutate(a.id as number)}
+                className="text-sm text-red-600 hover:underline"
+              >
+                {t('delete')}
+              </button>
+            ),
+          }))} loading={attLoading} onExport={() => exportRowsToExcel(attendance, 'attendance')} />
         )
       )}
 

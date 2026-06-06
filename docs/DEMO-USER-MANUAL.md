@@ -27,13 +27,13 @@ This manual walks you through the **demo environment** step by step so you can e
 | Item | Value |
 |------|--------|
 | **Login page** | Open your demo URL (e.g. `http://your-server:9000/login`) |
-| **Email** | `admin@demo.fratelanza.com` |
+| **Username** | `demo_admin` |
 | **Password** | `Demo123456` |
 | **Role** | Company Administrator (full access to company modules) |
 
 ### First login
 
-1. Enter email and password, then click **Login**.
+1. Enter username and password, then click **Login**.
 2. You land on the **Dashboard** with KPI cards (sales, collections, available units, active leads).
 3. Use the **language switcher** (top bar) to toggle **Arabic** or **English**. The interface and number formats update automatically.
 

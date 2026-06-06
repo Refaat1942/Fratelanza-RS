@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,7 +22,13 @@ from app.services.platform_billing_service import PlatformBillingService
 class AuthService:
     @staticmethod
     async def login(db: AsyncSession, data: LoginRequest) -> tuple[TokenResponse, User]:
-        result = await db.execute(select(User).where(User.email == data.email, User.is_deleted == False))
+        login = data.username.strip().lower()
+        result = await db.execute(
+            select(User).where(
+                or_(User.username == login, User.email == login),
+                User.is_deleted == False,
+            )
+        )
         user = result.scalar_one_or_none()
         if not user or not verify_password(data.password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -90,6 +96,7 @@ class AuthService:
     @staticmethod
     async def create_user(
         db: AsyncSession,
+        username: str,
         email: str,
         password: str,
         full_name_ar: str,
@@ -98,10 +105,14 @@ class AuthService:
         company_id: int | None = None,
         is_super_admin: bool = False,
     ) -> User:
-        existing = await db.execute(select(User).where(User.email == email))
+        username_norm = username.strip().lower()
+        existing = await db.execute(
+            select(User).where(or_(User.email == email, User.username == username_norm))
+        )
         if existing.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username or email already registered")
         user = User(
+            username=username_norm,
             email=email,
             password_hash=get_password_hash(password),
             full_name_ar=full_name_ar,

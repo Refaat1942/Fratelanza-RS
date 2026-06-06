@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Phone, Search, Upload, UserPlus } from 'lucide-react'
+import { RowActions } from '@/components/ui/RowActions'
+import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
 import { CustomerImportModal } from '@/components/forms/CustomerImportModal'
 import { Card } from '@/components/ui/Card'
@@ -21,6 +23,7 @@ export function CustomersPage() {
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderCustomer, setReminderCustomer] = useState<{ id: number; name: string } | null>(null)
   const [search, setSearch] = useState('')
+  const deleteCustomer = useDeleteEntity('/customers', ['customers'])
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
@@ -92,15 +95,20 @@ export function CustomersPage() {
                   <td className="py-3 text-slate-500">{c.email || '-'}</td>
                   <td className="py-3 text-slate-500">{(c as Customer & { city?: string }).city || '-'}</td>
                   <td className="py-3">
-                    <button
-                      onClick={() => {
-                        setReminderCustomer({ id: c.id, name: i18n.language === 'ar' ? c.full_name_ar : c.full_name_en })
-                        setReminderOpen(true)
-                      }}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:underline"
-                    >
-                      <Phone className="h-3.5 w-3.5" />{t('schedule_call')}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setReminderCustomer({ id: c.id, name: i18n.language === 'ar' ? c.full_name_ar : c.full_name_en })
+                          setReminderOpen(true)
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:underline"
+                      >
+                        <Phone className="h-3.5 w-3.5" />{t('schedule_call')}
+                      </button>
+                      <RowActions
+                        onDelete={() => confirmDelete(t) && deleteCustomer.mutate(c.id, { onSuccess: () => { refetch() } })}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

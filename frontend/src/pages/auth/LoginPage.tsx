@@ -19,7 +19,7 @@ export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,7 +29,7 @@ export function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const { data: tokens } = await api.post('/auth/login', { email, password })
+      const { data: tokens } = await api.post('/auth/login', { username, password })
       const { data: user } = await api.get('/auth/me', {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
       })
@@ -80,12 +80,13 @@ export function LoginPage() {
             <p className="mt-2 text-slate-500">{t('login_subtitle')}</p>
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <Input
-                label={t('email')}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                label={t('username')}
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username"
+                placeholder="demo_admin"
               />
               <Input
                 label={t('password')}

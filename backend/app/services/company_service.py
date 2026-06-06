@@ -96,7 +96,9 @@ class CompanyService:
             await ModuleService.set_company_modules(db, company, ModuleService.defaults_for_plan(plan.code))
 
         if data.admin_email and data.admin_password:
+            admin_username = data.admin_email.split("@")[0].lower().replace(".", "_")
             admin = User(
+                username=admin_username,
                 email=data.admin_email,
                 password_hash=get_password_hash(data.admin_password),
                 full_name_ar=data.admin_name_ar or data.name_ar,

@@ -40,6 +40,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     company_id: Mapped[Optional[int]] = mapped_column(ForeignKey("companies.id"), index=True)
     branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name_ar: Mapped[str] = mapped_column(String(255), nullable=False)

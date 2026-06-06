@@ -38,6 +38,28 @@ async def list_accounts(
     ]
 
 
+@router.delete("/accounts/{account_id}")
+async def delete_account(
+    account_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    result = await db.execute(
+        select(ChartOfAccount).where(
+            ChartOfAccount.id == account_id,
+            ChartOfAccount.company_id == current_user.company_id,
+        )
+    )
+    account = result.scalar_one_or_none()
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    await db.delete(account)
+    await db.flush()
+    return {"message": "Account deleted", "success": True}
+
+
 @router.post("/accounts")
 async def create_account(
     data: AccountCreate,

@@ -2,18 +2,18 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { LayoutGrid, List, Plus, CheckCircle, FileText, CreditCard } from 'lucide-react'
+import { Plus, CheckCircle, FileText, CreditCard } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
-import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
 import { UserFormModal } from '@/components/forms/UserFormModal'
 import {
-  ProjectFormModal, UnitFormModal, ReservationFormModal, ContractFormModal,
+  ReservationFormModal, ContractFormModal,
   PaymentFormModal, BrokerFormModal, WarehouseFormModal, WarehouseItemFormModal,
   VendorFormModal, ConstructionPhaseFormModal,
+  MaintenanceFormModal, TicketFormModal,
 } from '@/components/forms/ModuleFormModals'
 import { cn } from '@/lib/utils'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
@@ -36,63 +36,6 @@ function useCrudModal() {
   const openEdit = (row: Record<string, unknown>) => { setEditRow(row); setOpen(true) }
   const close = () => { setOpen(false); setEditRow(null) }
   return { open, editRow, openCreate, openEdit, close }
-}
-
-export function ProjectsPage() {
-  const { t } = useTranslation()
-  const [view, setView] = useState<'list' | 'board'>('board')
-  const modal = useCrudModal()
-  const [unitOpen, setUnitOpen] = useState(false)
-  const [reserveUnitId, setReserveUnitId] = useState<number | undefined>()
-  const [reservationOpen, setReservationOpen] = useState(false)
-  const deleteProject = useDeleteEntity('/projects', ['projects'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('projects', '/projects')
-
-  return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900">{t('projects')}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_project')}</Button>
-          <Button variant="secondary" onClick={() => setUnitOpen(true)}><Plus className="me-2 h-4 w-4" />{t('add_unit')}</Button>
-          <div className="flex rounded-lg border border-slate-200 bg-white p-1">
-            <button onClick={() => setView('board')} className={cn('flex items-center gap-1 rounded px-3 py-1.5 text-sm', view === 'board' && 'bg-primary-100 text-primary-700')}>
-              <LayoutGrid className="h-4 w-4" /> {t('units_board')}
-            </button>
-            <button onClick={() => setView('list')} className={cn('flex items-center gap-1 rounded px-3 py-1.5 text-sm', view === 'list' && 'bg-primary-100 text-primary-700')}>
-              <List className="h-4 w-4" /> {t('projects_list')}
-            </button>
-          </div>
-        </div>
-      </div>
-      {view === 'board' ? (
-        <UnitsBoard onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }} />
-      ) : (
-        <DataTable
-          title={t('projects')}
-          loading={isLoading}
-          exportFilename="projects"
-          data={items}
-          columns={[
-            { key: 'id', label: '#' },
-            { key: 'name_ar', label: t('projects') },
-            { key: 'code', label: 'Code' },
-            { key: 'status', label: t('status') },
-            { key: 'total_units', label: t('units') },
-          ]}
-          rowActions={(row) => (
-            <RowActions
-              onEdit={() => modal.openEdit(row)}
-              onDelete={() => confirmDelete(t) && deleteProject.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-            />
-          )}
-        />
-      )}
-      <ProjectFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-      <UnitFormModal open={unitOpen} onClose={() => setUnitOpen(false)} />
-      <ReservationFormModal open={reservationOpen} onClose={() => { setReservationOpen(false); setReserveUnitId(undefined) }} preselectedUnitId={reserveUnitId} />
-    </div>
-  )
 }
 
 export function ReservationsPage() {
@@ -350,6 +293,7 @@ export function WarehousePage() {
   const modal = useCrudModal()
   const [itemOpen, setItemOpen] = useState(false)
   const deleteWh = useDeleteEntity('/warehouse', ['warehouse'])
+  const deleteItem = useDeleteEntity('/warehouse/items', ['warehouse-items'])
   const { items: warehouses, isLoading: whLoading, refetch: refetchWh } = useListData<Record<string, unknown>>('warehouse', '/warehouse')
   const { data: inventoryData, isLoading: itemsLoading, refetch: refetchItems } = useModuleList<Record<string, unknown>[]>('warehouse-items', '/warehouse/items')
   const invItems = Array.isArray(inventoryData) ? inventoryData : []
@@ -395,6 +339,9 @@ export function WarehousePage() {
             { key: 'min_stock_level', label: 'Min Stock' },
             { key: 'low_stock', label: 'Alert', render: (row) => row.low_stock ? '⚠️ Low' : 'OK' },
           ]}
+          rowActions={(row) => (
+            <RowActions onDelete={() => confirmDelete(t) && deleteItem.mutate(row.id as number, { onSuccess: () => { refetchItems() } })} />
+          )}
         />
       )}
       <WarehouseFormModal open={modal.open} onClose={() => { modal.close(); refetchWh() }} editRow={modal.editRow} />
@@ -405,46 +352,79 @@ export function WarehousePage() {
 
 export function PropertyPage() {
   const { t } = useTranslation()
-  const { items, isLoading } = useListData<Record<string, unknown>>('maintenance', '/property/maintenance')
+  const modal = useCrudModal()
+  const deleteMaint = useDeleteEntity('/property/maintenance', ['maintenance'])
+  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('maintenance', '/property/maintenance')
   return (
-    <DataTable
-      title={t('property')}
-      loading={isLoading}
-      exportFilename="property"
-      data={items}
-      columns={[
-        { key: 'title', label: 'Request' },
-        { key: 'unit_id', label: t('units') },
-        { key: 'priority', label: 'Priority' },
-        { key: 'status', label: t('status') },
-      ]}
-    />
+    <div>
+      <DataTable
+        title={t('property')}
+        subtitle={t('property_help')}
+        loading={isLoading}
+        exportFilename="property"
+        data={items}
+        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_maintenance')}</Button>}
+        emptyActionLabel={t('add_maintenance')}
+        onEmptyAction={modal.openCreate}
+        columns={[
+          { key: 'title', label: t('request') },
+          { key: 'unit_code', label: t('units') },
+          { key: 'customer_name', label: t('customers') },
+          { key: 'priority', label: 'Priority' },
+          { key: 'status', label: t('status') },
+        ]}
+        rowActions={(row) => (
+          <RowActions
+            onEdit={() => modal.openEdit(row)}
+            onDelete={() => confirmDelete(t) && deleteMaint.mutate(row.id as number, { onSuccess: () => { refetch() } })}
+          />
+        )}
+      />
+      <MaintenanceFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
+    </div>
   )
 }
 
 export function CustomerServicePage() {
   const { t } = useTranslation()
-  const { items, isLoading } = useListData<Record<string, unknown>>('tickets', '/tickets')
+  const modal = useCrudModal()
+  const deleteTicket = useDeleteEntity('/tickets', ['tickets'])
+  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('tickets', '/tickets')
   return (
-    <DataTable
-      title={t('customer_service')}
-      loading={isLoading}
-      exportFilename="tickets"
-      data={items}
-      columns={[
-        { key: 'ticket_number', label: '#' },
-        { key: 'subject', label: 'Subject' },
-        { key: 'category', label: 'Category' },
-        { key: 'priority', label: 'Priority' },
-        { key: 'status', label: t('status') },
-      ]}
-    />
+    <div>
+      <DataTable
+        title={t('customer_service')}
+        subtitle={t('customer_service_help')}
+        loading={isLoading}
+        exportFilename="tickets"
+        data={items}
+        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_ticket')}</Button>}
+        emptyActionLabel={t('add_ticket')}
+        onEmptyAction={modal.openCreate}
+        columns={[
+          { key: 'ticket_number', label: '#' },
+          { key: 'subject', label: 'Subject' },
+          { key: 'customer_name', label: t('customers') },
+          { key: 'category', label: 'Category' },
+          { key: 'priority', label: 'Priority' },
+          { key: 'status', label: t('status') },
+        ]}
+        rowActions={(row) => (
+          <RowActions
+            onEdit={() => modal.openEdit(row)}
+            onDelete={() => confirmDelete(t) && deleteTicket.mutate(row.id as number, { onSuccess: () => { refetch() } })}
+          />
+        )}
+      />
+      <TicketFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
+    </div>
   )
 }
 
 export function CompanyUsersPage() {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const deleteUser = useDeleteEntity('/users', ['company-users'])
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('company-users', '/users')
   const rows = Array.isArray(items) ? items : []
   return (
@@ -455,8 +435,9 @@ export function CompanyUsersPage() {
         exportFilename="users"
         data={rows}
         columns={[
-          { key: 'email', label: t('email') },
+          { key: 'username', label: t('username') },
           { key: 'full_name_ar', label: t('name_ar') },
+          { key: 'email', label: t('email') },
           { key: 'system_role', label: t('role') },
           { key: 'status', label: t('status') },
         ]}
@@ -466,6 +447,11 @@ export function CompanyUsersPage() {
             {t('add_user')}
           </Button>
         }
+        rowActions={(row) => (
+          <RowActions
+            onDelete={() => confirmDelete(t) && deleteUser.mutate(row.id as number, { onSuccess: () => { refetch() } })}
+          />
+        )}
       />
       <UserFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
     </div>

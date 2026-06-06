@@ -694,3 +694,147 @@ export function LeadFormModal({ open, onClose, editRow }: ModalProps) {
     </Modal>
   )
 }
+
+export function MaintenanceFormModal({ open, onClose, editRow }: ModalProps) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const { data: units = [] } = useUnitsLookup()
+  const { data: customers = [] } = useCustomersLookup()
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ unit_id: '', customer_id: '', title: '', description: '', priority: 'medium', status: 'open' })
+
+  useEffect(() => {
+    if (editRow) {
+      setForm({
+        unit_id: String(editRow.unit_id ?? ''),
+        customer_id: String(editRow.customer_id ?? ''),
+        title: String(editRow.title ?? ''),
+        description: String(editRow.description ?? ''),
+        priority: String(editRow.priority ?? 'medium'),
+        status: String(editRow.status ?? 'open'),
+      })
+    } else {
+      setForm({ unit_id: '', customer_id: '', title: '', description: '', priority: 'medium', status: 'open' })
+    }
+  }, [editRow, open])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const payload = {
+        unit_id: Number(form.unit_id),
+        customer_id: form.customer_id ? Number(form.customer_id) : undefined,
+        title: form.title,
+        description: form.description || undefined,
+        priority: form.priority,
+      }
+      if (editRow?.id) {
+        await api.put(`/property/maintenance/${editRow.id}`, { ...payload, status: form.status })
+      } else {
+        await api.post('/property/maintenance', payload)
+      }
+      qc.invalidateQueries({ queryKey: ['maintenance'] })
+      onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={editRow ? t('edit_maintenance') : t('add_maintenance')}>
+      <form onSubmit={submit} className="space-y-4">
+        <SelectField label={t('units')} value={form.unit_id} onChange={(v) => setForm({ ...form, unit_id: v })} required
+          options={units.map((u) => ({ value: String(u.id), label: u.unit_code }))} />
+        <SelectField label={t('customers')} value={form.customer_id} onChange={(v) => setForm({ ...form, customer_id: v })}
+          options={customers.map((c) => ({ value: String(c.id), label: c.full_name_ar }))} />
+        <Input label={t('request')} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        <Input label={t('description')} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <SelectField label="Priority" value={form.priority} onChange={(v) => setForm({ ...form, priority: v })} options={[
+          { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' },
+        ]} />
+        {editRow && (
+          <SelectField label={t('status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={[
+            { value: 'open', label: 'Open' }, { value: 'in_progress', label: 'In Progress' }, { value: 'resolved', label: 'Resolved' },
+          ]} />
+        )}
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" loading={loading}>{t('save')}</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+export function TicketFormModal({ open, onClose, editRow }: ModalProps) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const { data: customers = [] } = useCustomersLookup()
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ customer_id: '', category: 'inquiry', subject: '', description: '', priority: 'medium', status: 'open' })
+
+  useEffect(() => {
+    if (editRow) {
+      setForm({
+        customer_id: String(editRow.customer_id ?? ''),
+        category: String(editRow.category ?? 'inquiry'),
+        subject: String(editRow.subject ?? ''),
+        description: String(editRow.description ?? ''),
+        priority: String(editRow.priority ?? 'medium'),
+        status: String(editRow.status ?? 'open'),
+      })
+    } else {
+      setForm({ customer_id: '', category: 'inquiry', subject: '', description: '', priority: 'medium', status: 'open' })
+    }
+  }, [editRow, open])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const payload = {
+        customer_id: form.customer_id ? Number(form.customer_id) : undefined,
+        category: form.category,
+        subject: form.subject,
+        description: form.description || undefined,
+        priority: form.priority,
+      }
+      if (editRow?.id) {
+        await api.put(`/tickets/${editRow.id}`, { ...payload, status: form.status })
+      } else {
+        await api.post('/tickets', payload)
+      }
+      qc.invalidateQueries({ queryKey: ['tickets'] })
+      onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={editRow ? t('edit_ticket') : t('add_ticket')}>
+      <form onSubmit={submit} className="space-y-4">
+        <SelectField label={t('customers')} value={form.customer_id} onChange={(v) => setForm({ ...form, customer_id: v })}
+          options={customers.map((c) => ({ value: String(c.id), label: c.full_name_ar }))} />
+        <SelectField label="Category" value={form.category} onChange={(v) => setForm({ ...form, category: v })} options={[
+          { value: 'inquiry', label: 'Inquiry' }, { value: 'complaint', label: 'Complaint' }, { value: 'support', label: 'Support' },
+        ]} />
+        <Input label="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
+        <Input label={t('description')} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <SelectField label="Priority" value={form.priority} onChange={(v) => setForm({ ...form, priority: v })} options={[
+          { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' },
+        ]} />
+        {editRow && (
+          <SelectField label={t('status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={[
+            { value: 'open', label: 'Open' }, { value: 'in_progress', label: 'In Progress' }, { value: 'resolved', label: 'Resolved' }, { value: 'closed', label: 'Closed' },
+          ]} />
+        )}
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" loading={loading}>{t('save')}</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}

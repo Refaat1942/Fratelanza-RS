@@ -6,7 +6,7 @@ from app.models.users import SystemRole, UserStatus
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    username: str = Field(min_length=2)
     password: str = Field(min_length=6)
     totp_code: Optional[str] = None
 
@@ -23,6 +23,7 @@ class RefreshTokenRequest(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
+    username: str
     email: str
     full_name_ar: str
     full_name_en: str

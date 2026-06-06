@@ -3,7 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LayoutGrid, List, Plus } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
+import { Target } from 'lucide-react'
 import { RowActions } from '@/components/ui/RowActions'
 import { LeadKanban } from '@/components/crm/LeadKanban'
 import { LeadFormModal } from '@/components/forms/ModuleFormModals'
@@ -38,11 +40,15 @@ export function LeadsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900">{t('leads')}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={openCreate}><Plus className="me-2 h-4 w-4" />{t('add_lead')}</Button>
-          <div className="flex rounded-lg border border-slate-200 bg-white p-1">
+      <PageHeader
+        title={t('leads')}
+        subtitle={t('leads_help')}
+        icon={Target}
+        accentIndex={1}
+        actions={
+          <>
+            <Button onClick={openCreate}><Plus className="me-2 h-4 w-4" />{t('add_lead')}</Button>
+            <div className="flex rounded-lg border border-slate-200 bg-white p-1">
             <button
               onClick={() => setView('kanban')}
               className={cn('flex items-center gap-1 rounded px-3 py-1.5 text-sm', view === 'kanban' && 'bg-primary-100 text-primary-700')}
@@ -55,9 +61,10 @@ export function LeadsPage() {
             >
               <List className="h-4 w-4" /> {t('list_view')}
             </button>
-          </div>
-        </div>
-      </div>
+            </div>
+          </>
+        }
+      />
       {view === 'kanban' ? (
         <LeadKanban onEdit={openEdit} />
       ) : (

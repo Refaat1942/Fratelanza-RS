@@ -9,6 +9,7 @@ const ROLES = ['sales_agent', 'sales_manager', 'collection_officer', 'accountant
 
 interface AdminUser {
   id: number
+  username?: string
   email: string
   full_name_ar: string
   full_name_en: string
@@ -29,6 +30,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
+    username: '',
     email: '',
     full_name_ar: '',
     full_name_en: '',
@@ -39,6 +41,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
   useEffect(() => {
     if (user && open) {
       setForm({
+        username: user.username ?? '',
         email: user.email,
         full_name_ar: user.full_name_ar,
         full_name_en: user.full_name_en,
@@ -54,6 +57,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
     setLoading(true)
     try {
       await api.put(`/users/${user.id}`, {
+        username: form.username.trim().toLowerCase(),
         email: form.email,
         full_name_ar: form.full_name_ar,
         full_name_en: form.full_name_en,
@@ -71,6 +75,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
     <Modal open={open} onClose={onClose} title={t('edit_user')} className="max-w-lg">
       {user && (
         <form onSubmit={submit} className="space-y-4">
+          <Input label={t('username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} required placeholder="demo_admin" />
           <Input label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <Input label={t('name_ar')} value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required />
           <Input label={t('name_en')} value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} required />

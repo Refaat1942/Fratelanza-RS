@@ -66,6 +66,12 @@ async def seed_database() -> None:
                 "updated_at TIMESTAMP DEFAULT NOW())"
             ))
             await db.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100)"
+            ))
+            await db.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username) WHERE username IS NOT NULL"
+            ))
+            await db.execute(text(
                 "CREATE TABLE IF NOT EXISTS payslips ("
                 "id SERIAL PRIMARY KEY, payroll_run_id INTEGER NOT NULL, employee_id INTEGER NOT NULL, "
                 "basic_salary NUMERIC(12,2), allowances NUMERIC(12,2), deductions NUMERIC(12,2), "
@@ -128,11 +134,28 @@ async def seed_database() -> None:
             if not existing:
                 db.add(SystemSetting(key=key, value=value, description_ar=desc_ar, description_en=desc_en))
 
+        # Backfill usernames for existing users
+        all_users = (await db.execute(select(User))).scalars().all()
+        seen_usernames: set[str] = set()
+        for u in all_users:
+            if not getattr(u, "username", None):
+                base = (u.email.split("@")[0] if u.email else f"user{u.id}").lower().replace(".", "_")
+                candidate = base
+                n = 1
+                while candidate in seen_usernames:
+                    candidate = f"{base}{n}"
+                    n += 1
+                u.username = candidate
+                seen_usernames.add(candidate)
+            else:
+                seen_usernames.add(u.username)
+
         # Super Admin — create only if missing (do not overwrite password on restart)
         result = await db.execute(select(User).where(User.is_super_admin == True))
         super_admin = result.scalar_one_or_none()
         if not super_admin:
             super_admin = User(
+                username="superadmin",
                 email=settings.SUPER_ADMIN_EMAIL,
                 password_hash=get_password_hash(settings.SUPER_ADMIN_PASSWORD),
                 full_name_ar="مدير النظام",
@@ -208,6 +231,7 @@ async def seed_database() -> None:
         demo_admin = demo_result.scalar_one_or_none()
         if not demo_admin:
             demo_admin = User(
+                username="demo_admin",
                 email=demo_email,
                 password_hash=get_password_hash(demo_password),
                 full_name_ar="مدير الشركة",
@@ -220,6 +244,8 @@ async def seed_database() -> None:
         else:
             demo_admin.status = UserStatus.ACTIVE
             demo_admin.is_deleted = False
+            if not demo_admin.username:
+                demo_admin.username = "demo_admin"
             if company and not demo_admin.company_id:
                 demo_admin.company_id = company.id
 
@@ -321,7 +347,7 @@ async def seed_database() -> None:
                         )
                     )
 
-            from app.models.hr import Employee, Attendance, LeaveRequest
+            from app.models.hr import Employee, Attendance, LeaveRequest, PayrollRun, Payslip
             from app.models.crm import CustomerReminder, ReminderType
             from app.models.finance import BankAccount, JournalEntry, JournalLine
             from app.models.sales import Contract, ContractStatus, Payment, PaymentPlan, Installment, InstallmentStatus, PaymentPlanType
@@ -502,6 +528,108 @@ async def seed_database() -> None:
                         actual_cost=Decimal("400000"),
                     )
                 )
+
+            from app.models.property import MaintenanceRequest
+            from app.models.customer_service import Ticket
+
+            unit3_r = await db.execute(
+                select(Unit).join(Floor).join(Building).where(
+                    Building.project_id == project.id, Unit.unit_code == "A1-03"
+                )
+            )
+            unit3 = unit3_r.scalar_one_or_none()
+            if unit3 and customer and not (
+                await db.execute(select(MaintenanceRequest).where(MaintenanceRequest.company_id == company.id).limit(1))
+            ).scalar_one_or_none():
+                db.add(
+                    MaintenanceRequest(
+                        company_id=company.id,
+                        unit_id=unit3.id,
+                        customer_id=customer.id,
+                        title="AC not cooling — Unit A1-03",
+                        description="Customer reported AC issue in master bedroom",
+                        priority="high",
+                        status="open",
+                    )
+                )
+                db.add(
+                    MaintenanceRequest(
+                        company_id=company.id,
+                        unit_id=unit3.id,
+                        customer_id=customer.id,
+                        title="Plumbing check — Unit A1-03",
+                        description="Routine inspection before handover",
+                        priority="low",
+                        status="in_progress",
+                    )
+                )
+
+            if customer and not (
+                await db.execute(select(Ticket).where(Ticket.company_id == company.id).limit(1))
+            ).scalar_one_or_none():
+                db.add(
+                    Ticket(
+                        company_id=company.id,
+                        ticket_number="TKT-DEMO-001",
+                        category="complaint",
+                        subject="Delay in unit delivery timeline",
+                        description="Customer asking for updated delivery schedule",
+                        customer_id=customer.id,
+                        priority="medium",
+                        status="open",
+                    )
+                )
+                db.add(
+                    Ticket(
+                        company_id=company.id,
+                        ticket_number="TKT-DEMO-002",
+                        category="inquiry",
+                        subject="Payment plan modification request",
+                        description="Request to adjust installment dates",
+                        customer_id=customer.id,
+                        priority="high",
+                        status="in_progress",
+                    )
+                )
+
+            payroll_emps = (
+                await db.execute(select(Employee).where(Employee.company_id == company.id, Employee.is_active == True))
+            ).scalars().all()
+            if payroll_emps and not (
+                await db.execute(select(PayrollRun).where(PayrollRun.company_id == company.id).limit(1))
+            ).scalar_one_or_none():
+                month = date.today().strftime("%Y-%m")
+                run = PayrollRun(
+                    company_id=company.id,
+                    period_month=month,
+                    status="processed",
+                    created_by_id=demo_admin.id if demo_admin else None,
+                )
+                db.add(run)
+                await db.flush()
+                tg = td = tn = Decimal("0")
+                for emp in payroll_emps:
+                    basic = Decimal(str(emp.salary or 0))
+                    social = (basic * Decimal("0.11")).quantize(Decimal("0.01"))
+                    net = basic - social
+                    tg += basic
+                    td += social
+                    tn += net
+                    db.add(
+                        Payslip(
+                            payroll_run_id=run.id,
+                            employee_id=emp.id,
+                            basic_salary=basic,
+                            allowances=Decimal("0"),
+                            social_insurance=social,
+                            deductions=social,
+                            net_salary=net,
+                            status="processed",
+                        )
+                    )
+                run.total_gross = tg
+                run.total_deductions = td
+                run.total_net = tn
 
             unit2_r = await db.execute(
                 select(Unit).join(Floor).join(Building).where(
