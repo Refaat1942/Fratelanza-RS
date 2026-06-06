@@ -112,9 +112,9 @@ export function SortableTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
+              <tr className="table-head-gradient">
                 {columns.map((col) => (
-                  <th key={col.key} className="pb-3 text-start font-medium">
+                  <th key={col.key} className="pb-3 text-start">
                     {col.sortable !== false ? (
                       <button
                         onClick={() => toggleSort(col.key)}

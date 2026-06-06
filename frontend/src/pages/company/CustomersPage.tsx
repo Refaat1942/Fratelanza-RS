@@ -72,7 +72,7 @@ export function CustomersPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="table-head-gradient border-b border-slate-200 text-slate-600">
+              <tr className="table-head-gradient">
                 <th className="pb-3 text-start">#</th>
                 <th className="pb-3 text-start">{t('customers')}</th>
                 <th className="pb-3 text-start">Mobile</th>

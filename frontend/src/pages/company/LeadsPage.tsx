@@ -49,7 +49,7 @@ export function LeadsPage() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
+                <tr className="table-head-gradient">
                   <th className="pb-3 text-start">#</th>
                   <th className="pb-3 text-start">Name</th>
                   <th className="pb-3 text-start">Mobile</th>

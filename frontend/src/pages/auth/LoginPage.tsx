@@ -73,7 +73,7 @@ export function LoginPage() {
         <div className="mx-auto w-full max-w-md animate-fade-in-up">
           <div className="mb-8 lg:hidden">
             <Building2 className="mb-4 h-12 w-12 text-primary-600" />
-            <h1 className="text-2xl font-bold text-gradient">{t('platform_full')}</h1>
+            <h1 className="text-2xl font-bold text-primary-900">{t('platform_full')}</h1>
           </div>
           <div className="card card-gradient-border">
             <h2 className="text-2xl font-bold text-slate-900">{t('login')}</h2>

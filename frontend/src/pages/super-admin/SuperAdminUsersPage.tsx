@@ -118,16 +118,16 @@ export function SuperAdminUsersPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1100px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500">
-                  <th className="px-2 py-3 text-start font-medium">{t('user')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('role')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('company')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('subscription_plan')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('payment_terms')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('next_billing_date')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('payment_status')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('status')}</th>
-                  <th className="px-2 py-3 text-start font-medium">{t('actions')}</th>
+                <tr className="table-head-gradient">
+                  <th className="px-2 py-3 text-start">{t('user')}</th>
+                  <th className="px-2 py-3 text-start">{t('role')}</th>
+                  <th className="px-2 py-3 text-start">{t('company')}</th>
+                  <th className="px-2 py-3 text-start">{t('subscription_plan')}</th>
+                  <th className="px-2 py-3 text-start">{t('payment_terms')}</th>
+                  <th className="px-2 py-3 text-start">{t('next_billing_date')}</th>
+                  <th className="px-2 py-3 text-start">{t('payment_status')}</th>
+                  <th className="px-2 py-3 text-start">{t('status')}</th>
+                  <th className="px-2 py-3 text-start">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>

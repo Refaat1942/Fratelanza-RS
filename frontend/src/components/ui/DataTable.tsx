@@ -117,15 +117,15 @@ export function DataTable({ title, columns, data, loading, actions, searchable =
           <div className="overflow-x-auto rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="table-head-gradient border-b border-slate-200 text-slate-600">
+                <tr className="table-head-gradient border-b border-slate-200">
                   {columns.map((col) => (
-                    <th key={col.key} className="px-3 py-3 text-start font-semibold">
+                    <th key={col.key} className="px-3 py-3 text-start">
                       {col.sortable !== false ? (
                         <button
                           onClick={() => toggleSort(col.key)}
                           className={cn(
-                            'inline-flex items-center gap-1 transition-colors hover:text-primary-700',
-                            sortKey === col.key && 'text-primary-700',
+                            'inline-flex items-center gap-1 transition-colors hover:text-primary-800',
+                            sortKey === col.key && 'text-primary-800',
                           )}
                         >
                           {col.label}

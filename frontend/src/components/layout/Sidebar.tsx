@@ -91,7 +91,7 @@ export function Sidebar() {
           )}
           <div className="min-w-0">
             <h1 className="truncate text-lg font-bold text-white">{displayName}</h1>
-            <p className="text-xs text-primary-200/80">{user?.is_super_admin ? t('super_admin') : t('company_admin')}</p>
+            <p className="text-xs font-medium text-primary-100">{user?.is_super_admin ? t('super_admin') : t('company_admin')}</p>
           </div>
         </div>
       </div>
