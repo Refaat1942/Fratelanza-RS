@@ -8,7 +8,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/opt/fratelanza}"
 APP_PORT="${APP_PORT:-9000}"
 REPO_URL="${REPO_URL:-https://github.com/Refaat1942/Fratelanza-RS.git}"
-BRANCH="${BRANCH:-cursor/hostinger-deploy-all-phases-8cb9}"
+BRANCH="${BRANCH:-main}"
 
 echo "============================================"
 echo " FRATELANZA — Hostinger Deployment"

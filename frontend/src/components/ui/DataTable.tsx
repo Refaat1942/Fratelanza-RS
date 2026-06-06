@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Card } from './Card'
 import { PageHeader } from './PageHeader'
 import { LoadingState } from './LoadingState'
+import { EmptyState } from './EmptyState'
 import { useTranslation } from 'react-i18next'
 import { ArrowDown, ArrowUp, ArrowUpDown, Download, Search, Table2 } from 'lucide-react'
 import { Button } from './Button'
@@ -27,6 +28,8 @@ interface DataTableProps {
   searchable?: boolean
   exportFilename?: string
   subtitle?: string
+  emptyActionLabel?: string
+  onEmptyAction?: () => void
 }
 
 function StatusCell({ value }: { value: unknown }) {
@@ -40,7 +43,7 @@ function StatusCell({ value }: { value: unknown }) {
   return <span className={cls}>{String(value)}</span>
 }
 
-export function DataTable({ title, columns, data, loading, actions, rowActions, searchable = true, exportFilename, subtitle }: DataTableProps) {
+export function DataTable({ title, columns, data, loading, actions, rowActions, searchable = true, exportFilename, subtitle, emptyActionLabel, onEmptyAction }: DataTableProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const [search, setSearch] = useState('')
@@ -113,7 +116,12 @@ export function DataTable({ title, columns, data, loading, actions, rowActions, 
         {loading ? (
           <LoadingState />
         ) : filtered.length === 0 ? (
-          <p className="py-8 text-center text-slate-500">{t('no_data')}</p>
+          <EmptyState
+            title={t('no_data')}
+            description={t('no_data_help')}
+            actionLabel={emptyActionLabel ?? (onEmptyAction ? t('add') : undefined)}
+            onAction={onEmptyAction}
+          />
         ) : (
           <div className="overflow-x-auto rounded-lg">
             <table className="w-full text-sm">

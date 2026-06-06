@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, Wallet, Home, Target, BarChart3, LayoutDashboard } from 'lucide-react'
+import { DollarSign, Wallet, Home, Target, BarChart3, LayoutDashboard, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
@@ -17,6 +17,14 @@ export function CompanyDashboard() {
   const { t, i18n } = useTranslation()
   const { formatEGP, formatInteger } = useFormatNumber()
   const navigate = useNavigate()
+  const qc = useQueryClient()
+  const reseed = useMutation({
+    mutationFn: async () => api.post('/dashboard/reseed-demo'),
+    onSuccess: () => {
+      qc.invalidateQueries()
+      alert(t('demo_data_loaded'))
+    },
+  })
   const { data, isLoading } = useQuery({
     queryKey: ['company-dashboard'],
     queryFn: async () => {
@@ -41,10 +49,16 @@ export function CompanyDashboard() {
         icon={LayoutDashboard}
         accentIndex={0}
         actions={
-          <Button variant="secondary" onClick={() => navigate('/reports')}>
-            <BarChart3 className="me-2 h-4 w-4" />
-            {t('view_reports')}
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => reseed.mutate()} loading={reseed.isPending}>
+              <RefreshCw className="me-2 h-4 w-4" />
+              {t('load_demo_data')}
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/reports')}>
+              <BarChart3 className="me-2 h-4 w-4" />
+              {t('view_reports')}
+            </Button>
+          </>
         }
       />
       <div className="grid-stagger mb-6 grid gap-6 md:grid-cols-2 lg:grid-cols-4">

@@ -357,5 +357,8 @@
   "floor": "Floor",
   "price": "Price",
   "quantity": "Quantity",
-  "name": "Name"
+  "name": "Name",
+  "no_data_help": "No records yet. Use the Add button above or click below to create your first entry.",
+  "load_demo_data": "Load Demo Data",
+  "demo_data_loaded": "Demo data loaded. Refresh the page if tables are still empty."
 }

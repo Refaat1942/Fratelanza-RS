@@ -116,6 +116,8 @@ export function ReservationsPage() {
         exportFilename="reservations"
         data={items}
         actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_reservation')}</Button>}
+        emptyActionLabel={t('add_reservation')}
+        onEmptyAction={modal.openCreate}
         columns={[
           { key: 'reservation_number', label: '#' },
           { key: 'customer_name', label: t('customers'), render: (row) => <EntityLink to="/customers" label={String(row.customer_name ?? row.customer_id)} /> },
@@ -167,6 +169,8 @@ export function ContractsPage() {
         exportFilename="contracts"
         data={items}
         actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_contract')}</Button>}
+        emptyActionLabel={t('add_contract')}
+        onEmptyAction={modal.openCreate}
         columns={[
           { key: 'contract_number', label: '#' },
           { key: 'customer_name', label: t('customers'), render: (row) => <EntityLink to="/customers" label={String(row.customer_name ?? row.customer_id)} /> },
@@ -249,6 +253,8 @@ export function BrokersPage() {
         exportFilename="brokers"
         data={items}
         actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_broker')}</Button>}
+        emptyActionLabel={t('add_broker')}
+        onEmptyAction={modal.openCreate}
         columns={[
           { key: 'id', label: '#' },
           { key: 'name', label: t('brokers'), render: (row) => String(i18n.language === 'ar' ? row.name_ar : row.name_en) },
@@ -283,6 +289,8 @@ export function ConstructionPage() {
         exportFilename="construction"
         data={items}
         actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_phase')}</Button>}
+        emptyActionLabel={t('add_phase')}
+        onEmptyAction={modal.openCreate}
         columns={[
           { key: 'project_name', label: t('projects'), render: (row) => <EntityLink to="/projects" label={String(row.project_name)} /> },
           { key: 'name_ar', label: t('construction') },
@@ -316,6 +324,8 @@ export function ProcurementPage() {
         exportFilename="procurement"
         data={items}
         actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_vendor')}</Button>}
+        emptyActionLabel={t('add_vendor')}
+        onEmptyAction={modal.openCreate}
         columns={[
           { key: 'name_ar', label: 'Vendor' },
           { key: 'contact_person', label: 'Contact' },
@@ -357,6 +367,8 @@ export function WarehousePage() {
           exportFilename="warehouse"
           data={warehouses}
           actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_warehouse')}</Button>}
+          emptyActionLabel={t('add_warehouse')}
+          onEmptyAction={modal.openCreate}
           columns={[
             { key: 'code', label: 'Code' },
             { key: 'name_ar', label: t('warehouse') },

@@ -14,13 +14,13 @@ export function RowActions({ onEdit, onDelete, extra }: RowActionsProps) {
     <div className="flex items-center gap-1">
       {extra}
       {onEdit && (
-        <Button variant="ghost" onClick={onEdit} title={t('edit')} className="!px-2 !py-1.5">
-          <Pencil className="h-4 w-4" />
+        <Button variant="secondary" onClick={onEdit} title={t('edit')} className="!px-2 !py-1.5 text-xs">
+          <Pencil className="h-3.5 w-3.5 me-1" />{t('edit')}
         </Button>
       )}
       {onDelete && (
-        <Button variant="ghost" onClick={onDelete} title={t('delete')} className="!px-2 !py-1.5 text-red-600 hover:text-red-700">
-          <Trash2 className="h-4 w-4" />
+        <Button variant="secondary" onClick={onDelete} title={t('delete')} className="!px-2 !py-1.5 text-xs text-red-600 hover:text-red-700">
+          <Trash2 className="h-3.5 w-3.5 me-1" />{t('delete')}
         </Button>
       )}
     </div>
