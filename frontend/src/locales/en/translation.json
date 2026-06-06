@@ -287,5 +287,7 @@
   "password_changed": "Password changed successfully",
   "wrong_current_password": "Current password is incorrect",
   "users_admin_help": "Edit user details, reset passwords, or suspend accounts. Super admin accounts cannot be modified here.",
-  "company_id": "Company ID"
+  "company_id": "Company ID",
+  "company": "Company",
+  "platform": "Platform (no company)"
 }

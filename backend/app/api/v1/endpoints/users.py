@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_company_user, get_super_admin
 from app.core.database import get_db
 from app.core.security import get_password_hash
+from app.models.tenant import Company
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import UserResponse
 from app.schemas.common import PaginatedResponse
@@ -14,6 +15,36 @@ from app.schemas.user import AdminPasswordReset, UserCreate, UserUpdate
 from app.services.auth_service import AuthService
 
 router = APIRouter()
+
+
+def _user_with_company(user: User, company: Company | None = None) -> UserResponse:
+    resp = UserResponse.model_validate(user)
+    if company:
+        return resp.model_copy(
+            update={
+                "company_name_ar": company.name_ar,
+                "company_name_en": company.name_en,
+                "company_code": company.code,
+            }
+        )
+    return resp
+
+
+async def _enrich_users(db: AsyncSession, users: list[User]) -> list[UserResponse]:
+    company_ids = {u.company_id for u in users if u.company_id}
+    companies: dict[int, Company] = {}
+    if company_ids:
+        result = await db.execute(select(Company).where(Company.id.in_(company_ids)))
+        companies = {c.id: c for c in result.scalars().all()}
+    return [_user_with_company(u, companies.get(u.company_id) if u.company_id else None) for u in users]
+
+
+async def _enrich_user(db: AsyncSession, user: User) -> UserResponse:
+    company = None
+    if user.company_id:
+        result = await db.execute(select(Company).where(Company.id == user.company_id))
+        company = result.scalar_one_or_none()
+    return _user_with_company(user, company)
 
 
 @router.post("", response_model=UserResponse)
@@ -59,7 +90,7 @@ async def list_users(
     users = result.scalars().all()
     pages = (total + page_size - 1) // page_size
     return PaginatedResponse(
-        items=[UserResponse.model_validate(u) for u in users],
+        items=await _enrich_users(db, users),
         total=total,
         page=page,
         page_size=page_size,
@@ -113,7 +144,7 @@ async def get_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if not current_user.is_super_admin and user.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    return UserResponse.model_validate(user)
+    return await _enrich_user(db, user)
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -136,7 +167,7 @@ async def update_user(
             continue
         setattr(user, field, value)
     await db.flush()
-    return UserResponse.model_validate(user)
+    return await _enrich_user(db, user)
 
 
 @router.post("/{user_id}/reset-password")

@@ -30,6 +30,9 @@ class UserResponse(BaseModel):
     status: UserStatus
     is_super_admin: bool
     company_id: Optional[int] = None
+    company_name_ar: Optional[str] = None
+    company_name_en: Optional[str] = None
+    company_code: Optional[str] = None
     branch_id: Optional[int] = None
     preferred_language: str = "ar"
     is_2fa_enabled: bool = False

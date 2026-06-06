@@ -17,6 +17,9 @@ interface AdminUser {
   system_role: string
   status: string
   company_id?: number
+  company_name_ar?: string
+  company_name_en?: string
+  company_code?: string
   is_super_admin: boolean
 }
 
@@ -60,7 +63,7 @@ export function SuperAdminUsersPage() {
                   <th className="pb-3 text-start font-medium">{t('email')}</th>
                   <th className="pb-3 text-start font-medium">{t('name_ar')}</th>
                   <th className="pb-3 text-start font-medium">{t('role')}</th>
-                  <th className="pb-3 text-start font-medium">{t('company_id')}</th>
+                  <th className="pb-3 text-start font-medium">{t('company')}</th>
                   <th className="pb-3 text-start font-medium">{t('status')}</th>
                   <th className="pb-3 text-start font-medium">{t('actions')}</th>
                 </tr>
@@ -76,7 +79,22 @@ export function SuperAdminUsersPage() {
                     <td className="py-3">
                       {user.is_super_admin ? t('super_admin') : user.system_role.replace(/_/g, ' ')}
                     </td>
-                    <td className="py-3 text-slate-500">{user.company_id ?? '-'}</td>
+                    <td className="py-3">
+                      {user.is_super_admin || !user.company_id ? (
+                        <span className="text-slate-500">{t('platform')}</span>
+                      ) : (
+                        <div>
+                          <p className="font-medium text-slate-800">
+                            {i18n.language === 'ar'
+                              ? user.company_name_ar || user.company_name_en
+                              : user.company_name_en || user.company_name_ar}
+                          </p>
+                          {user.company_code && (
+                            <p className="text-xs text-slate-500">{user.company_code}</p>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                         user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
