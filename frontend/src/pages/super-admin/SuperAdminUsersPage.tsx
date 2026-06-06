@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { Pencil, KeyRound } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { UserEditModal } from '@/components/forms/UserEditModal'
+import { ResetPasswordModal } from '@/components/forms/ResetPasswordModal'
 import api from '@/lib/api'
 import type { Paginated } from '@/types'
 
@@ -19,6 +23,9 @@ interface AdminUser {
 export function SuperAdminUsersPage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
+  const [editUser, setEditUser] = useState<AdminUser | null>(null)
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null)
+
   const { data, isLoading } = useQuery({
     queryKey: ['super-admin-users'],
     queryFn: async () => {
@@ -37,7 +44,8 @@ export function SuperAdminUsersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('users')}</h1>
+      <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('users')}</h1>
+      <p className="mb-6 text-sm text-slate-600">{t('users_admin_help')}</p>
       <Card>
         {isLoading ? (
           <p className="text-slate-500">{t('loading')}</p>
@@ -52,6 +60,7 @@ export function SuperAdminUsersPage() {
                   <th className="pb-3 text-start font-medium">{t('email')}</th>
                   <th className="pb-3 text-start font-medium">{t('name_ar')}</th>
                   <th className="pb-3 text-start font-medium">{t('role')}</th>
+                  <th className="pb-3 text-start font-medium">{t('company_id')}</th>
                   <th className="pb-3 text-start font-medium">{t('status')}</th>
                   <th className="pb-3 text-start font-medium">{t('actions')}</th>
                 </tr>
@@ -67,6 +76,7 @@ export function SuperAdminUsersPage() {
                     <td className="py-3">
                       {user.is_super_admin ? t('super_admin') : user.system_role.replace(/_/g, ' ')}
                     </td>
+                    <td className="py-3 text-slate-500">{user.company_id ?? '-'}</td>
                     <td className="py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                         user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
@@ -76,13 +86,21 @@ export function SuperAdminUsersPage() {
                     </td>
                     <td className="py-3">
                       {!user.is_super_admin && (
-                        <Button
-                          variant="secondary"
-                          loading={toggleStatus.isPending}
-                          onClick={() => toggleStatus.mutate({ id: user.id, status: user.status })}
-                        >
-                          {user.status === 'active' ? t('suspend') : t('activate')}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="secondary" onClick={() => setEditUser(user)}>
+                            <Pencil className="me-1 h-4 w-4" />{t('edit')}
+                          </Button>
+                          <Button variant="secondary" onClick={() => setResetUser(user)}>
+                            <KeyRound className="me-1 h-4 w-4" />{t('reset_password')}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            loading={toggleStatus.isPending}
+                            onClick={() => toggleStatus.mutate({ id: user.id, status: user.status })}
+                          >
+                            {user.status === 'active' ? t('suspend') : t('activate')}
+                          </Button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -92,6 +110,18 @@ export function SuperAdminUsersPage() {
           </div>
         )}
       </Card>
+      <UserEditModal
+        open={!!editUser}
+        user={editUser}
+        onClose={() => setEditUser(null)}
+        onSaved={() => qc.invalidateQueries({ queryKey: ['super-admin-users'] })}
+      />
+      <ResetPasswordModal
+        open={!!resetUser}
+        userId={resetUser?.id ?? null}
+        userEmail={resetUser?.email ?? ''}
+        onClose={() => setResetUser(null)}
+      />
     </div>
   )
 }

@@ -1,12 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, log_audit
 from app.core.database import get_db
 from app.models.users import User
-from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse, UserResponse
+from app.schemas.auth import LoginRequest, PasswordChangeRequest, RefreshTokenRequest, TokenResponse, UserResponse
+from app.core.security import get_password_hash, verify_password
 from app.services.auth_service import AuthService
 
 router = APIRouter()
@@ -34,6 +35,19 @@ async def refresh_token(
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: Annotated[User, Depends(get_current_user)]):
     return AuthService.to_user_response(current_user)
+
+
+@router.post("/change-password")
+async def change_password(
+    data: PasswordChangeRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    current_user.password_hash = get_password_hash(data.new_password)
+    await db.flush()
+    return {"message": "Password changed successfully", "success": True}
 
 
 @router.post("/logout")

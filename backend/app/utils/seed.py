@@ -94,6 +94,19 @@ async def seed_database() -> None:
             ]
             db.add_all(plans)
 
+        from app.models.system import SystemSetting
+        settings_seed = [
+            ("platform_name", "Fratelanza Real Estate", "اسم المنصة", "Platform display name"),
+            ("support_email", "support@fratelanza.com", "بريد الدعم", "Support contact email"),
+            ("default_currency", "EGP", "العملة الافتراضية", "Default currency for new companies"),
+            ("trial_days", "14", "أيام التجربة", "Trial period in days"),
+            ("max_login_attempts", "5", "محاولات الدخول", "Max failed login attempts"),
+        ]
+        for key, value, desc_ar, desc_en in settings_seed:
+            existing = (await db.execute(select(SystemSetting).where(SystemSetting.key == key))).scalar_one_or_none()
+            if not existing:
+                db.add(SystemSetting(key=key, value=value, description_ar=desc_ar, description_en=desc_en))
+
         # Super Admin — create only if missing (do not overwrite password on restart)
         result = await db.execute(select(User).where(User.is_super_admin == True))
         super_admin = result.scalar_one_or_none()

@@ -10,7 +10,7 @@ from app.core.security import get_password_hash
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import UserResponse
 from app.schemas.common import PaginatedResponse
-from app.schemas.user import UserCreate
+from app.schemas.user import AdminPasswordReset, UserCreate, UserUpdate
 from app.services.auth_service import AuthService
 
 router = APIRouter()
@@ -101,17 +101,59 @@ async def activate_user(
     return {"message": "User activated", "success": True}
 
 
-@router.post("/{user_id}/reset-password")
-async def reset_password(
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
     user_id: int,
-    new_password: str,
     db: Annotated[AsyncSession, Depends(get_db)],
-    _: Annotated[User, Depends(get_super_admin)],
+    current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    user.password_hash = get_password_hash(new_password)
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return UserResponse.model_validate(user)
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    data: UserUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if user.is_super_admin and not current_user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot edit super admin")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        if field == "company_id" and not current_user.is_super_admin:
+            continue
+        setattr(user, field, value)
+    await db.flush()
+    return UserResponse.model_validate(user)
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_password(
+    user_id: int,
+    data: AdminPasswordReset,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if user.is_super_admin and not current_user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot reset super admin password")
+    user.password_hash = get_password_hash(data.new_password)
     await db.flush()
     return {"message": "Password reset successfully", "success": True}

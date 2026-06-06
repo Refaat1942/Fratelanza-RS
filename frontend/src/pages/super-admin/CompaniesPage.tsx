@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, SlidersHorizontal } from 'lucide-react'
+import { Building2, SlidersHorizontal, Pencil } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CompanyFormModal } from '@/components/forms/CompanyFormModal'
+import { CompanyEditModal } from '@/components/forms/CompanyEditModal'
 import { CompanyModulesModal } from '@/components/forms/CompanyModulesModal'
 import api from '@/lib/api'
 import type { Company, Paginated } from '@/types'
@@ -13,6 +14,7 @@ export function CompaniesPage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [editCompany, setEditCompany] = useState<Company | null>(null)
   const [modulesCompany, setModulesCompany] = useState<Company | null>(null)
   const { data, isLoading } = useQuery({
     queryKey: ['companies'],
@@ -25,6 +27,13 @@ export function CompaniesPage() {
   const suspendCompany = useMutation({
     mutationFn: async (id: number) => {
       await api.post(`/super-admin/companies/${id}/suspend`)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
+  })
+
+  const activateCompany = useMutation({
+    mutationFn: async (id: number) => {
+      await api.post(`/super-admin/companies/${id}/activate`)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
   })
@@ -64,7 +73,9 @@ export function CompaniesPage() {
                     </td>
                     <td className="py-3">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        company.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                        company.status === 'active' || company.status === 'trial'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-red-50 text-red-700'
                       }`}>
                         {company.status}
                       </span>
@@ -72,20 +83,28 @@ export function CompaniesPage() {
                     <td className="py-3 text-slate-500">{company.code}</td>
                     <td className="py-3">
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="secondary"
-                          onClick={() => setModulesCompany(company)}
-                        >
+                        <Button variant="secondary" onClick={() => setEditCompany(company)}>
+                          <Pencil className="me-1 h-4 w-4" />{t('edit')}
+                        </Button>
+                        <Button variant="secondary" onClick={() => setModulesCompany(company)}>
                           <SlidersHorizontal className="me-1 h-4 w-4" />
                           {t('manage_modules')}
                         </Button>
-                        {company.status === 'active' && (
+                        {company.status === 'active' || company.status === 'trial' ? (
                           <Button
                             variant="secondary"
                             loading={suspendCompany.isPending}
                             onClick={() => suspendCompany.mutate(company.id)}
                           >
                             {t('suspend')}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            loading={activateCompany.isPending}
+                            onClick={() => activateCompany.mutate(company.id)}
+                          >
+                            {t('activate')}
                           </Button>
                         )}
                       </div>
@@ -98,6 +117,12 @@ export function CompaniesPage() {
         )}
       </Card>
       <CompanyFormModal open={open} onClose={() => { setOpen(false); qc.invalidateQueries({ queryKey: ['companies'] }) }} />
+      <CompanyEditModal
+        open={!!editCompany}
+        company={editCompany}
+        onClose={() => setEditCompany(null)}
+        onSaved={() => qc.invalidateQueries({ queryKey: ['companies'] })}
+      />
       {modulesCompany && (
         <CompanyModulesModal
           open={!!modulesCompany}

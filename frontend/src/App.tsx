@@ -8,6 +8,8 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { SuperAdminDashboard } from '@/pages/super-admin/SuperAdminDashboard'
 import { CompaniesPage } from '@/pages/super-admin/CompaniesPage'
 import { SuperAdminUsersPage } from '@/pages/super-admin/SuperAdminUsersPage'
+import { SubscriptionPlansPage } from '@/pages/super-admin/SubscriptionPlansPage'
+import { SuperAdminSettingsPage } from '@/pages/super-admin/SuperAdminSettingsPage'
 import { CompanyDashboard } from '@/pages/company/CompanyDashboard'
 import { CustomersPage } from '@/pages/company/CustomersPage'
 import { LeadsPage } from '@/pages/company/LeadsPage'
@@ -21,7 +23,7 @@ import {
   ProjectsPage, ReservationsPage, ContractsPage, CollectionsPage,
   BrokersPage, ConstructionPage, ProcurementPage,
   WarehousePage, PropertyPage, CustomerServicePage, CompanyUsersPage,
-  AuditLogsPage, SubscriptionsPage, SettingsPage,
+  AuditLogsPage,
 } from '@/pages/company/ModulePages'
 
 function ProtectedRoute({ children, superAdminOnly = false }: { children: React.ReactNode; superAdminOnly?: boolean }) {
@@ -41,9 +43,9 @@ function AppRoutes() {
         <Route path="/super-admin" element={<ProtectedRoute superAdminOnly><SuperAdminDashboard /></ProtectedRoute>} />
         <Route path="/super-admin/companies" element={<ProtectedRoute superAdminOnly><CompaniesPage /></ProtectedRoute>} />
         <Route path="/super-admin/users" element={<ProtectedRoute superAdminOnly><SuperAdminUsersPage /></ProtectedRoute>} />
-        <Route path="/super-admin/subscriptions" element={<ProtectedRoute superAdminOnly><SubscriptionsPage /></ProtectedRoute>} />
+        <Route path="/super-admin/subscriptions" element={<ProtectedRoute superAdminOnly><SubscriptionPlansPage /></ProtectedRoute>} />
         <Route path="/super-admin/audit-logs" element={<ProtectedRoute superAdminOnly><AuditLogsPage /></ProtectedRoute>} />
-        <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly><SettingsPage /></ProtectedRoute>} />
+        <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly><SuperAdminSettingsPage /></ProtectedRoute>} />
         <Route path="/super-admin/reports" element={<ProtectedRoute superAdminOnly><ReportsPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ModuleRoute moduleKey="dashboard"><CompanyDashboard /></ModuleRoute>} />
         <Route path="/customers" element={<ModuleRoute moduleKey="customers"><CustomersPage /></ModuleRoute>} />

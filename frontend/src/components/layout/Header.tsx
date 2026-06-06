@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { useState } from 'react'
+import { KeyRound, LogOut } from 'lucide-react'
+import { ChangePasswordModal } from '@/components/forms/ChangePasswordModal'
 import { ReminderBell } from './ReminderBell'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
@@ -14,6 +16,7 @@ export function Header() {
   const { user, logout } = useAuthStore()
   const clearCompany = useCompanyStore((s) => s.clear)
   const clearModules = useModulesStore((s) => s.clear)
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   const handleLogout = () => {
     clearCompany()
@@ -35,11 +38,15 @@ export function Header() {
             <p className="text-sm font-medium text-slate-900">{displayName}</p>
             <p className="text-xs text-slate-500">{user?.email}</p>
           </div>
+          <button onClick={() => setPasswordOpen(true)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title={t('change_password')}>
+            <KeyRound className="h-5 w-5" />
+          </button>
           <button onClick={handleLogout} className="rounded-lg p-2 text-slate-600 hover:bg-red-50 hover:text-red-600" title={t('logout')}>
             <LogOut className="h-5 w-5" />
           </button>
         </div>
       </div>
+      <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </header>
   )
 }

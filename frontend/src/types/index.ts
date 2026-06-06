@@ -42,6 +42,9 @@ export interface Company {
   code: string
   status: string
   country: string
+  email?: string
+  phone?: string
+  city?: string
 }
 
 export interface Customer {

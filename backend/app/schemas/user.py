@@ -15,6 +15,20 @@ class UserCreate(BaseModel):
     phone: Optional[str] = None
 
 
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name_ar: Optional[str] = None
+    full_name_en: Optional[str] = None
+    phone: Optional[str] = None
+    system_role: Optional[SystemRole] = None
+    company_id: Optional[int] = None
+    preferred_language: Optional[str] = None
+
+
+class AdminPasswordReset(BaseModel):
+    new_password: str = Field(min_length=6)
+
+
 class ClientOnboard(BaseModel):
     full_name_ar: str = Field(min_length=2)
     full_name_en: str = Field(min_length=2)

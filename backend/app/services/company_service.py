@@ -97,3 +97,10 @@ class CompanyService:
         company.status = CompanyStatus.SUSPENDED
         await db.flush()
         return company
+
+    @staticmethod
+    async def activate_company(db: AsyncSession, company_id: int) -> Company:
+        company = await CompanyService.get_company(db, company_id)
+        company.status = CompanyStatus.ACTIVE
+        await db.flush()
+        return company

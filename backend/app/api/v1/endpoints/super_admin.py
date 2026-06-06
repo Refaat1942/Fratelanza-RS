@@ -3,7 +3,8 @@ import subprocess
 from datetime import datetime
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,9 @@ from app.models.tenant import SubscriptionPlan
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
+from app.schemas.subscription import SubscriptionPlanUpdate
 from app.services.company_service import CompanyService
+from app.services.subscription_service import SubscriptionService
 
 router = APIRouter()
 
@@ -69,14 +72,45 @@ async def suspend_company(
     return CompanyResponse.model_validate(company)
 
 
+@router.post("/companies/{company_id}/activate", response_model=CompanyResponse)
+async def activate_company(
+    company_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    company = await CompanyService.activate_company(db, company_id)
+    return CompanyResponse.model_validate(company)
+
+
 @router.get("/subscription-plans")
 async def list_subscription_plans(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(get_super_admin)],
 ):
-    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.is_active == True))
+    result = await db.execute(select(SubscriptionPlan).order_by(SubscriptionPlan.id))
     plans = result.scalars().all()
-    return [{"id": p.id, "name_ar": p.name_ar, "name_en": p.name_en, "code": p.code} for p in plans]
+    return [SubscriptionService.plan_to_dict(p) for p in plans]
+
+
+@router.get("/subscription-plans/{plan_id}")
+async def get_subscription_plan(
+    plan_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    plan = await SubscriptionService.get_plan(db, plan_id)
+    return SubscriptionService.plan_to_dict(plan)
+
+
+@router.put("/subscription-plans/{plan_id}")
+async def update_subscription_plan(
+    plan_id: int,
+    data: SubscriptionPlanUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    plan = await SubscriptionService.update_plan(db, plan_id, data)
+    return SubscriptionService.plan_to_dict(plan)
 
 
 @router.get("/audit-logs")
@@ -111,6 +145,10 @@ async def list_audit_logs(
     }
 
 
+class SettingUpdate(BaseModel):
+    value: str
+
+
 @router.get("/settings")
 async def list_settings(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -118,7 +156,32 @@ async def list_settings(
 ):
     result = await db.execute(select(SystemSetting).order_by(SystemSetting.key))
     settings_list = result.scalars().all()
-    return [{"key": s.key, "value": s.value, "description_ar": s.description_ar} for s in settings_list]
+    return [
+        {
+            "key": s.key,
+            "value": s.value,
+            "value_type": s.value_type,
+            "description_ar": s.description_ar,
+            "description_en": s.description_en,
+        }
+        for s in settings_list
+    ]
+
+
+@router.put("/settings/{setting_key}")
+async def update_setting(
+    setting_key: str,
+    data: SettingUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    result = await db.execute(select(SystemSetting).where(SystemSetting.key == setting_key))
+    setting = result.scalar_one_or_none()
+    if not setting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Setting not found")
+    setting.value = data.value
+    await db.flush()
+    return {"key": setting.key, "value": setting.value, "message": "Setting updated"}
 
 
 @router.post("/backup")
