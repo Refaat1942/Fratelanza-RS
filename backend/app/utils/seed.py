@@ -48,7 +48,7 @@ async def seed_database() -> None:
             ]
             db.add_all(plans)
 
-        # Super Admin — create or sync password from .env
+        # Super Admin — create only if missing (do not overwrite password on restart)
         result = await db.execute(select(User).where(User.is_super_admin == True))
         super_admin = result.scalar_one_or_none()
         if not super_admin:
@@ -63,8 +63,6 @@ async def seed_database() -> None:
                 preferred_language="ar",
             )
             db.add(super_admin)
-        else:
-            super_admin.password_hash = get_password_hash(settings.SUPER_ADMIN_PASSWORD)
 
         # Demo company
         result = await db.execute(select(Company).where(Company.code == "DEMO"))
