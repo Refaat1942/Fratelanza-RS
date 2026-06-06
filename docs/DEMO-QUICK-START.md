@@ -9,11 +9,14 @@
 |---|---|
 | **URL** | Your demo site `/login` |
 | **Username** | `demo_admin` (or `admin@demo.fratelanza.com`) |
-
-## Screenshots guide (bilingual AR + EN)
-
-See **[DEMO-SCREENSHOTS-GUIDE.md](./DEMO-SCREENSHOTS-GUIDE.md)** — 26 annotated screenshots for every company module (no Super Admin).
 | **Password** | `Demo123456` |
+
+## Screenshots download | تحميل لقطات الشاشة
+
+**ZIP (26 PNG + bilingual guides):**  
+https://github.com/Refaat1942/Fratelanza-RS/raw/main/docs/fratelanza-demo-screenshots.zip
+
+Guides: [EN](./DEMO-SCREENSHOTS-GUIDE.md) · [AR](./DEMO-SCREENSHOTS-GUIDE-AR.md)
 
 ---
 
