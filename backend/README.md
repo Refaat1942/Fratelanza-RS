@@ -1,0 +1,3 @@
+# FRATELANZA Backend
+
+FastAPI backend package for FRATELANZA REAL ESTATE PLATFORM.
