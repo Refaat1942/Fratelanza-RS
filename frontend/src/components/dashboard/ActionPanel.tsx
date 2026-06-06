@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Phone, AlertTriangle, Users, Wallet, ChevronRight } from 'lucide-react'
+import { Phone, AlertTriangle, Users, Wallet, ChevronRight, LucideIcon } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
+import { useModulesStore } from '@/stores/modulesStore'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -11,6 +12,7 @@ export function ActionPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { formatEGP, formatInteger } = useFormatNumber()
+  const { isEnabled } = useModulesStore()
 
   const { data: reminderSummary } = useQuery({
     queryKey: ['reminders-summary'],
@@ -35,8 +37,17 @@ export function ActionPanel() {
 
   const overdue = dashboard?.stats?.overdue_amount ?? 0
 
-  const items = [
-    {
+  type ActionItem = {
+    icon: LucideIcon
+    color: string
+    title: string
+    value: string
+    desc: string
+    onClick: () => void
+  }
+  const items: ActionItem[] = []
+  if (isEnabled('follow_ups')) {
+    items.push({
       icon: Phone,
       color: 'text-primary-600 bg-primary-50',
       title: t('follow_ups_today'),
@@ -45,32 +56,38 @@ export function ActionPanel() {
         ? `${formatInteger(queue?.counts?.overdue ?? reminderSummary?.overdue)} ${t('overdue')}`
         : t('no_overdue_calls'),
       onClick: () => navigate('/follow-ups'),
-    },
-    {
+    })
+  }
+  if (isEnabled('collections')) {
+    items.push({
       icon: AlertTriangle,
       color: 'text-red-600 bg-red-50',
       title: t('overdue_amount'),
       value: formatEGP(overdue),
       desc: t('view_collections'),
       onClick: () => navigate('/collections'),
-    },
-    {
+    })
+  }
+  if (isEnabled('hr')) {
+    items.push({
       icon: Users,
       color: 'text-violet-600 bg-violet-50',
       title: t('employees'),
       value: formatInteger(employees.length),
       desc: t('manage_hr'),
       onClick: () => navigate('/hr'),
-    },
-    {
+    })
+  }
+  if (isEnabled('finance')) {
+    items.push({
       icon: Wallet,
       color: 'text-emerald-600 bg-emerald-50',
       title: t('finance'),
       value: t('view_reports'),
       desc: t('finance_quick_desc'),
       onClick: () => navigate('/finance'),
-    },
-  ]
+    })
+  }
 
   return (
     <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -105,7 +122,7 @@ export function ActionPanel() {
             {t('view_all')}
           </button>
         </div>
-        {todayReminders.length === 0 ? (
+        {!isEnabled('follow_ups') ? null : todayReminders.length === 0 ? (
           <p className="text-sm text-slate-500">{t('no_calls_today')}</p>
         ) : (
           <ul className="space-y-2">

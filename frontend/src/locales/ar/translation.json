@@ -240,5 +240,11 @@
   "valid": "صالح",
   "duplicates": "مكرر",
   "errors": "أخطاء",
-  "showing_first_rows": "عرض أول {{count}} صف"
+  "showing_first_rows": "عرض أول {{count}} صف",
+  "manage_modules": "الميزات",
+  "manage_company_modules": "التحكم بميزات الشركة",
+  "manage_modules_help": "اختر الميزات التي يمكن لـ {{company}} رؤيتها واستخدامها. الميزات غير المحددة تختفي من القائمة ويتم حظرها في النظام.",
+  "enable_all": "تفعيل الكل",
+  "disable_optional": "الأساسي فقط",
+  "required": "إلزامي"
 }

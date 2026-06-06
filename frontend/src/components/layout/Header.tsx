@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import { ReminderBell } from './ReminderBell'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
+import { useModulesStore } from '@/stores/modulesStore'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { GlobalSearch } from './GlobalSearch'
 
@@ -12,9 +13,11 @@ export function Header() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
   const clearCompany = useCompanyStore((s) => s.clear)
+  const clearModules = useModulesStore((s) => s.clear)
 
   const handleLogout = () => {
     clearCompany()
+    clearModules()
     logout()
     navigate('/login')
   }

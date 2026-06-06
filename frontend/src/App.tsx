@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
+import { ModuleRoute } from '@/components/auth/ModuleRoute'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { SuperAdminDashboard } from '@/pages/super-admin/SuperAdminDashboard'
@@ -44,26 +45,26 @@ function AppRoutes() {
         <Route path="/super-admin/audit-logs" element={<ProtectedRoute superAdminOnly><AuditLogsPage /></ProtectedRoute>} />
         <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly><SettingsPage /></ProtectedRoute>} />
         <Route path="/super-admin/reports" element={<ProtectedRoute superAdminOnly><ReportsPage /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<CompanyDashboard />} />
-        <Route path="/customers" element={<CustomersPage />} />
-        <Route path="/leads" element={<LeadsPage />} />
-        <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/reservations" element={<ReservationsPage />} />
-        <Route path="/contracts" element={<ContractsPage />} />
-        <Route path="/collections" element={<CollectionsPage />} />
-        <Route path="/brokers" element={<BrokersPage />} />
-        <Route path="/finance" element={<FinancePage />} />
-        <Route path="/hr" element={<HRPage />} />
-        <Route path="/follow-ups" element={<FollowUpsPage />} />
-        <Route path="/branding" element={<BrandingPage />} />
-        <Route path="/construction" element={<ConstructionPage />} />
-        <Route path="/procurement" element={<ProcurementPage />} />
-        <Route path="/warehouse" element={<WarehousePage />} />
-        <Route path="/property" element={<PropertyPage />} />
-        <Route path="/customer-service" element={<CustomerServicePage />} />
-        <Route path="/users" element={<CompanyUsersPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/ai-assistant" element={<AIAssistantPage />} />
+        <Route path="/dashboard" element={<ModuleRoute moduleKey="dashboard"><CompanyDashboard /></ModuleRoute>} />
+        <Route path="/customers" element={<ModuleRoute moduleKey="customers"><CustomersPage /></ModuleRoute>} />
+        <Route path="/leads" element={<ModuleRoute moduleKey="leads"><LeadsPage /></ModuleRoute>} />
+        <Route path="/projects" element={<ModuleRoute moduleKey="projects"><ProjectsPage /></ModuleRoute>} />
+        <Route path="/reservations" element={<ModuleRoute moduleKey="reservations"><ReservationsPage /></ModuleRoute>} />
+        <Route path="/contracts" element={<ModuleRoute moduleKey="contracts"><ContractsPage /></ModuleRoute>} />
+        <Route path="/collections" element={<ModuleRoute moduleKey="collections"><CollectionsPage /></ModuleRoute>} />
+        <Route path="/brokers" element={<ModuleRoute moduleKey="brokers"><BrokersPage /></ModuleRoute>} />
+        <Route path="/finance" element={<ModuleRoute moduleKey="finance"><FinancePage /></ModuleRoute>} />
+        <Route path="/hr" element={<ModuleRoute moduleKey="hr"><HRPage /></ModuleRoute>} />
+        <Route path="/follow-ups" element={<ModuleRoute moduleKey="follow_ups"><FollowUpsPage /></ModuleRoute>} />
+        <Route path="/branding" element={<ModuleRoute moduleKey="branding"><BrandingPage /></ModuleRoute>} />
+        <Route path="/construction" element={<ModuleRoute moduleKey="construction"><ConstructionPage /></ModuleRoute>} />
+        <Route path="/procurement" element={<ModuleRoute moduleKey="procurement"><ProcurementPage /></ModuleRoute>} />
+        <Route path="/warehouse" element={<ModuleRoute moduleKey="warehouse"><WarehousePage /></ModuleRoute>} />
+        <Route path="/property" element={<ModuleRoute moduleKey="property"><PropertyPage /></ModuleRoute>} />
+        <Route path="/customer-service" element={<ModuleRoute moduleKey="customer_service"><CustomerServicePage /></ModuleRoute>} />
+        <Route path="/users" element={<ModuleRoute moduleKey="users"><CompanyUsersPage /></ModuleRoute>} />
+        <Route path="/reports" element={<ModuleRoute moduleKey="reports"><ReportsPage /></ModuleRoute>} />
+        <Route path="/ai-assistant" element={<ModuleRoute moduleKey="ai_assistant"><AIAssistantPage /></ModuleRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

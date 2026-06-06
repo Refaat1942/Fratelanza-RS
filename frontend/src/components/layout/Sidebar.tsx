@@ -3,14 +3,40 @@ import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
+import { useModulesStore } from '@/stores/modulesStore'
+import { COMPANY_MODULE_LINKS } from '@/config/modules'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Building2, Users, UserCircle, Target, FolderKanban,
   FileText, Wallet, HardHat, ShoppingCart, Warehouse, Home, Headphones,
   Settings, ScrollText, CreditCard, Bot, BarChart3, Phone, Palette,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
+
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  customers: UserCircle,
+  leads: Target,
+  follow_ups: Phone,
+  projects: FolderKanban,
+  reservations: FileText,
+  contracts: FileText,
+  collections: Wallet,
+  brokers: Users,
+  finance: Wallet,
+  construction: HardHat,
+  procurement: ShoppingCart,
+  warehouse: Warehouse,
+  property: Home,
+  customer_service: Headphones,
+  users: Users,
+  reports: BarChart3,
+  hr: Users,
+  branding: Palette,
+  ai_assistant: Bot,
+}
 
 const superAdminLinks = [
   { to: '/super-admin', icon: LayoutDashboard, label: 'dashboard' },
@@ -22,38 +48,28 @@ const superAdminLinks = [
   { to: '/super-admin/reports', icon: BarChart3, label: 'reports' },
 ]
 
-const companyLinks = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'dashboard' },
-  { to: '/customers', icon: UserCircle, label: 'customers' },
-  { to: '/leads', icon: Target, label: 'leads' },
-  { to: '/follow-ups', icon: Phone, label: 'follow_ups' },
-  { to: '/projects', icon: FolderKanban, label: 'projects' },
-  { to: '/reservations', icon: FileText, label: 'reservations' },
-  { to: '/contracts', icon: FileText, label: 'contracts' },
-  { to: '/collections', icon: Wallet, label: 'collections' },
-  { to: '/brokers', icon: Users, label: 'brokers' },
-  { to: '/finance', icon: Wallet, label: 'finance' },
-  { to: '/construction', icon: HardHat, label: 'construction' },
-  { to: '/procurement', icon: ShoppingCart, label: 'procurement' },
-  { to: '/warehouse', icon: Warehouse, label: 'warehouse' },
-  { to: '/property', icon: Home, label: 'property' },
-  { to: '/customer-service', icon: Headphones, label: 'customer_service' },
-  { to: '/users', icon: Users, label: 'users' },
-  { to: '/reports', icon: BarChart3, label: 'reports' },
-  { to: '/hr', icon: Users, label: 'hr' },
-  { to: '/branding', icon: Palette, label: 'branding' },
-  { to: '/ai-assistant', icon: Bot, label: 'ai_assistant' },
-]
-
 export function Sidebar() {
   const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const { company, fetchCompany } = useCompanyStore()
-  const links = user?.is_super_admin ? superAdminLinks : companyLinks
+  const { fetchModules, isEnabled } = useModulesStore()
 
   useEffect(() => {
-    if (user && !user.is_super_admin) fetchCompany()
-  }, [user, fetchCompany])
+    if (user && !user.is_super_admin) {
+      fetchCompany()
+      fetchModules()
+    }
+  }, [user, fetchCompany, fetchModules])
+
+  const companyLinks = COMPANY_MODULE_LINKS
+    .filter((l) => user?.is_super_admin || isEnabled(l.moduleKey))
+    .map((l) => ({
+      to: l.route,
+      icon: MODULE_ICONS[l.moduleKey] ?? LayoutDashboard,
+      label: l.label,
+    }))
+
+  const links = user?.is_super_admin ? superAdminLinks : companyLinks
 
   const displayName = company
     ? (i18n.language === 'ar' ? company.name_ar : company.name_en)

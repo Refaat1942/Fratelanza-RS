@@ -37,6 +37,7 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
     default_language: Mapped[str] = mapped_column(String(5), default="ar")
     theme: Mapped[str] = mapped_column(String(50), default="default")
     currency: Mapped[str] = mapped_column(String(10), default="EGP")
+    enabled_modules: Mapped[Optional[str]] = mapped_column(Text)
 
     branches: Mapped[list["Branch"]] = relationship(back_populates="company", lazy="selectin")
     subscription: Mapped[Optional["CompanySubscription"]] = relationship(

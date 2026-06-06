@@ -240,5 +240,11 @@
   "valid": "valid",
   "duplicates": "duplicates",
   "errors": "errors",
-  "showing_first_rows": "Showing first {{count}} rows"
+  "showing_first_rows": "Showing first {{count}} rows",
+  "manage_modules": "Features",
+  "manage_company_modules": "Company Features Control",
+  "manage_modules_help": "Choose which modules {{company}} can see and use. Unchecked features disappear from their sidebar and are blocked on the API.",
+  "enable_all": "Enable All",
+  "disable_optional": "Core Only",
+  "required": "required"
 }

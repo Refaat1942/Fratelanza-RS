@@ -17,6 +17,9 @@ async def seed_database() -> None:
                 "ALTER TABLE companies ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'EGP'"
             ))
             await db.execute(text(
+                "ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_modules TEXT"
+            ))
+            await db.execute(text(
                 "CREATE TABLE IF NOT EXISTS customer_reminders ("
                 "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL, customer_id INTEGER, "
                 "lead_id INTEGER, title VARCHAR(255) NOT NULL, reminder_type VARCHAR(50), "
@@ -53,6 +56,7 @@ async def seed_database() -> None:
         # Subscription plans
         result = await db.execute(select(SubscriptionPlan).limit(1))
         if not result.scalar_one_or_none():
+            from app.services.module_service import ModuleService
             plans = [
                 SubscriptionPlan(
                     name_ar="أساسي",
@@ -63,6 +67,7 @@ async def seed_database() -> None:
                     max_users=10,
                     max_projects=3,
                     max_storage_mb=2048,
+                    features=ModuleService.serialize_plan_features(ModuleService.defaults_for_plan("basic")),
                 ),
                 SubscriptionPlan(
                     name_ar="احترافي",
@@ -73,6 +78,7 @@ async def seed_database() -> None:
                     max_users=50,
                     max_projects=15,
                     max_storage_mb=10240,
+                    features=ModuleService.serialize_plan_features(ModuleService.defaults_for_plan("professional")),
                 ),
                 SubscriptionPlan(
                     name_ar="مؤسسي",
@@ -83,6 +89,7 @@ async def seed_database() -> None:
                     max_users=500,
                     max_projects=100,
                     max_storage_mb=51200,
+                    features=ModuleService.serialize_plan_features(ModuleService.defaults_for_plan("enterprise")),
                 ),
             ]
             db.add_all(plans)

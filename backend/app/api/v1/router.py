@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     finance,
     hr,
     leads,
+    modules,
     notifications,
     procurement,
     projects,
@@ -53,6 +54,7 @@ api_router.include_router(finance.router, prefix="/finance", tags=["Finance"])
 api_router.include_router(hr.router, prefix="/hr", tags=["HR"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["Customer Service"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard & BI"])
+api_router.include_router(modules.router, prefix="/modules", tags=["Modules"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(exports.router, prefix="/exports", tags=["Exports"])

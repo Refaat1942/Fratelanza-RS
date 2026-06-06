@@ -1,6 +1,7 @@
+import json
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.tenant import CompanyStatus
 
@@ -24,6 +25,7 @@ class CompanyBase(BaseModel):
 
 class CompanyCreate(CompanyBase):
     plan_id: Optional[int] = None
+    enabled_modules: Optional[list[str]] = None
     admin_email: Optional[EmailStr] = None
     admin_password: Optional[str] = None
     admin_name_ar: Optional[str] = None
@@ -46,11 +48,28 @@ class CompanyUpdate(BaseModel):
     logo_url: Optional[str] = None
 
 
+class CompanyModulesUpdate(BaseModel):
+    enabled_modules: list[str]
+
+
 class CompanyResponse(CompanyBase):
     id: int
     status: CompanyStatus
     storage_used_mb: int
     logo_url: Optional[str] = None
+    enabled_modules: Optional[list[str]] = None
+
+    @field_validator("enabled_modules", mode="before")
+    @classmethod
+    def parse_enabled_modules(cls, v):
+        if v is None or isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     model_config = {"from_attributes": True}
 

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2 } from 'lucide-react'
+import { Building2, SlidersHorizontal } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CompanyFormModal } from '@/components/forms/CompanyFormModal'
+import { CompanyModulesModal } from '@/components/forms/CompanyModulesModal'
 import api from '@/lib/api'
 import type { Company, Paginated } from '@/types'
 
@@ -12,6 +13,7 @@ export function CompaniesPage() {
   const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [modulesCompany, setModulesCompany] = useState<Company | null>(null)
   const { data, isLoading } = useQuery({
     queryKey: ['companies'],
     queryFn: async () => {
@@ -69,15 +71,24 @@ export function CompaniesPage() {
                     </td>
                     <td className="py-3 text-slate-500">{company.code}</td>
                     <td className="py-3">
-                      {company.status === 'active' && (
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="secondary"
-                          loading={suspendCompany.isPending}
-                          onClick={() => suspendCompany.mutate(company.id)}
+                          onClick={() => setModulesCompany(company)}
                         >
-                          {t('suspend')}
+                          <SlidersHorizontal className="me-1 h-4 w-4" />
+                          {t('manage_modules')}
                         </Button>
-                      )}
+                        {company.status === 'active' && (
+                          <Button
+                            variant="secondary"
+                            loading={suspendCompany.isPending}
+                            onClick={() => suspendCompany.mutate(company.id)}
+                          >
+                            {t('suspend')}
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -87,6 +98,14 @@ export function CompaniesPage() {
         )}
       </Card>
       <CompanyFormModal open={open} onClose={() => { setOpen(false); qc.invalidateQueries({ queryKey: ['companies'] }) }} />
+      {modulesCompany && (
+        <CompanyModulesModal
+          open={!!modulesCompany}
+          companyId={modulesCompany.id}
+          companyName={i18n.language === 'ar' ? modulesCompany.name_ar : modulesCompany.name_en}
+          onClose={() => setModulesCompany(null)}
+        />
+      )}
     </div>
   )
 }

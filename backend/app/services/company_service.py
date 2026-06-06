@@ -1,11 +1,13 @@
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.security import get_password_hash
-from app.models.tenant import Company, CompanySubscription, CompanyStatus
+from app.models.tenant import Company, CompanyStatus, CompanySubscription
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.company import CompanyCreate, CompanyUpdate
+from app.services.module_service import ModuleService
 
 
 class CompanyService:
@@ -18,7 +20,11 @@ class CompanyService:
 
     @staticmethod
     async def get_company(db: AsyncSession, company_id: int) -> Company:
-        result = await db.execute(select(Company).where(Company.id == company_id, Company.is_deleted == False))
+        result = await db.execute(
+            select(Company)
+            .options(selectinload(Company.subscription).selectinload(CompanySubscription.plan))
+            .where(Company.id == company_id, Company.is_deleted == False)
+        )
         company = result.scalar_one_or_none()
         if not company:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
@@ -49,9 +55,18 @@ class CompanyService:
         db.add(company)
         await db.flush()
 
+        plan = None
         if data.plan_id:
+            from app.models.tenant import SubscriptionPlan
+            plan_result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == data.plan_id))
+            plan = plan_result.scalar_one_or_none()
             subscription = CompanySubscription(company_id=company.id, plan_id=data.plan_id, is_active=True)
             db.add(subscription)
+
+        if data.enabled_modules:
+            await ModuleService.set_company_modules(db, company, data.enabled_modules)
+        elif plan:
+            await ModuleService.set_company_modules(db, company, ModuleService.defaults_for_plan(plan.code))
 
         if data.admin_email and data.admin_password:
             admin = User(
