@@ -31,18 +31,30 @@ Integrated ERP, CRM, Property Management, Construction, Finance, HR, and Busines
 | Storage | Local + AWS S3 Compatible |
 | Deploy | Docker, Nginx, Linux VPS |
 
-## Quick Start
+## Quick Start (Development)
 
 ```bash
-# Clone
 git clone https://github.com/Refaat1942/Fratelanza-RS.git
 cd Fratelanza-RS
-
-# Setup
 cp .env.example .env
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+docker compose up -d --build
 ```
+
+## Production Deploy (Hostinger VPS — Port 9000)
+
+```bash
+ssh root@187.124.15.14
+git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
+cd /opt/fratelanza
+cp .env.production.example .env && nano .env
+chmod +x scripts/deploy-hostinger.sh
+./scripts/deploy-hostinger.sh
+
+# Connect domain (optional):
+./scripts/setup-domain-proxy.sh erp.yourdomain.com
+```
+
+See [docs/16-hostinger-deployment.md](docs/16-hostinger-deployment.md) for full guide.
 
 ### Manual Start
 

@@ -93,4 +93,84 @@ async def seed_database() -> None:
             )
             db.add(admin)
 
+            from app.models.customers import Customer
+            from app.models.crm import Lead, LeadSource, LeadStage
+            from app.models.real_estate import Building, Floor, Project, ProjectStatus, Unit, UnitStatus, UnitType
+            from app.models.finance import ChartOfAccount
+
+            project = Project(
+                company_id=company.id,
+                name_ar="مشروع فراتيلانزا ريزيدنس",
+                name_en="Fratelanza Residence",
+                code="FR-001",
+                city="القاهرة الجديدة",
+                country="Egypt",
+                status=ProjectStatus.ACTIVE,
+                total_units=10,
+                available_units=8,
+            )
+            db.add(project)
+            await db.flush()
+
+            building = Building(project_id=project.id, name_ar="المبنى أ", name_en="Building A", code="A", total_floors=5)
+            db.add(building)
+            await db.flush()
+
+            floor = Floor(building_id=building.id, floor_number=1, name_ar="الدور الأول", name_en="First Floor")
+            db.add(floor)
+            await db.flush()
+
+            for i in range(1, 6):
+                db.add(
+                    Unit(
+                        floor_id=floor.id,
+                        unit_code=f"A1-{i:02d}",
+                        unit_number=str(i),
+                        unit_type=UnitType.APARTMENT,
+                        area_sqm=Decimal("120"),
+                        bedrooms=2,
+                        bathrooms=2,
+                        price=Decimal("2500000"),
+                        status=UnitStatus.AVAILABLE,
+                    )
+                )
+
+            db.add(
+                Customer(
+                    company_id=company.id,
+                    full_name_ar="أحمد محمد",
+                    full_name_en="Ahmed Mohamed",
+                    mobile="+201012345678",
+                    email="ahmed@example.com",
+                    city="القاهرة",
+                )
+            )
+            db.add(
+                Lead(
+                    company_id=company.id,
+                    full_name="سارة علي",
+                    mobile="+201098765432",
+                    source=LeadSource.FACEBOOK,
+                    stage=LeadStage.INTERESTED,
+                    project_id=project.id,
+                    score=45,
+                )
+            )
+            for code, name_ar, name_en, acc_type in [
+                ("1000", "الأصول", "Assets", "asset"),
+                ("2000", "الخصوم", "Liabilities", "liability"),
+                ("3000", "حقوق الملكية", "Equity", "equity"),
+                ("4000", "الإيرادات", "Revenue", "revenue"),
+                ("5000", "المصروفات", "Expenses", "expense"),
+            ]:
+                db.add(
+                    ChartOfAccount(
+                        company_id=company.id,
+                        code=code,
+                        name_ar=name_ar,
+                        name_en=name_en,
+                        account_type=acc_type,
+                    )
+                )
+
         await db.commit()

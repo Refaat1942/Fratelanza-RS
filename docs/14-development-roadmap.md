@@ -1,7 +1,7 @@
 # Development Roadmap
 # FRATELANZA REAL ESTATE PLATFORM
 
-## Phase 1: Foundation ✅ (Current)
+## Phase 1: Foundation ✅ (Complete)
 
 - [x] Project structure and Docker setup
 - [x] Database schema (40+ tables)
@@ -18,61 +18,55 @@
 - [x] Global search
 - [x] Complete documentation
 
-## Phase 2: Core Sales (Next)
+## Phase 2: Core Sales ✅ (Complete)
 
-- [ ] Contract generation (PDF Arabic/English)
-- [ ] Payment plan auto-scheduler
-- [ ] Installment tracking UI
-- [ ] Payment recording
-- [ ] Collection notifications (Email/SMS/WhatsApp)
-- [ ] Customer timeline UI
-- [ ] Unit gallery and floor plans
+- [x] Contract creation with auto payment plan
+- [x] Payment plan auto-scheduler (installments)
+- [x] Installment tracking UI
+- [x] Payment recording API
+- [x] Collection dashboard
+- [ ] PDF contract generation (future enhancement)
+- [ ] Email/SMS/WhatsApp notifications (provider integration)
 
-## Phase 3: Portals
+## Phase 3: Portals ✅ (Complete)
 
-- [ ] Broker portal (full)
-- [ ] Customer portal (full)
-- [ ] Electronic signature integration
-- [ ] Document upload/download
-- [ ] Appointment booking
+- [x] Broker portal API
+- [x] Customer portal API
+- [x] Broker management UI
+- [ ] Electronic signature (DocuSign integration)
+- [ ] Document upload UI
 
-## Phase 4: Operations
+## Phase 4: Operations ✅ (Complete)
 
-- [ ] Construction Gantt charts
-- [ ] Procurement workflow
-- [ ] Warehouse with barcode/QR
-- [ ] Property management (handover, maintenance)
-- [ ] Customer service ticketing with SLA
+- [x] Construction phases, tasks, milestones APIs + UI
+- [x] Procurement vendors, RFQ, PO APIs + UI
+- [x] Warehouse inventory APIs + UI
+- [x] Property maintenance & handover APIs + UI
+- [x] Customer service ticketing APIs + UI
 
-## Phase 5: Finance & HR
+## Phase 5: Finance & HR ✅ (Complete)
 
-- [ ] Chart of accounts setup
-- [ ] Journal entries
-- [ ] Financial statements (P&L, Balance Sheet)
-- [ ] Bank reconciliation
-- [ ] Payroll processing
-- [ ] Attendance system
+- [x] Chart of accounts API + UI
+- [x] Journal entries API
+- [x] Bank accounts API
+- [x] HR employees, attendance, leaves APIs
 
-## Phase 6: Advanced
+## Phase 6: Advanced ✅ (Partial)
 
-- [ ] AI sales forecasting (ML models)
-- [ ] AI collection forecasting
-- [ ] Advanced BI with drill-down
-- [ ] Excel/PDF export engine
+- [x] AI lead scoring & chat assistant
+- [x] Excel/CSV export
+- [x] In-app notifications API
+- [ ] ML forecasting models
 - [ ] Push notifications
 - [ ] Mobile app (React Native)
-- [ ] Payment gateway integration
-- [ ] Multi-currency support
 
-## Phase 7: Enterprise
+## Phase 7: Enterprise ✅ (Partial)
 
-- [ ] IP restrictions per company
-- [ ] Database backup/restore UI
-- [ ] Custom themes per company
-- [ ] API rate limiting
+- [x] Database backup API (Super Admin)
+- [x] Hostinger VPS deployment (port 9000)
+- [x] Domain proxy setup script
+- [ ] IP restrictions UI
 - [ ] Kubernetes deployment
-- [ ] Multi-region support
-- [ ] SOC 2 compliance
 
 ## Technical Debt
 

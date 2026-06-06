@@ -1,3 +1,6 @@
+import os
+import subprocess
+from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -5,8 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_super_admin
+from app.core.config import settings
 from app.core.database import get_db
-from app.models.system import AuditLog
+from app.models.system import AuditLog, SystemSetting
 from app.models.tenant import SubscriptionPlan
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
@@ -105,3 +109,53 @@ async def list_audit_logs(
         "page": page,
         "page_size": page_size,
     }
+
+
+@router.get("/settings")
+async def list_settings(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    result = await db.execute(select(SystemSetting).order_by(SystemSetting.key))
+    settings_list = result.scalars().all()
+    return [{"key": s.key, "value": s.value, "description_ar": s.description_ar} for s in settings_list]
+
+
+@router.post("/backup")
+async def backup_database(
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    os.makedirs("/app/backups", exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"/app/backups/fratelanza_{timestamp}.sql"
+    db_url = settings.DATABASE_URL_SYNC
+    try:
+        subprocess.run(
+            ["pg_dump", db_url, "-f", filename],
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+        return {"success": True, "file": filename, "message": "Backup created"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
+@router.get("/system-stats")
+async def system_stats(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    from app.models.customers import Customer
+    from app.models.real_estate import Project
+    from app.models.sales import Contract
+    from app.models.tenant import Company
+
+    stats = {
+        "companies": (await db.execute(select(func.count(Company.id)))).scalar(),
+        "users": (await db.execute(select(func.count(User.id)))).scalar(),
+        "customers": (await db.execute(select(func.count(Customer.id)))).scalar(),
+        "projects": (await db.execute(select(func.count(Project.id)))).scalar(),
+        "contracts": (await db.execute(select(func.count(Contract.id)))).scalar(),
+    }
+    return stats
