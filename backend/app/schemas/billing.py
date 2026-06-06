@@ -11,6 +11,8 @@ class CompanyBillingSummary(BaseModel):
     plan_code: Optional[str] = None
     billing_cycle: str = "monthly"
     payment_terms_days: int = 30
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     next_billing_date: Optional[str] = None
     payment_status: str = "pending"
     amount_due: Optional[Decimal] = None

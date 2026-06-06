@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.security import get_password_hash
-from app.models.tenant import BillingCycle, Company, CompanyStatus, CompanySubscription, SubscriptionPaymentStatus
+from app.models.tenant import BillingCycle, Company, CompanyStatus, CompanySubscription
 from app.services.platform_billing_service import PlatformBillingService
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.company import CompanyCreate, CompanyUpdate
@@ -56,27 +56,39 @@ class CompanyService:
             theme=data.theme,
             currency=getattr(data, "currency", "EGP") or "EGP",
             storage_limit_mb=data.storage_limit_mb,
-            status=CompanyStatus.TRIAL,
+            status=CompanyStatus.TRIAL if data.start_trial else CompanyStatus.ACTIVE,
         )
         db.add(company)
         await db.flush()
 
         plan = None
+        if data.start_trial and not data.plan_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Subscription plan required to start a trial",
+            )
         if data.plan_id:
             from app.models.tenant import SubscriptionPlan
             plan_result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == data.plan_id))
             plan = plan_result.scalar_one_or_none()
+            if not plan:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription plan not found")
             subscription = CompanySubscription(
                 company_id=company.id,
                 plan_id=data.plan_id,
                 is_active=True,
                 billing_cycle=BillingCycle.MONTHLY.value,
                 payment_terms_days=30,
-                payment_status=SubscriptionPaymentStatus.TRIAL.value,
             )
             db.add(subscription)
             await db.flush()
-            await PlatformBillingService.ensure_subscription_defaults(db, company, plan, trial=True)
+            subscription.plan = plan
+            await PlatformBillingService.ensure_subscription_defaults(
+                db,
+                company,
+                plan,
+                trial=data.start_trial,
+            )
 
         if data.enabled_modules:
             await ModuleService.set_company_modules(db, company, data.enabled_modules)

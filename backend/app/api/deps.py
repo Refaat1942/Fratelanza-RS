@@ -4,10 +4,13 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import verify_token
+from app.models.tenant import Company
 from app.models.users import SystemRole, User, UserStatus
+from app.services.platform_billing_service import PlatformBillingService
 
 security = HTTPBearer(auto_error=False)
 
@@ -28,6 +31,15 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if user.status == UserStatus.SUSPENDED:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
+    if user.company_id and not user.is_super_admin:
+        company_result = await db.execute(
+            select(Company)
+            .options(selectinload(Company.subscription))
+            .where(Company.id == user.company_id, Company.is_deleted == False)
+        )
+        company = company_result.scalar_one_or_none()
+        if company:
+            await PlatformBillingService.ensure_company_accessible(db, company)
     return user
 
 

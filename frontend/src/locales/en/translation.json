@@ -317,5 +317,9 @@
   "last_reminder_sent": "Last reminder sent",
   "remind": "Remind",
   "amount": "Amount",
+  "select_plan": "Select a plan",
+  "start_trial_14_days": "Start 14-day free trial",
+  "trial_help": "The company gets full access for 14 days. After that, login is blocked until payment is recorded.",
+  "trial_ends": "Trial ends",
   "download_plans_pdf": "Download customer brochure (PDF)"
 }

@@ -1,17 +1,26 @@
 import io
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
+import arabic_reshaper
+from bidi.algorithm import get_display
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.models.tenant import SubscriptionPlan
 from app.services.module_service import ModuleService
 from app.services.subscription_service import SubscriptionService
+
+FONT_DIR = Path(__file__).resolve().parents[2] / "assets" / "fonts"
+AR_FONT = "NotoSansArabic"
+AR_FONT_BOLD = "NotoSansArabic-Bold"
 
 MODULE_LABELS = {
     "dashboard": ("Dashboard & KPIs", "لوحة التحكم"),
@@ -37,6 +46,21 @@ MODULE_LABELS = {
 }
 
 
+def _register_fonts() -> None:
+    if AR_FONT not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(AR_FONT, str(FONT_DIR / "NotoSansArabic-Regular.ttf")))
+    if AR_FONT_BOLD not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(AR_FONT_BOLD, str(FONT_DIR / "NotoSansArabic-Bold.ttf")))
+
+
+def _shape_ar(text: str) -> str:
+    return get_display(arabic_reshaper.reshape(text))
+
+
+def _ar_para(text: str, style: ParagraphStyle) -> Paragraph:
+    return Paragraph(_shape_ar(text), style)
+
+
 class PlanBrochureService:
     @staticmethod
     def _egp(amount: Decimal | float) -> str:
@@ -48,7 +72,8 @@ class PlanBrochureService:
         return data.get("enabled_modules") or ModuleService.defaults_for_plan(plan.code)
 
     @staticmethod
-    def generate_pdf(plans: list[SubscriptionPlan]) -> bytes:
+    def generate_pdf(plans: list[SubscriptionPlan], *, trial_days: int = 14) -> bytes:
+        _register_fonts()
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
@@ -75,11 +100,33 @@ class PlanBrochureService:
             spaceAfter=8,
         )
         body = styles["Normal"]
-        rtl = ParagraphStyle("RTL", parent=body, alignment=TA_RIGHT, fontSize=9)
+        ar_style = ParagraphStyle(
+            "Arabic",
+            parent=body,
+            fontName=AR_FONT,
+            fontSize=9,
+            alignment=TA_RIGHT,
+            leading=12,
+        )
+        ar_bold = ParagraphStyle(
+            "ArabicBold",
+            parent=ar_style,
+            fontName=AR_FONT_BOLD,
+            fontSize=9,
+        )
+        ar_cell = ParagraphStyle(
+            "ArabicCell",
+            parent=ar_style,
+            fontSize=8,
+            alignment=TA_RIGHT,
+        )
+        en_cell = ParagraphStyle("EnCell", parent=body, fontSize=8)
 
         story = []
         story.append(Paragraph("FRATELANZA Real Estate Platform", title_style))
-        story.append(Paragraph("Subscription Plans / باقات الاشتراك", h2_style))
+        story.append(Paragraph("Subscription Plans", h2_style))
+        story.append(_ar_para("باقات الاشتراك", ar_bold))
+        story.append(Spacer(1, 2 * mm))
         story.append(
             Paragraph(
                 f"Generated {datetime.utcnow().strftime('%d %B %Y')} · support@fratelanza.com · rs.fratelanza.com",
@@ -88,18 +135,32 @@ class PlanBrochureService:
         )
         story.append(Spacer(1, 8 * mm))
 
-        summary_data = [["Plan", "Monthly", "Yearly", "Users", "Projects", "Storage"]]
+        summary_data = [
+            [
+                Paragraph("Plan", en_cell),
+                Paragraph(_shape_ar("الباقة"), ar_cell),
+                Paragraph("Monthly", en_cell),
+                Paragraph("Yearly", en_cell),
+                Paragraph("Users", en_cell),
+                Paragraph("Projects", en_cell),
+                Paragraph("Storage", en_cell),
+            ]
+        ]
         for p in plans:
             storage = f"{p.max_storage_mb // 1024} GB" if p.max_storage_mb >= 1024 else f"{p.max_storage_mb} MB"
             summary_data.append([
-                f"{p.name_en} / {p.name_ar}",
-                PlanBrochureService._egp(p.price_monthly),
-                PlanBrochureService._egp(p.price_yearly),
-                str(p.max_users),
-                str(p.max_projects),
-                storage,
+                Paragraph(p.name_en, en_cell),
+                _ar_para(p.name_ar, ar_cell),
+                Paragraph(PlanBrochureService._egp(p.price_monthly), en_cell),
+                Paragraph(PlanBrochureService._egp(p.price_yearly), en_cell),
+                Paragraph(str(p.max_users), en_cell),
+                Paragraph(str(p.max_projects), en_cell),
+                Paragraph(storage, en_cell),
             ])
-        summary_table = Table(summary_data, colWidths=[45 * mm, 25 * mm, 25 * mm, 18 * mm, 22 * mm, 22 * mm])
+        summary_table = Table(
+            summary_data,
+            colWidths=[32 * mm, 32 * mm, 22 * mm, 22 * mm, 16 * mm, 20 * mm, 20 * mm],
+        )
         summary_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0159a1")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -114,38 +175,65 @@ class PlanBrochureService:
         story.append(summary_table)
         story.append(Spacer(1, 6 * mm))
 
-        story.append(Paragraph("Payment Terms / شروط الدفع", h2_style))
+        story.append(Paragraph("Payment Terms", h2_style))
+        story.append(_ar_para("شروط الدفع", ar_bold))
+        story.append(Spacer(1, 2 * mm))
         story.append(Paragraph("• Monthly or yearly billing (yearly saves ~2 months)", body))
+        story.append(_ar_para("• الفوترة شهرية أو سنوية (التوفير شهرين مع السنوي)", ar_style))
         story.append(Paragraph("• Net 30 days payment terms from invoice date", body))
-        story.append(Paragraph("• 14-day trial for new companies", body))
+        story.append(_ar_para("• صافي 30 يوماً من تاريخ الفاتورة", ar_style))
+        story.append(Paragraph(f"• {trial_days}-day free trial for new companies", body))
+        story.append(_ar_para(f"• تجربة مجانية {trial_days} يوماً للشركات الجديدة", ar_style))
         story.append(Paragraph("• Payment reminders before and after due date", body))
-        story.append(Paragraph("للاشتراك تواصلوا مع خدمة العملاء: support@fratelanza.com", rtl))
+        story.append(_ar_para("• تذكيرات الدفع قبل وبعد تاريخ الاستحقاق", ar_style))
+        story.append(Spacer(1, 2 * mm))
+        story.append(_ar_para("للاشتراك تواصلوا مع خدمة العملاء: support@fratelanza.com", ar_style))
 
         all_keys = list(MODULE_LABELS.keys())
         for plan in plans:
-            story.append(Paragraph(f"{plan.name_en} Plan — باقة {plan.name_ar}", h2_style))
+            story.append(Paragraph(f"{plan.name_en} Plan", h2_style))
+            story.append(_ar_para(f"باقة {plan.name_ar}", ar_bold))
             enabled = set(PlanBrochureService._modules_for_plan(plan))
-            feat_rows = [["", "Feature", "الميزة"]]
+            feat_rows = [
+                [
+                    Paragraph("", en_cell),
+                    Paragraph("Feature", en_cell),
+                    Paragraph(_shape_ar("الميزة"), ar_cell),
+                ]
+            ]
             for key in all_keys:
                 en, ar = MODULE_LABELS[key]
-                mark = "✓" if key in enabled else "—"
-                feat_rows.append([mark, en, ar])
-            feat_table = Table(feat_rows, colWidths=[10 * mm, 75 * mm, 75 * mm])
+                mark = "Yes" if key in enabled else "No"
+                feat_rows.append([
+                    Paragraph(mark, ParagraphStyle("Mark", parent=en_cell, alignment=TA_CENTER)),
+                    Paragraph(en, en_cell),
+                    _ar_para(ar, ar_cell),
+                ])
+            feat_table = Table(feat_rows, colWidths=[12 * mm, 75 * mm, 75 * mm])
             feat_table.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0ea5e9")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e2e8f0")),
                 ("ALIGN", (0, 1), (0, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ]))
             story.append(feat_table)
             story.append(Spacer(1, 4 * mm))
 
-        story.append(Paragraph("Customer Service / خدمة العملاء", h2_style))
+        story.append(Paragraph("Customer Service", h2_style))
+        story.append(_ar_para("خدمة العملاء", ar_bold))
+        story.append(Spacer(1, 2 * mm))
         story.append(
             Paragraph(
                 "Contact support@fratelanza.com to subscribe, upgrade, or customize an Enterprise plan.",
                 body,
+            )
+        )
+        story.append(
+            _ar_para(
+                "للاشتراك أو ترقية الباقة، تواصل مع فريق خدمة العملاء. يمكن تخصيص الباقة المؤسسية حسب احتياجاتكم.",
+                ar_style,
             )
         )
 

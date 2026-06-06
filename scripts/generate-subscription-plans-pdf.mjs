@@ -181,11 +181,14 @@ function buildHtml(plans, generatedAt) {
 <head>
   <meta charset="UTF-8" />
   <title>FRATELANZA Subscription Plans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     @page { size: A4; margin: 14mm 12mm; }
     * { box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', Tahoma, 'Noto Naskh Arabic', Arial, sans-serif;
+      font-family: 'Inter', 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
       color: #0f172a; line-height: 1.45; font-size: 10.5pt; margin: 0;
     }
     .cover {
@@ -226,6 +229,7 @@ function buildHtml(plans, generatedAt) {
     table.compare .yes { background: #ecfdf5; color: #059669; font-weight: 700; }
     table.compare .no { background: #f8fafc; color: #cbd5e1; }
     .ar-sm { font-size: 8pt; color: #64748b; }
+    [dir="rtl"], .ar-sm, .subtitle { font-family: 'Cairo', 'Noto Naskh Arabic', Arial, sans-serif; }
     .payment-box {
       display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;
     }
@@ -341,6 +345,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true })
   const page = await browser.newPage()
   await page.setContent(html, { waitUntil: 'networkidle' })
+  await page.evaluate(() => document.fonts.ready)
   await page.pdf({
     path: PDF_PATH,
     format: 'A4',

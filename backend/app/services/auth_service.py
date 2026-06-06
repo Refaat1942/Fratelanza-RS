@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.security import (
     create_access_token,
@@ -12,8 +13,10 @@ from app.core.security import (
     verify_totp,
     verify_token,
 )
+from app.models.tenant import Company
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.services.platform_billing_service import PlatformBillingService
 
 
 class AuthService:
@@ -25,6 +28,15 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         if user.status == UserStatus.SUSPENDED:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
+        if user.company_id and not user.is_super_admin:
+            company_result = await db.execute(
+                select(Company)
+                .options(selectinload(Company.subscription))
+                .where(Company.id == user.company_id, Company.is_deleted == False)
+            )
+            company = company_result.scalar_one_or_none()
+            if company:
+                await PlatformBillingService.ensure_company_accessible(db, company)
         if user.is_2fa_enabled:
             if not data.totp_code or not user.totp_secret:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="2FA code required")
@@ -52,6 +64,15 @@ class AuthService:
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        if user.company_id and not user.is_super_admin:
+            company_result = await db.execute(
+                select(Company)
+                .options(selectinload(Company.subscription))
+                .where(Company.id == user.company_id, Company.is_deleted == False)
+            )
+            company = company_result.scalar_one_or_none()
+            if company:
+                await PlatformBillingService.ensure_company_accessible(db, company)
         access = create_access_token(
             user.id,
             {

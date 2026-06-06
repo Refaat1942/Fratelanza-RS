@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import api from '@/lib/api'
+import type { SubscriptionPlan } from '@/components/forms/SubscriptionPlanModal'
 
 interface CompanyFormModalProps {
   open: boolean
@@ -12,7 +13,7 @@ interface CompanyFormModalProps {
 }
 
 export function CompanyFormModal({ open, onClose }: CompanyFormModalProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -23,17 +24,32 @@ export function CompanyFormModal({ open, onClose }: CompanyFormModalProps) {
     phone: '',
     city: '',
     country: 'Egypt',
+    plan_id: '' as string | number,
+    start_trial: true,
     admin_email: '',
     admin_password: '',
     admin_name_ar: '',
     admin_name_en: '',
   })
 
+  const { data: plans = [] } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: async () => {
+      const { data } = await api.get<SubscriptionPlan[]>('/super-admin/subscription-plans')
+      return data
+    },
+    enabled: open,
+  })
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post('/super-admin/companies', form)
+      await api.post('/super-admin/companies', {
+        ...form,
+        plan_id: form.plan_id ? Number(form.plan_id) : undefined,
+        start_trial: form.start_trial,
+      })
       qc.invalidateQueries({ queryKey: ['companies'] })
       onClose()
     } finally {
@@ -51,6 +67,38 @@ export function CompanyFormModal({ open, onClose }: CompanyFormModalProps) {
         <Input label="Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
         <Input label={t('email')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <Input label={t('mobile')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+
+        <hr className="border-slate-200" />
+        <p className="text-sm font-medium text-slate-600">{t('subscription_plan')}</p>
+        <label className="block text-sm">
+          <span className="mb-1 block text-slate-600">{t('subscription_plan')}</span>
+          <select
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            value={form.plan_id}
+            onChange={(e) => setForm({ ...form, plan_id: e.target.value })}
+            required={form.start_trial}
+          >
+            <option value="">{t('select_plan')}</option>
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {i18n.language === 'ar' ? plan.name_ar : plan.name_en}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.start_trial}
+            onChange={(e) => setForm({ ...form, start_trial: e.target.checked })}
+            className="rounded border-slate-300"
+          />
+          {t('start_trial_14_days')}
+        </label>
+        {form.start_trial && (
+          <p className="text-xs text-slate-500">{t('trial_help')}</p>
+        )}
+
         <hr className="border-slate-200" />
         <p className="text-sm font-medium text-slate-600">{t('company_admin')}</p>
         <Input label={t('email')} value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} />

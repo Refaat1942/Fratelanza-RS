@@ -128,7 +128,14 @@ export function CompaniesPage() {
                       <td className="py-4">
                         {billing ? t('net_days', { days: billing.payment_terms_days }) : '—'}
                       </td>
-                      <td className="py-4">{billing?.next_billing_date || '—'}</td>
+                      <td className="py-4">
+                        {billing?.payment_status === 'trial'
+                          ? billing.end_date || billing.next_billing_date || '—'
+                          : billing?.next_billing_date || '—'}
+                        {billing?.payment_status === 'trial' && (
+                          <p className="text-xs text-amber-600">{t('trial_ends')}</p>
+                        )}
+                      </td>
                       <td className="py-4 font-medium">
                         {billing?.amount_due != null ? formatEGP(billing.amount_due) : '—'}
                       </td>

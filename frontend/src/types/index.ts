@@ -42,6 +42,8 @@ export interface CompanyBilling {
   plan_code?: string
   billing_cycle: string
   payment_terms_days: number
+  start_date?: string
+  end_date?: string
   next_billing_date?: string
   payment_status: string
   amount_due?: number

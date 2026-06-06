@@ -93,6 +93,9 @@ export function CompanyBillingModal({ open, onClose, company, onSaved }: Company
           {i18n.language === 'ar' ? company.name_ar : company.name_en}
         </p>
         <p className="text-slate-600">{t('subscription_plan')}: {planLabel || '—'}</p>
+        {billing?.payment_status === 'trial' && billing.end_date && (
+          <p className="text-amber-700">{t('trial_ends')}: {billing.end_date}</p>
+        )}
         {billing?.last_reminder_sent_at && (
           <p className="mt-1 text-xs text-slate-500">
             {t('last_reminder_sent')}: {new Date(billing.last_reminder_sent_at).toLocaleString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB')}

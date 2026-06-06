@@ -25,6 +25,7 @@ class CompanyBase(BaseModel):
 
 class CompanyCreate(CompanyBase):
     plan_id: Optional[int] = None
+    start_trial: bool = True
     enabled_modules: Optional[list[str]] = None
     admin_email: Optional[EmailStr] = None
     admin_password: Optional[str] = None

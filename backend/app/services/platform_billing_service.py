@@ -6,9 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.system import SystemSetting
 from app.models.tenant import (
     BillingCycle,
     Company,
+    CompanyStatus,
     CompanySubscription,
     SubscriptionPaymentStatus,
     SubscriptionPlan,
@@ -26,13 +28,47 @@ class PlatformBillingService:
         return date.today().isoformat()
 
     @staticmethod
+    async def get_trial_days(db: AsyncSession) -> int:
+        result = await db.execute(select(SystemSetting).where(SystemSetting.key == "trial_days"))
+        setting = result.scalar_one_or_none()
+        if setting and str(setting.value).isdigit():
+            return max(1, int(setting.value))
+        return 14
+
+    @staticmethod
     def _amount_for_plan(plan: SubscriptionPlan, billing_cycle: str) -> Decimal:
         if billing_cycle == BillingCycle.YEARLY.value:
             return Decimal(plan.price_yearly or 0)
         return Decimal(plan.price_monthly or 0)
 
     @staticmethod
-    def _refresh_payment_status(sub: CompanySubscription) -> None:
+    def apply_trial(sub: CompanySubscription, company: Company, days: int) -> None:
+        today = date.today()
+        end = today + timedelta(days=days)
+        sub.start_date = today.isoformat()
+        sub.end_date = end.isoformat()
+        sub.next_billing_date = end.isoformat()
+        sub.payment_status = SubscriptionPaymentStatus.TRIAL.value
+        sub.amount_due = Decimal(0)
+        sub.is_active = True
+        company.status = CompanyStatus.TRIAL
+
+    @staticmethod
+    def sync_trial_expiry(sub: CompanySubscription, company: Company) -> bool:
+        if sub.payment_status != SubscriptionPaymentStatus.TRIAL.value:
+            return False
+        if not sub.end_date:
+            return False
+        if date.today() > date.fromisoformat(sub.end_date):
+            company.status = CompanyStatus.EXPIRED
+            sub.is_active = False
+            return True
+        return False
+
+    @staticmethod
+    def _refresh_payment_status(sub: CompanySubscription, company: Company | None = None) -> None:
+        if company:
+            PlatformBillingService.sync_trial_expiry(sub, company)
         if sub.payment_status == SubscriptionPaymentStatus.TRIAL.value:
             return
         if not sub.next_billing_date:
@@ -45,10 +81,13 @@ class PlatformBillingService:
             sub.payment_status = SubscriptionPaymentStatus.PENDING.value
 
     @staticmethod
-    def subscription_to_summary(sub: CompanySubscription | None) -> CompanyBillingSummary | None:
+    def subscription_to_summary(
+        sub: CompanySubscription | None,
+        company: Company | None = None,
+    ) -> CompanyBillingSummary | None:
         if not sub:
             return None
-        PlatformBillingService._refresh_payment_status(sub)
+        PlatformBillingService._refresh_payment_status(sub, company)
         plan = sub.plan
         amount = sub.amount_due
         if amount is None and plan:
@@ -60,6 +99,8 @@ class PlatformBillingService:
             plan_code=plan.code if plan else None,
             billing_cycle=sub.billing_cycle,
             payment_terms_days=sub.payment_terms_days,
+            start_date=sub.start_date,
+            end_date=sub.end_date,
             next_billing_date=sub.next_billing_date,
             payment_status=sub.payment_status,
             amount_due=amount,
@@ -77,12 +118,27 @@ class PlatformBillingService:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def ensure_company_accessible(db: AsyncSession, company: Company) -> None:
+        sub = company.subscription
+        if sub:
+            PlatformBillingService.sync_trial_expiry(sub, company)
+            await db.flush()
+        if company.status == CompanyStatus.SUSPENDED:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company suspended")
+        if company.status == CompanyStatus.EXPIRED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Trial expired. Contact support@fratelanza.com to subscribe.",
+            )
+
+    @staticmethod
     async def ensure_subscription_defaults(
         db: AsyncSession,
         company: Company,
         plan: SubscriptionPlan | None = None,
         *,
         trial: bool = False,
+        trial_days: int | None = None,
     ) -> CompanySubscription:
         sub = await PlatformBillingService.get_subscription(db, company.id)
         if not sub:
@@ -97,15 +153,20 @@ class PlatformBillingService:
             sub.plan_id = plan.id
             sub.plan = plan
 
-        if not sub.start_date:
-            sub.start_date = PlatformBillingService._today()
-        if not sub.next_billing_date:
-            sub.next_billing_date = (date.today() + timedelta(days=30)).isoformat()
-        if sub.amount_due is None and sub.plan:
-            sub.amount_due = PlatformBillingService._amount_for_plan(sub.plan, sub.billing_cycle)
-        if trial and sub.payment_status == SubscriptionPaymentStatus.PENDING.value:
-            sub.payment_status = SubscriptionPaymentStatus.TRIAL.value
-        PlatformBillingService._refresh_payment_status(sub)
+        if trial:
+            days = trial_days if trial_days is not None else await PlatformBillingService.get_trial_days(db)
+            PlatformBillingService.apply_trial(sub, company, days)
+        else:
+            if not sub.start_date:
+                sub.start_date = PlatformBillingService._today()
+            if not sub.next_billing_date:
+                sub.next_billing_date = (date.today() + timedelta(days=30)).isoformat()
+            if sub.amount_due is None and sub.plan:
+                sub.amount_due = PlatformBillingService._amount_for_plan(sub.plan, sub.billing_cycle)
+            if sub.payment_status == SubscriptionPaymentStatus.PENDING.value:
+                pass
+
+        PlatformBillingService._refresh_payment_status(sub, company)
         await db.flush()
         return sub
 
@@ -115,7 +176,14 @@ class PlatformBillingService:
         company_id: int,
         data: SubscriptionBillingUpdate,
     ) -> CompanyBillingSummary:
-        sub = await PlatformBillingService.get_subscription(db, company_id)
+        company_result = await db.execute(
+            select(Company).options(selectinload(Company.subscription)).where(Company.id == company_id)
+        )
+        company = company_result.scalar_one_or_none()
+        if not company:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+        sub = company.subscription or await PlatformBillingService.get_subscription(db, company_id)
         if not sub:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
 
@@ -136,9 +204,13 @@ class PlatformBillingService:
         if data.billing_cycle and sub.plan:
             sub.amount_due = PlatformBillingService._amount_for_plan(sub.plan, sub.billing_cycle)
 
-        PlatformBillingService._refresh_payment_status(sub)
+        if data.payment_status == SubscriptionPaymentStatus.PAID.value:
+            company.status = CompanyStatus.ACTIVE
+            sub.is_active = True
+
+        PlatformBillingService._refresh_payment_status(sub, company)
         await db.flush()
-        return PlatformBillingService.subscription_to_summary(sub)  # type: ignore[return-value]
+        return PlatformBillingService.subscription_to_summary(sub, company)  # type: ignore[return-value]
 
     @staticmethod
     async def record_payment(
@@ -146,13 +218,23 @@ class PlatformBillingService:
         company_id: int,
         data: RecordSubscriptionPayment,
     ) -> CompanyBillingSummary:
-        sub = await PlatformBillingService.get_subscription(db, company_id)
+        company_result = await db.execute(
+            select(Company).options(selectinload(Company.subscription)).where(Company.id == company_id)
+        )
+        company = company_result.scalar_one_or_none()
+        if not company:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+        sub = company.subscription or await PlatformBillingService.get_subscription(db, company_id)
         if not sub:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
 
         paid_on = data.payment_date or PlatformBillingService._today()
         sub.last_payment_date = paid_on
         sub.payment_status = SubscriptionPaymentStatus.PAID.value
+        sub.end_date = None
+        company.status = CompanyStatus.ACTIVE
+        sub.is_active = True
 
         cycle_days = 365 if sub.billing_cycle == BillingCycle.YEARLY.value else 30
         sub.next_billing_date = (date.fromisoformat(paid_on) + timedelta(days=cycle_days)).isoformat()
@@ -160,25 +242,27 @@ class PlatformBillingService:
             sub.amount_due = PlatformBillingService._amount_for_plan(sub.plan, sub.billing_cycle)
 
         await db.flush()
-        return PlatformBillingService.subscription_to_summary(sub)  # type: ignore[return-value]
+        return PlatformBillingService.subscription_to_summary(sub, company)  # type: ignore[return-value]
 
     @staticmethod
     async def send_payment_reminder(db: AsyncSession, company_id: int) -> dict:
-        company_result = await db.execute(select(Company).where(Company.id == company_id))
+        company_result = await db.execute(
+            select(Company).options(selectinload(Company.subscription)).where(Company.id == company_id)
+        )
         company = company_result.scalar_one_or_none()
         if not company:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
-        sub = await PlatformBillingService.get_subscription(db, company_id)
+        sub = company.subscription or await PlatformBillingService.get_subscription(db, company_id)
         if not sub:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
 
-        PlatformBillingService._refresh_payment_status(sub)
+        PlatformBillingService._refresh_payment_status(sub, company)
         now = datetime.utcnow().isoformat(timespec="seconds")
         sub.last_reminder_sent_at = now
         await db.flush()
 
-        summary = PlatformBillingService.subscription_to_summary(sub)
+        summary = PlatformBillingService.subscription_to_summary(sub, company)
         recipient = company.email or "billing contact"
         status_label = sub.payment_status
         return {

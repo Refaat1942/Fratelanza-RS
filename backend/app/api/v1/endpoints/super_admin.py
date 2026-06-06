@@ -32,7 +32,7 @@ router = APIRouter()
 
 
 def _company_with_billing(company) -> CompanyWithBillingResponse:
-    billing = PlatformBillingService.subscription_to_summary(company.subscription)
+    billing = PlatformBillingService.subscription_to_summary(company.subscription, company)
     return CompanyWithBillingResponse(
         id=company.id,
         name_ar=company.name_ar,
@@ -115,7 +115,8 @@ async def get_company_billing(
     sub = await PlatformBillingService.get_subscription(db, company_id)
     if not sub:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
-    return PlatformBillingService.subscription_to_summary(sub)
+    company = await CompanyService.get_company(db, company_id)
+    return PlatformBillingService.subscription_to_summary(sub, company)
 
 
 @router.put("/companies/{company_id}/billing")
@@ -166,7 +167,8 @@ async def download_subscription_plans_brochure(
     plans = list(result.scalars().all())
     if not plans:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription plans found")
-    pdf_bytes = PlanBrochureService.generate_pdf(plans)
+    trial_days = await PlatformBillingService.get_trial_days(db)
+    pdf_bytes = PlanBrochureService.generate_pdf(plans, trial_days=trial_days)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
