@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_company_user, get_super_admin
 from app.core.database import get_db
 from app.core.security import get_password_hash
-from app.models.tenant import Company
+from app.models.tenant import Company, CompanySubscription
+from app.services.platform_billing_service import PlatformBillingService
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import UserResponse
 from app.schemas.common import PaginatedResponse
@@ -17,34 +18,75 @@ from app.services.auth_service import AuthService
 router = APIRouter()
 
 
-def _user_with_company(user: User, company: Company | None = None) -> UserResponse:
+def _user_with_company(
+    user: User,
+    company: Company | None = None,
+    subscription: CompanySubscription | None = None,
+) -> UserResponse:
     resp = UserResponse.model_validate(user)
-    if company:
-        return resp.model_copy(
-            update={
-                "company_name_ar": company.name_ar,
-                "company_name_en": company.name_en,
-                "company_code": company.code,
+    if not company:
+        return resp
+    billing = PlatformBillingService.subscription_to_summary(subscription)
+    update = {
+        "company_name_ar": company.name_ar,
+        "company_name_en": company.name_en,
+        "company_code": company.code,
+    }
+    if billing:
+        update.update(
+            {
+                "plan_name_ar": billing.plan_name_ar,
+                "plan_name_en": billing.plan_name_en,
+                "payment_terms_days": billing.payment_terms_days,
+                "next_billing_date": billing.next_billing_date,
+                "payment_status": billing.payment_status,
+                "amount_due": float(billing.amount_due) if billing.amount_due is not None else None,
             }
         )
-    return resp
+    return resp.model_copy(update=update)
 
 
 async def _enrich_users(db: AsyncSession, users: list[User]) -> list[UserResponse]:
     company_ids = {u.company_id for u in users if u.company_id}
     companies: dict[int, Company] = {}
+    subscriptions: dict[int, CompanySubscription] = {}
     if company_ids:
-        result = await db.execute(select(Company).where(Company.id.in_(company_ids)))
-        companies = {c.id: c for c in result.scalars().all()}
-    return [_user_with_company(u, companies.get(u.company_id) if u.company_id else None) for u in users]
+        from sqlalchemy.orm import selectinload
+
+        result = await db.execute(
+            select(Company)
+            .options(selectinload(Company.subscription).selectinload(CompanySubscription.plan))
+            .where(Company.id.in_(company_ids))
+        )
+        for company in result.scalars().all():
+            companies[company.id] = company
+            if company.subscription:
+                subscriptions[company.id] = company.subscription
+    return [
+        _user_with_company(
+            u,
+            companies.get(u.company_id) if u.company_id else None,
+            subscriptions.get(u.company_id) if u.company_id else None,
+        )
+        for u in users
+    ]
 
 
 async def _enrich_user(db: AsyncSession, user: User) -> UserResponse:
     company = None
+    subscription = None
     if user.company_id:
-        result = await db.execute(select(Company).where(Company.id == user.company_id))
+        from sqlalchemy.orm import selectinload
+
+        result = await db.execute(
+            select(Company)
+            .options(selectinload(Company.subscription).selectinload(CompanySubscription.plan))
+            .where(Company.id == user.company_id)
+        )
         company = result.scalar_one_or_none()
-    return _user_with_company(user, company)
+        if company and company.subscription:
+            subscription = company.subscription
+    return _user_with_company(user, company, subscription)
 
 
 @router.post("", response_model=UserResponse)

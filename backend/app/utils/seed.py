@@ -20,6 +20,27 @@ async def seed_database() -> None:
                 "ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_modules TEXT"
             ))
             await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly'"
+            ))
+            await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS payment_terms_days INTEGER DEFAULT 30"
+            ))
+            await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS next_billing_date VARCHAR(20)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'pending'"
+            ))
+            await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS amount_due NUMERIC(12,2)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS last_payment_date VARCHAR(20)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS last_reminder_sent_at VARCHAR(50)"
+            ))
+            await db.execute(text(
                 "CREATE TABLE IF NOT EXISTS customer_reminders ("
                 "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL, customer_id INTEGER, "
                 "lead_id INTEGER, title VARCHAR(255) NOT NULL, reminder_type VARCHAR(50), "
@@ -123,6 +144,29 @@ async def seed_database() -> None:
             )
             db.add(super_admin)
 
+        # Backfill subscription billing columns for existing rows
+        try:
+            from datetime import date, timedelta
+            from app.models.tenant import CompanySubscription as CoSub
+            subs = (await db.execute(select(CoSub))).scalars().all()
+            for sub in subs:
+                if not sub.billing_cycle:
+                    sub.billing_cycle = "monthly"
+                if sub.payment_terms_days is None:
+                    sub.payment_terms_days = 30
+                if not sub.next_billing_date:
+                    sub.next_billing_date = (date.today() + timedelta(days=30)).isoformat()
+                if not sub.payment_status:
+                    sub.payment_status = "pending"
+                if sub.amount_due is None:
+                    plan_row = (
+                        await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == sub.plan_id))
+                    ).scalar_one_or_none()
+                    if plan_row:
+                        sub.amount_due = plan_row.price_monthly
+        except Exception:
+            pass
+
         # Demo company
         result = await db.execute(select(Company).where(Company.code == "DEMO"))
         company = result.scalar_one_or_none()
@@ -142,7 +186,20 @@ async def seed_database() -> None:
             db.add(company)
             await db.flush()
             if plan:
-                db.add(CompanySubscription(company_id=company.id, plan_id=plan.id, is_active=True))
+                from datetime import date, timedelta
+                db.add(
+                    CompanySubscription(
+                        company_id=company.id,
+                        plan_id=plan.id,
+                        is_active=True,
+                        billing_cycle="monthly",
+                        payment_terms_days=30,
+                        next_billing_date=(date.today() + timedelta(days=14)).isoformat(),
+                        payment_status="paid",
+                        amount_due=plan.price_monthly,
+                        last_payment_date=date.today().isoformat(),
+                    )
+                )
 
         # Demo admin — always ensure exists with known password
         demo_email = "admin@demo.fratelanza.com"

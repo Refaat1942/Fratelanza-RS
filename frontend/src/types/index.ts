@@ -35,6 +35,20 @@ export interface Paginated<T> {
   pages: number
 }
 
+export interface CompanyBilling {
+  plan_id?: number
+  plan_name_ar?: string
+  plan_name_en?: string
+  plan_code?: string
+  billing_cycle: string
+  payment_terms_days: number
+  next_billing_date?: string
+  payment_status: string
+  amount_due?: number
+  last_payment_date?: string
+  last_reminder_sent_at?: string
+}
+
 export interface Company {
   id: number
   name_ar: string
@@ -45,6 +59,10 @@ export interface Company {
   email?: string
   phone?: string
   city?: string
+}
+
+export interface CompanyWithBilling extends Company {
+  billing?: CompanyBilling | null
 }
 
 export interface Customer {

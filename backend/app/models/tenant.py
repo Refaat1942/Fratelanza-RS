@@ -16,6 +16,18 @@ class CompanyStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
+class BillingCycle(str, enum.Enum):
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
+
+
+class SubscriptionPaymentStatus(str, enum.Enum):
+    TRIAL = "trial"
+    PAID = "paid"
+    PENDING = "pending"
+    OVERDUE = "overdue"
+
+
 class Company(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "companies"
 
@@ -86,6 +98,13 @@ class CompanySubscription(Base, TimestampMixin):
     start_date: Mapped[Optional[str]] = mapped_column(String(20))
     end_date: Mapped[Optional[str]] = mapped_column(String(20))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    billing_cycle: Mapped[str] = mapped_column(String(20), default=BillingCycle.MONTHLY.value)
+    payment_terms_days: Mapped[int] = mapped_column(Integer, default=30)
+    next_billing_date: Mapped[Optional[str]] = mapped_column(String(20))
+    payment_status: Mapped[str] = mapped_column(String(20), default=SubscriptionPaymentStatus.PENDING.value)
+    amount_due: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
+    last_payment_date: Mapped[Optional[str]] = mapped_column(String(20))
+    last_reminder_sent_at: Mapped[Optional[str]] = mapped_column(String(50))
 
     company: Mapped["Company"] = relationship(back_populates="subscription")
     plan: Mapped["SubscriptionPlan"] = relationship(lazy="selectin")

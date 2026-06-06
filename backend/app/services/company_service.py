@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.security import get_password_hash
-from app.models.tenant import Company, CompanyStatus, CompanySubscription
+from app.models.tenant import BillingCycle, Company, CompanyStatus, CompanySubscription, SubscriptionPaymentStatus
+from app.services.platform_billing_service import PlatformBillingService
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.services.module_service import ModuleService
@@ -13,7 +14,12 @@ from app.services.module_service import ModuleService
 class CompanyService:
     @staticmethod
     async def list_companies(db: AsyncSession, page: int = 1, page_size: int = 20) -> tuple[list[Company], int]:
-        query = select(Company).where(Company.is_deleted == False).order_by(Company.id.desc())
+        query = (
+            select(Company)
+            .options(selectinload(Company.subscription).selectinload(CompanySubscription.plan))
+            .where(Company.is_deleted == False)
+            .order_by(Company.id.desc())
+        )
         total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
         result = await db.execute(query.offset((page - 1) * page_size).limit(page_size))
         return list(result.scalars().all()), total
@@ -60,8 +66,17 @@ class CompanyService:
             from app.models.tenant import SubscriptionPlan
             plan_result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == data.plan_id))
             plan = plan_result.scalar_one_or_none()
-            subscription = CompanySubscription(company_id=company.id, plan_id=data.plan_id, is_active=True)
+            subscription = CompanySubscription(
+                company_id=company.id,
+                plan_id=data.plan_id,
+                is_active=True,
+                billing_cycle=BillingCycle.MONTHLY.value,
+                payment_terms_days=30,
+                payment_status=SubscriptionPaymentStatus.TRIAL.value,
+            )
             db.add(subscription)
+            await db.flush()
+            await PlatformBillingService.ensure_subscription_defaults(db, company, plan, trial=True)
 
         if data.enabled_modules:
             await ModuleService.set_company_modules(db, company, data.enabled_modules)

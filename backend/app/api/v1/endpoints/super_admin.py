@@ -15,7 +15,13 @@ from app.models.system import AuditLog, SystemSetting
 from app.models.tenant import SubscriptionPlan
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
+from app.schemas.billing import (
+    CompanyWithBillingResponse,
+    RecordSubscriptionPayment,
+    SubscriptionBillingUpdate,
+)
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
+from app.services.platform_billing_service import PlatformBillingService
 from app.schemas.subscription import SubscriptionPlanUpdate
 from app.services.company_service import CompanyService
 from app.services.subscription_service import SubscriptionService
@@ -23,7 +29,23 @@ from app.services.subscription_service import SubscriptionService
 router = APIRouter()
 
 
-@router.get("/companies", response_model=PaginatedResponse[CompanyResponse])
+def _company_with_billing(company) -> CompanyWithBillingResponse:
+    billing = PlatformBillingService.subscription_to_summary(company.subscription)
+    return CompanyWithBillingResponse(
+        id=company.id,
+        name_ar=company.name_ar,
+        name_en=company.name_en,
+        code=company.code,
+        status=company.status.value if hasattr(company.status, "value") else company.status,
+        email=company.email,
+        phone=company.phone,
+        city=company.city,
+        country=company.country,
+        billing=billing,
+    )
+
+
+@router.get("/companies", response_model=PaginatedResponse[CompanyWithBillingResponse])
 async def list_all_companies(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(get_super_admin)],
@@ -33,7 +55,7 @@ async def list_all_companies(
     items, total = await CompanyService.list_companies(db, page, page_size)
     pages = (total + page_size - 1) // page_size
     return PaginatedResponse(
-        items=[CompanyResponse.model_validate(c) for c in items],
+        items=[_company_with_billing(c) for c in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -80,6 +102,47 @@ async def activate_company(
 ):
     company = await CompanyService.activate_company(db, company_id)
     return CompanyResponse.model_validate(company)
+
+
+@router.get("/companies/{company_id}/billing")
+async def get_company_billing(
+    company_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    sub = await PlatformBillingService.get_subscription(db, company_id)
+    if not sub:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+    return PlatformBillingService.subscription_to_summary(sub)
+
+
+@router.put("/companies/{company_id}/billing")
+async def update_company_billing(
+    company_id: int,
+    data: SubscriptionBillingUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    return await PlatformBillingService.update_billing(db, company_id, data)
+
+
+@router.post("/companies/{company_id}/billing/record-payment")
+async def record_company_payment(
+    company_id: int,
+    data: RecordSubscriptionPayment,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    return await PlatformBillingService.record_payment(db, company_id, data)
+
+
+@router.post("/companies/{company_id}/billing/send-reminder")
+async def send_company_payment_reminder(
+    company_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    return await PlatformBillingService.send_payment_reminder(db, company_id)
 
 
 @router.get("/subscription-plans")

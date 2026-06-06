@@ -1,6 +1,6 @@
 import { Plus, UserPlus, Building2, Phone, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useState } from 'react'
 import { ClientFormModal } from '@/components/forms/ClientFormModal'
@@ -12,6 +12,7 @@ import { useModulesStore } from '@/stores/modulesStore'
 export function QuickActions() {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
+  const location = useLocation()
   const { isEnabled } = useModulesStore()
   const [clientOpen, setClientOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
@@ -19,6 +20,9 @@ export function QuickActions() {
   const [reminderOpen, setReminderOpen] = useState(false)
 
   if (user?.is_super_admin) {
+    if (!location.pathname.startsWith('/super-admin/companies')) {
+      return null
+    }
     return (
       <>
         <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-white px-6 py-3">

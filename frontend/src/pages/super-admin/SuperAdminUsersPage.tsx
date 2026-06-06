@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Pencil, KeyRound } from 'lucide-react'
+import { Pencil, KeyRound, Users, Building2, AlertTriangle } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { UserEditModal } from '@/components/forms/UserEditModal'
 import { ResetPasswordModal } from '@/components/forms/ResetPasswordModal'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import type { Paginated } from '@/types'
 
@@ -20,11 +21,33 @@ interface AdminUser {
   company_name_ar?: string
   company_name_en?: string
   company_code?: string
+  plan_name_ar?: string
+  plan_name_en?: string
+  payment_terms_days?: number
+  next_billing_date?: string
+  payment_status?: string
+  amount_due?: number
   is_super_admin: boolean
+}
+
+function PaymentBadge({ status, t }: { status?: string; t: (k: string) => string }) {
+  if (!status) return <span className="text-slate-400">—</span>
+  const styles: Record<string, string> = {
+    paid: 'bg-emerald-50 text-emerald-700',
+    pending: 'bg-amber-50 text-amber-700',
+    overdue: 'bg-red-50 text-red-700',
+    trial: 'bg-sky-50 text-sky-700',
+  }
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] || 'bg-slate-100 text-slate-600'}`}>
+      {t(status)}
+    </span>
+  )
 }
 
 export function SuperAdminUsersPage() {
   const { t, i18n } = useTranslation()
+  const { formatEGP } = useFormatNumber()
   const qc = useQueryClient()
   const [editUser, setEditUser] = useState<AdminUser | null>(null)
   const [resetUser, setResetUser] = useState<AdminUser | null>(null)
@@ -37,6 +60,17 @@ export function SuperAdminUsersPage() {
     },
   })
 
+  const stats = useMemo(() => {
+    const items = data?.items ?? []
+    const tenantUsers = items.filter((u) => !u.is_super_admin)
+    return {
+      total: items.length,
+      active: tenantUsers.filter((u) => u.status === 'active').length,
+      companies: new Set(tenantUsers.map((u) => u.company_id).filter(Boolean)).size,
+      overdue: tenantUsers.filter((u) => u.payment_status === 'overdue').length,
+    }
+  }, [data])
+
   const toggleStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const action = status === 'active' ? 'suspend' : 'activate'
@@ -47,8 +81,42 @@ export function SuperAdminUsersPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('users')}</h1>
-      <p className="mb-6 text-sm text-slate-600">{t('users_admin_help')}</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">{t('users')}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t('users_admin_help')}</p>
+      </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="flex items-center gap-3 p-4">
+          <div className="rounded-lg bg-primary-50 p-2 text-primary-700"><Users className="h-5 w-5" /></div>
+          <div>
+            <p className="text-xs text-slate-500">{t('total_users')}</p>
+            <p className="text-xl font-bold">{stats.total}</p>
+          </div>
+        </Card>
+        <Card className="flex items-center gap-3 p-4">
+          <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700"><Users className="h-5 w-5" /></div>
+          <div>
+            <p className="text-xs text-slate-500">{t('active_users')}</p>
+            <p className="text-xl font-bold">{stats.active}</p>
+          </div>
+        </Card>
+        <Card className="flex items-center gap-3 p-4">
+          <div className="rounded-lg bg-sky-50 p-2 text-sky-700"><Building2 className="h-5 w-5" /></div>
+          <div>
+            <p className="text-xs text-slate-500">{t('companies_with_users')}</p>
+            <p className="text-xl font-bold">{stats.companies}</p>
+          </div>
+        </Card>
+        <Card className="flex items-center gap-3 p-4">
+          <div className="rounded-lg bg-red-50 p-2 text-red-700"><AlertTriangle className="h-5 w-5" /></div>
+          <div>
+            <p className="text-xs text-slate-500">{t('overdue_payments')}</p>
+            <p className="text-xl font-bold text-red-600">{stats.overdue}</p>
+          </div>
+        </Card>
+      </div>
+
       <Card>
         {isLoading ? (
           <p className="text-slate-500">{t('loading')}</p>
@@ -56,90 +124,100 @@ export function SuperAdminUsersPage() {
           <p className="text-slate-500">{t('no_data')}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[1100px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="pb-3 text-start font-medium">#</th>
-                  <th className="pb-3 text-start font-medium">{t('email')}</th>
-                  <th className="pb-3 text-start font-medium">{t('name_ar')}</th>
-                  <th className="pb-3 text-start font-medium">{t('role')}</th>
-                  <th className="pb-3 text-start font-medium">{t('company')}</th>
-                  <th className="pb-3 text-start font-medium">{t('status')}</th>
-                  <th className="pb-3 text-start font-medium">{t('actions')}</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500">
+                  <th className="px-2 py-3 text-start font-medium">{t('user')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('role')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('company')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('subscription_plan')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('payment_terms')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('next_billing_date')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('payment_status')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('status')}</th>
+                  <th className="px-2 py-3 text-start font-medium">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {data?.items.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-100">
-                    <td className="py-3">{user.id}</td>
-                    <td className="py-3">{user.email}</td>
-                    <td className="py-3 font-medium">
-                      {i18n.language === 'ar' ? user.full_name_ar : user.full_name_en}
-                    </td>
-                    <td className="py-3">
-                      {user.is_super_admin ? t('super_admin') : user.system_role.replace(/_/g, ' ')}
-                    </td>
-                    <td className="py-3">
-                      {user.is_super_admin || !user.company_id ? (
-                        <span className="text-slate-500">{t('platform')}</span>
-                      ) : (
-                        <div>
-                          <p className="font-medium text-slate-800">
-                            {i18n.language === 'ar'
-                              ? user.company_name_ar || user.company_name_en
-                              : user.company_name_en || user.company_name_ar}
-                          </p>
-                          {user.company_code && (
-                            <p className="text-xs text-slate-500">{user.company_code}</p>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                      }`}>
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      {!user.is_super_admin && (
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="secondary" onClick={() => setEditUser(user)}>
-                            <Pencil className="me-1 h-4 w-4" />{t('edit')}
-                          </Button>
-                          <Button variant="secondary" onClick={() => setResetUser(user)}>
-                            <KeyRound className="me-1 h-4 w-4" />{t('reset_password')}
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            loading={toggleStatus.isPending}
-                            onClick={() => toggleStatus.mutate({ id: user.id, status: user.status })}
-                          >
-                            {user.status === 'active' ? t('suspend') : t('activate')}
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {data?.items.map((user) => {
+                  const name = i18n.language === 'ar' ? user.full_name_ar : user.full_name_en
+                  const companyName = i18n.language === 'ar'
+                    ? user.company_name_ar || user.company_name_en
+                    : user.company_name_en || user.company_name_ar
+                  const planName = i18n.language === 'ar'
+                    ? user.plan_name_ar || user.plan_name_en
+                    : user.plan_name_en || user.plan_name_ar
+                  return (
+                    <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                      <td className="px-2 py-4">
+                        <p className="font-semibold text-slate-900">{name}</p>
+                        <p className="text-xs text-slate-500">{user.email}</p>
+                      </td>
+                      <td className="px-2 py-4 capitalize">
+                        {user.is_super_admin ? t('super_admin') : user.system_role.replace(/_/g, ' ')}
+                      </td>
+                      <td className="px-2 py-4">
+                        {user.is_super_admin || !user.company_id ? (
+                          <span className="text-slate-500">{t('platform')}</span>
+                        ) : (
+                          <div>
+                            <p className="font-medium text-slate-800">{companyName}</p>
+                            {user.company_code && <p className="text-xs text-slate-500">{user.company_code}</p>}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-2 py-4">{planName || '—'}</td>
+                      <td className="px-2 py-4">
+                        {user.payment_terms_days != null ? t('net_days', { days: user.payment_terms_days }) : '—'}
+                      </td>
+                      <td className="px-2 py-4">{user.next_billing_date || '—'}</td>
+                      <td className="px-2 py-4">
+                        {user.is_super_admin ? '—' : (
+                          <div className="space-y-1">
+                            <PaymentBadge status={user.payment_status} t={t} />
+                            {user.amount_due != null && (
+                              <p className="text-xs text-slate-500">{formatEGP(user.amount_due)}</p>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-2 py-4">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                        }`}>
+                          {t(user.status)}
+                        </span>
+                      </td>
+                      <td className="px-2 py-4">
+                        {!user.is_super_admin && (
+                          <div className="flex flex-wrap gap-1.5">
+                            <Button variant="secondary" onClick={() => setEditUser(user)}>
+                              <Pencil className="me-1 h-4 w-4" />{t('edit')}
+                            </Button>
+                            <Button variant="secondary" onClick={() => setResetUser(user)}>
+                              <KeyRound className="me-1 h-4 w-4" />{t('reset_password')}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              loading={toggleStatus.isPending}
+                              onClick={() => toggleStatus.mutate({ id: user.id, status: user.status })}
+                            >
+                              {user.status === 'active' ? t('suspend') : t('activate')}
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </Card>
-      <UserEditModal
-        open={!!editUser}
-        user={editUser}
-        onClose={() => setEditUser(null)}
-        onSaved={() => qc.invalidateQueries({ queryKey: ['super-admin-users'] })}
-      />
-      <ResetPasswordModal
-        open={!!resetUser}
-        userId={resetUser?.id ?? null}
-        userEmail={resetUser?.email ?? ''}
-        onClose={() => setResetUser(null)}
-      />
+
+      <UserEditModal open={!!editUser} user={editUser} onClose={() => setEditUser(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['super-admin-users'] })} />
+      <ResetPasswordModal open={!!resetUser} userId={resetUser?.id ?? null} userEmail={resetUser?.email ?? ''} onClose={() => setResetUser(null)} />
     </div>
   )
 }

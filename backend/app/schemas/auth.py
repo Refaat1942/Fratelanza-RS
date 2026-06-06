@@ -33,6 +33,12 @@ class UserResponse(BaseModel):
     company_name_ar: Optional[str] = None
     company_name_en: Optional[str] = None
     company_code: Optional[str] = None
+    plan_name_ar: Optional[str] = None
+    plan_name_en: Optional[str] = None
+    payment_terms_days: Optional[int] = None
+    next_billing_date: Optional[str] = None
+    payment_status: Optional[str] = None
+    amount_due: Optional[float] = None
     branch_id: Optional[int] = None
     preferred_language: str = "ar"
     is_2fa_enabled: bool = False

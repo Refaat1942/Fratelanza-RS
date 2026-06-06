@@ -1,52 +1,95 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, SlidersHorizontal, Pencil } from 'lucide-react'
+import { Building2, SlidersHorizontal, Pencil, CreditCard, Bell } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { CompanyFormModal } from '@/components/forms/CompanyFormModal'
 import { CompanyEditModal } from '@/components/forms/CompanyEditModal'
 import { CompanyModulesModal } from '@/components/forms/CompanyModulesModal'
+import { CompanyBillingModal } from '@/components/forms/CompanyBillingModal'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
-import type { Company, Paginated } from '@/types'
+import type { CompanyWithBilling, Paginated } from '@/types'
+
+function PaymentStatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
+  const styles: Record<string, string> = {
+    paid: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+    pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+    overdue: 'bg-red-50 text-red-700 ring-red-600/20',
+    trial: 'bg-sky-50 text-sky-700 ring-sky-600/20',
+  }
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${styles[status] || 'bg-slate-50 text-slate-600'}`}>
+      {t(status)}
+    </span>
+  )
+}
 
 export function CompaniesPage() {
   const { t, i18n } = useTranslation()
+  const { formatEGP } = useFormatNumber()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [editCompany, setEditCompany] = useState<Company | null>(null)
-  const [modulesCompany, setModulesCompany] = useState<Company | null>(null)
+  const [editCompany, setEditCompany] = useState<CompanyWithBilling | null>(null)
+  const [billingCompany, setBillingCompany] = useState<CompanyWithBilling | null>(null)
+  const [modulesCompany, setModulesCompany] = useState<CompanyWithBilling | null>(null)
+
   const { data, isLoading } = useQuery({
     queryKey: ['companies'],
     queryFn: async () => {
-      const { data } = await api.get<Paginated<Company>>('/super-admin/companies')
+      const { data } = await api.get<Paginated<CompanyWithBilling>>('/super-admin/companies', { params: { page_size: 100 } })
       return data
     },
   })
 
   const suspendCompany = useMutation({
-    mutationFn: async (id: number) => {
-      await api.post(`/super-admin/companies/${id}/suspend`)
-    },
+    mutationFn: async (id: number) => api.post(`/super-admin/companies/${id}/suspend`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
   })
 
   const activateCompany = useMutation({
-    mutationFn: async (id: number) => {
-      await api.post(`/super-admin/companies/${id}/activate`)
-    },
+    mutationFn: async (id: number) => api.post(`/super-admin/companies/${id}/activate`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
   })
 
+  const sendReminder = useMutation({
+    mutationFn: async (id: number) => api.post(`/super-admin/companies/${id}/billing/send-reminder`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
+  })
+
+  const overdueCount = data?.items.filter((c) => c.billing?.payment_status === 'overdue').length ?? 0
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t('companies')}</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{t('companies')}</h1>
+          <p className="mt-1 text-sm text-slate-600">{t('companies_billing_help')}</p>
+        </div>
         <Button onClick={() => setOpen(true)}>
           <Building2 className="me-2 h-4 w-4" />
           {t('add_company')}
         </Button>
       </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <Card className="p-4">
+          <p className="text-sm text-slate-500">{t('total_companies')}</p>
+          <p className="text-2xl font-bold text-slate-900">{data?.total ?? 0}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-sm text-slate-500">{t('active_companies')}</p>
+          <p className="text-2xl font-bold text-emerald-700">
+            {data?.items.filter((c) => c.status === 'active' || c.status === 'trial').length ?? 0}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-sm text-slate-500">{t('overdue_payments')}</p>
+          <p className="text-2xl font-bold text-red-600">{overdueCount}</p>
+        </Card>
+      </div>
+
       <Card>
         {isLoading ? (
           <p className="text-slate-500">{t('loading')}</p>
@@ -54,75 +97,97 @@ export function CompaniesPage() {
           <p className="text-slate-500">{t('no_data')}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="pb-3 text-start font-medium">#</th>
                   <th className="pb-3 text-start font-medium">{t('companies')}</th>
+                  <th className="pb-3 text-start font-medium">{t('subscription_plan')}</th>
+                  <th className="pb-3 text-start font-medium">{t('payment_terms')}</th>
+                  <th className="pb-3 text-start font-medium">{t('next_billing_date')}</th>
+                  <th className="pb-3 text-start font-medium">{t('amount_due')}</th>
+                  <th className="pb-3 text-start font-medium">{t('payment_status')}</th>
                   <th className="pb-3 text-start font-medium">{t('status')}</th>
-                  <th className="pb-3 text-start font-medium">Code</th>
                   <th className="pb-3 text-start font-medium">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
-                {data?.items.map((company) => (
-                  <tr key={company.id} className="border-b border-slate-100">
-                    <td className="py-3">{company.id}</td>
-                    <td className="py-3 font-medium">
-                      {i18n.language === 'ar' ? company.name_ar : company.name_en}
-                    </td>
-                    <td className="py-3">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        company.status === 'active' || company.status === 'trial'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-red-50 text-red-700'
-                      }`}>
-                        {company.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-slate-500">{company.code}</td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" onClick={() => setEditCompany(company)}>
-                          <Pencil className="me-1 h-4 w-4" />{t('edit')}
-                        </Button>
-                        <Button variant="secondary" onClick={() => setModulesCompany(company)}>
-                          <SlidersHorizontal className="me-1 h-4 w-4" />
-                          {t('manage_modules')}
-                        </Button>
-                        {company.status === 'active' || company.status === 'trial' ? (
+                {data?.items.map((company) => {
+                  const billing = company.billing
+                  const planName = i18n.language === 'ar'
+                    ? billing?.plan_name_ar || billing?.plan_name_en
+                    : billing?.plan_name_en || billing?.plan_name_ar
+                  return (
+                    <tr key={company.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                      <td className="py-4">
+                        <p className="font-semibold text-slate-900">
+                          {i18n.language === 'ar' ? company.name_ar : company.name_en}
+                        </p>
+                        <p className="text-xs text-slate-500">{company.code}</p>
+                      </td>
+                      <td className="py-4">
+                        <p>{planName || '—'}</p>
+                        <p className="text-xs text-slate-500">{billing ? t(billing.billing_cycle) : ''}</p>
+                      </td>
+                      <td className="py-4">
+                        {billing ? t('net_days', { days: billing.payment_terms_days }) : '—'}
+                      </td>
+                      <td className="py-4">{billing?.next_billing_date || '—'}</td>
+                      <td className="py-4 font-medium">
+                        {billing?.amount_due != null ? formatEGP(billing.amount_due) : '—'}
+                      </td>
+                      <td className="py-4">
+                        {billing ? <PaymentStatusBadge status={billing.payment_status} t={t} /> : '—'}
+                      </td>
+                      <td className="py-4">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          company.status === 'active' || company.status === 'trial'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-red-50 text-red-700'
+                        }`}>
+                          {t(company.status)}
+                        </span>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          <Button variant="secondary" onClick={() => setBillingCompany(company)}>
+                            <CreditCard className="me-1 h-4 w-4" />{t('billing')}
+                          </Button>
                           <Button
                             variant="secondary"
-                            loading={suspendCompany.isPending}
-                            onClick={() => suspendCompany.mutate(company.id)}
+                            loading={sendReminder.isPending}
+                            onClick={() => sendReminder.mutate(company.id)}
                           >
-                            {t('suspend')}
+                            <Bell className="me-1 h-4 w-4" />{t('remind')}
                           </Button>
-                        ) : (
-                          <Button
-                            variant="secondary"
-                            loading={activateCompany.isPending}
-                            onClick={() => activateCompany.mutate(company.id)}
-                          >
-                            {t('activate')}
+                          <Button variant="secondary" onClick={() => setEditCompany(company)}>
+                            <Pencil className="me-1 h-4 w-4" />{t('edit')}
                           </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <Button variant="secondary" onClick={() => setModulesCompany(company)}>
+                            <SlidersHorizontal className="me-1 h-4 w-4" />
+                          </Button>
+                          {company.status === 'active' || company.status === 'trial' ? (
+                            <Button variant="secondary" loading={suspendCompany.isPending} onClick={() => suspendCompany.mutate(company.id)}>
+                              {t('suspend')}
+                            </Button>
+                          ) : (
+                            <Button variant="secondary" loading={activateCompany.isPending} onClick={() => activateCompany.mutate(company.id)}>
+                              {t('activate')}
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </Card>
+
       <CompanyFormModal open={open} onClose={() => { setOpen(false); qc.invalidateQueries({ queryKey: ['companies'] }) }} />
-      <CompanyEditModal
-        open={!!editCompany}
-        company={editCompany}
-        onClose={() => setEditCompany(null)}
-        onSaved={() => qc.invalidateQueries({ queryKey: ['companies'] })}
-      />
+      <CompanyEditModal open={!!editCompany} company={editCompany} onClose={() => setEditCompany(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['companies'] })} />
+      <CompanyBillingModal open={!!billingCompany} company={billingCompany} onClose={() => setBillingCompany(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['companies'] })} />
       {modulesCompany && (
         <CompanyModulesModal
           open={!!modulesCompany}
