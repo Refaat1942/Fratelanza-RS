@@ -20,4 +20,8 @@ fi
 node scripts/capture-bilingual-demo-screenshots.mjs
 node scripts/generate-screenshots-guide.mjs
 
+cd docs
+zip -qr fratelanza-demo-screenshots.zip demo-screenshots/*.png demo-screenshots/manifest.json DEMO-SCREENSHOTS-GUIDE.md DEMO-SCREENSHOTS-GUIDE-AR.md
+echo "ZIP: docs/fratelanza-demo-screenshots.zip"
+
 echo "Done. Open docs/DEMO-SCREENSHOTS-GUIDE.md"
