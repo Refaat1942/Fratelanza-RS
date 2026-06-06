@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { formatEGP } from '@/lib/currency'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +24,7 @@ interface UnitCard {
 
 export function UnitsBoard() {
   const { t } = useTranslation()
+  const { formatEGP, formatInteger, formatNumber, localizeDigits } = useFormatNumber()
   const { data, isLoading } = useQuery({
     queryKey: ['units-board'],
     queryFn: async () => {
@@ -40,16 +41,16 @@ export function UnitsBoard() {
         <div key={status}>
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold capitalize">
             <span className={cn('rounded-full px-2.5 py-1 text-xs', STATUS_STYLES[status] ?? 'bg-slate-100')}>
-              {status} ({units.length})
+              {status} ({formatInteger(units.length)})
             </span>
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {units.map((u) => (
               <div key={u.id} className={cn('rounded-xl border-2 p-4 transition hover:shadow-md', STATUS_STYLES[status] ?? 'border-slate-200')}>
                 <p className="font-bold">{u.unit_code}</p>
-                <p className="text-xs opacity-75">#{u.unit_number} · {u.unit_type}</p>
+                <p className="text-xs opacity-75">#{localizeDigits(u.unit_number)} · {u.unit_type}</p>
                 <p className="mt-2 text-sm font-semibold">{formatEGP(u.price)}</p>
-                <p className="text-xs opacity-75">{u.area_sqm} m²</p>
+                <p className="text-xs opacity-75">{formatNumber(u.area_sqm)} m²</p>
               </div>
             ))}
           </div>

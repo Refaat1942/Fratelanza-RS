@@ -7,11 +7,13 @@ import { CustomerImportModal } from '@/components/forms/CustomerImportModal'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { ClientFormModal } from '@/components/forms/ClientFormModal'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import type { Customer, Paginated } from '@/types'
 
 export function CustomersPage() {
   const { t, i18n } = useTranslation()
+  const { formatInteger, formatPhone } = useFormatNumber()
   const [open, setOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [reminderOpen, setReminderOpen] = useState(false)
@@ -76,11 +78,11 @@ export function CustomersPage() {
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="py-3">{c.id}</td>
+                  <td className="py-3">{formatInteger(c.id)}</td>
                   <td className="py-3 font-medium">
                     {i18n.language === 'ar' ? c.full_name_ar : c.full_name_en}
                   </td>
-                  <td className="py-3">{c.mobile}</td>
+                  <td className="py-3">{formatPhone(c.mobile)}</td>
                   <td className="py-3 text-slate-500">{c.email || '-'}</td>
                   <td className="py-3 text-slate-500">{(c as Customer & { city?: string }).city || '-'}</td>
                   <td className="py-3">

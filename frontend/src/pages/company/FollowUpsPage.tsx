@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
 import { CompleteCallModal } from '@/components/forms/CompleteCallModal'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { telLink, whatsappLink } from '@/lib/phone'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ type QueueResponse = {
 
 export function FollowUpsPage() {
   const { t } = useTranslation()
+  const { formatInteger, formatPhone, localizeDigits } = useFormatNumber()
   const qc = useQueryClient()
   const [tab, setTab] = useState<'queue' | 'history'>('queue')
   const [selectedId, setSelectedId] = useState<number | null>(null)
@@ -103,19 +105,19 @@ export function FollowUpsPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
           <p className="text-sm text-red-800">{t('overdue')}</p>
-          <p className="text-2xl font-bold text-red-900">{queue?.counts?.overdue ?? summary?.overdue ?? 0}</p>
+          <p className="text-2xl font-bold text-red-900">{formatInteger(queue?.counts?.overdue ?? summary?.overdue)}</p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-sm text-amber-800">{t('calls_today')}</p>
-          <p className="text-2xl font-bold text-amber-900">{queue?.counts?.due_today ?? summary?.today ?? 0}</p>
+          <p className="text-2xl font-bold text-amber-900">{formatInteger(queue?.counts?.due_today ?? summary?.today)}</p>
         </div>
         <div className="rounded-xl border border-primary-200 bg-primary-50 p-4">
           <p className="text-sm text-primary-800">{t('upcoming_week')}</p>
-          <p className="text-2xl font-bold text-primary-900">{queue?.counts?.upcoming ?? 0}</p>
+          <p className="text-2xl font-bold text-primary-900">{formatInteger(queue?.counts?.upcoming)}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm text-slate-600">{t('completed_calls')}</p>
-          <p className="text-2xl font-bold text-slate-900">{history.length}</p>
+          <p className="text-2xl font-bold text-slate-900">{formatInteger(history.length)}</p>
         </div>
       </div>
 
@@ -160,7 +162,7 @@ export function FollowUpsPage() {
                     <p className="text-xs text-slate-500">{r.title}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       <Clock className="me-1 inline h-3 w-3" />
-                      {r.due_date} {r.due_time}
+                      {localizeDigits(`${r.due_date} ${r.due_time}`)}
                     </p>
                   </div>
                   <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', statusColor[r.status] ?? 'bg-slate-100')}>
@@ -190,7 +192,7 @@ export function FollowUpsPage() {
               {selected.mobile && tab === 'queue' && (
                 <div className="flex flex-wrap gap-2">
                   <a href={telLink(selected.mobile)} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">
-                    <Phone className="h-4 w-4" />{t('call_now')} {selected.mobile}
+                    <Phone className="h-4 w-4" />{t('call_now')} {formatPhone(selected.mobile)}
                   </a>
                   <a
                     href={whatsappLink(selected.whatsapp || selected.mobile)}

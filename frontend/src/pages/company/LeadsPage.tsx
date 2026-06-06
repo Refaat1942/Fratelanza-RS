@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { LayoutGrid, List } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { LeadKanban } from '@/components/crm/LeadKanban'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import type { Lead, Paginated } from '@/types'
 import { cn } from '@/lib/utils'
 
 export function LeadsPage() {
   const { t } = useTranslation()
+  const { formatInteger, formatPhone } = useFormatNumber()
   const [view, setView] = useState<'kanban' | 'list'>('kanban')
   const { data, isLoading } = useQuery({
     queryKey: ['leads'],
@@ -59,16 +61,16 @@ export function LeadsPage() {
               <tbody>
                 {data?.items.map((lead) => (
                   <tr key={lead.id} className="border-b border-slate-100">
-                    <td className="py-3">{lead.id}</td>
+                    <td className="py-3">{formatInteger(lead.id)}</td>
                     <td className="py-3 font-medium">{lead.full_name}</td>
-                    <td className="py-3">{lead.mobile}</td>
+                    <td className="py-3">{formatPhone(lead.mobile)}</td>
                     <td className="py-3">{lead.source}</td>
                     <td className="py-3">
                       <span className="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
                         {lead.stage}
                       </span>
                     </td>
-                    <td className="py-3">{lead.score}</td>
+                    <td className="py-3">{formatInteger(lead.score)}</td>
                   </tr>
                 ))}
               </tbody>

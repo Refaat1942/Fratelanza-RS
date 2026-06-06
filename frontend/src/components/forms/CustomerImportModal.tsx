@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Download, Upload, CheckCircle, AlertTriangle, XCircle, ArrowRight, ArrowLeft } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -35,6 +36,7 @@ interface CustomerImportModalProps {
 
 export function CustomerImportModal({ open, onClose }: CustomerImportModalProps) {
   const { t } = useTranslation()
+  const { formatInteger } = useFormatNumber()
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -156,12 +158,12 @@ export function CustomerImportModal({ open, onClose }: CustomerImportModalProps)
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-slate-600">
-              <span className="font-medium">{preview.filename}</span> — {preview.summary.total} {t('rows')}
+              <span className="font-medium">{preview.filename}</span> — {formatInteger(preview.summary.total)} {t('rows')}
             </p>
             <div className="flex gap-2 text-xs">
-              <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">{preview.summary.valid} {t('valid')}</span>
-              <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">{preview.summary.duplicates ?? 0} {t('duplicates')}</span>
-              <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">{preview.summary.errors} {t('errors')}</span>
+              <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">{formatInteger(preview.summary.valid)} {t('valid')}</span>
+              <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">{formatInteger(preview.summary.duplicates)} {t('duplicates')}</span>
+              <span className="rounded-full bg-red-50 px-2 py-1 text-red-700">{formatInteger(preview.summary.errors)} {t('errors')}</span>
             </div>
           </div>
 
@@ -230,7 +232,7 @@ export function CustomerImportModal({ open, onClose }: CustomerImportModalProps)
               <tbody>
                 {preview.rows.slice(0, 50).map((r) => (
                   <tr key={r.row_number} className="border-t border-slate-100">
-                    <td className="p-2">{r.row_number}</td>
+                    <td className="p-2">{formatInteger(r.row_number)}</td>
                     <td className="p-2">
                       <span className={cn('inline-flex items-center gap-1', r.status === 'valid' && 'text-emerald-700', r.status === 'duplicate' && 'text-amber-700', r.status === 'error' && 'text-red-700')}>
                         {statusIcon(r.status)} {r.status}
@@ -244,7 +246,7 @@ export function CustomerImportModal({ open, onClose }: CustomerImportModalProps)
               </tbody>
             </table>
             {preview.rows.length > 50 && (
-              <p className="p-2 text-xs text-slate-500">{t('showing_first_rows', { count: 50 })}</p>
+              <p className="p-2 text-xs text-slate-500">{t('showing_first_rows', { count: 50, formatParams: { count: { number: 50 } } })}</p>
             )}
           </div>
 
@@ -265,19 +267,19 @@ export function CustomerImportModal({ open, onClose }: CustomerImportModalProps)
           <h3 className="text-lg font-semibold text-slate-900">{t('import_complete')}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg bg-emerald-50 p-3">
-              <p className="text-2xl font-bold text-emerald-800">{result.created}</p>
+              <p className="text-2xl font-bold text-emerald-800">{formatInteger(result.created)}</p>
               <p className="text-xs text-emerald-700">{t('created')}</p>
             </div>
             <div className="rounded-lg bg-blue-50 p-3">
-              <p className="text-2xl font-bold text-blue-800">{result.updated}</p>
+              <p className="text-2xl font-bold text-blue-800">{formatInteger(result.updated)}</p>
               <p className="text-xs text-blue-700">{t('updated')}</p>
             </div>
             <div className="rounded-lg bg-amber-50 p-3">
-              <p className="text-2xl font-bold text-amber-800">{result.skipped}</p>
+              <p className="text-2xl font-bold text-amber-800">{formatInteger(result.skipped)}</p>
               <p className="text-xs text-amber-700">{t('skipped')}</p>
             </div>
             <div className="rounded-lg bg-red-50 p-3">
-              <p className="text-2xl font-bold text-red-800">{result.failed}</p>
+              <p className="text-2xl font-bold text-red-800">{formatInteger(result.failed)}</p>
               <p className="text-xs text-red-700">{t('failed')}</p>
             </div>
           </div>

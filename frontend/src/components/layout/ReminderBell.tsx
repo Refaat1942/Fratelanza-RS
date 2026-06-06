@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Bell } from 'lucide-react'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 
 export function ReminderBell() {
   const { t } = useTranslation()
+  const { formatInteger } = useFormatNumber()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -40,7 +42,7 @@ export function ReminderBell() {
         <Bell className="h-5 w-5" />
         {count > 0 && (
           <span className="absolute end-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            {count}
+            {formatInteger(count)}
           </span>
         )}
       </button>
@@ -48,7 +50,7 @@ export function ReminderBell() {
         <div className="absolute end-0 top-full z-50 mt-1 w-72 rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="border-b border-slate-100 px-4 py-3">
             <p className="font-semibold text-slate-900">{t('calls_today')}</p>
-            <p className="text-xs text-slate-500">{summary?.overdue ?? 0} {t('overdue')}</p>
+            <p className="text-xs text-slate-500">{formatInteger(summary?.overdue)} {t('overdue')}</p>
           </div>
           {today.length === 0 ? (
             <p className="p-4 text-sm text-slate-500">{t('no_calls_today')}</p>

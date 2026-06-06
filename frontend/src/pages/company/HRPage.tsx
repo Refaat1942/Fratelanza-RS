@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { formatEGP } from '@/lib/currency'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { exportRowsToExcel } from '@/lib/exportTable'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ type Tab = 'employees' | 'payroll' | 'leaves' | 'attendance'
 
 export function HRPage() {
   const { t } = useTranslation()
+  const { formatEGP } = useFormatNumber()
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('employees')
   const [empOpen, setEmpOpen] = useState(false)

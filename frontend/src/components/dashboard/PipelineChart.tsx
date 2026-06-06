@@ -1,4 +1,5 @@
 import { Card, CardHeader } from '@/components/ui/Card'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { useTranslation } from 'react-i18next'
 
 interface PipelineChartProps {
@@ -18,6 +19,7 @@ const stageLabels: Record<string, { ar: string; en: string }> = {
 
 export function PipelineChart({ pipeline }: PipelineChartProps) {
   const { t, i18n } = useTranslation()
+  const { formatInteger } = useFormatNumber()
   const max = Math.max(...Object.values(pipeline), 1)
 
   return (
@@ -31,7 +33,7 @@ export function PipelineChart({ pipeline }: PipelineChartProps) {
             <div key={stage}>
               <div className="mb-1 flex justify-between text-sm">
                 <span className="text-slate-600">{label || stage}</span>
-                <span className="font-medium text-slate-900">{count}</span>
+                <span className="font-medium text-slate-900">{formatInteger(count)}</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                 <div className="h-full rounded-full bg-primary-600 transition-all" style={{ width: `${pct}%` }} />

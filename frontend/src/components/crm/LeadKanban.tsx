@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Phone, Calendar } from 'lucide-react'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { telLink } from '@/lib/phone'
 import { cn } from '@/lib/utils'
@@ -32,6 +33,7 @@ interface LeadCard {
 
 export function LeadKanban() {
   const { t } = useTranslation()
+  const { formatInteger, formatPhone, localizeDigits } = useFormatNumber()
   const qc = useQueryClient()
   const [scheduleLead, setScheduleLead] = useState<LeadCard | null>(null)
 
@@ -64,7 +66,7 @@ export function LeadKanban() {
             <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-semibold capitalize">{key.replace('_', ' ')}</span>
               <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium">
-                {data?.[key]?.length ?? 0}
+                {formatInteger(data?.[key]?.length)}
               </span>
             </div>
             <div className="space-y-2">
@@ -72,18 +74,18 @@ export function LeadKanban() {
                 <div key={lead.id} className="rounded-lg bg-white p-3 shadow-sm">
                   <p className="font-medium text-slate-900">{lead.full_name}</p>
                   <a href={telLink(lead.mobile)} className="text-xs text-primary-600 hover:underline">
-                    {lead.mobile}
+                    {formatPhone(lead.mobile)}
                   </a>
                   {lead.next_follow_up && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-amber-700">
                       <Calendar className="h-3 w-3" />
-                      {t('next_call')}: {lead.next_follow_up}
+                      {t('next_call')}: {localizeDigits(lead.next_follow_up ?? '')}
                     </p>
                   )}
                   <div className="mt-2 flex items-center justify-between">
                     <span className="text-xs text-slate-400">{lead.source}</span>
                     <span className="rounded bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-700">
-                      {lead.score}
+                      {formatInteger(lead.score)}
                     </span>
                   </div>
                   <div className="mt-2 flex gap-1">

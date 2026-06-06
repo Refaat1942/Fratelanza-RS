@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
 import { UserFormModal } from '@/components/forms/UserFormModal'
 import { cn } from '@/lib/utils'
-import { formatEGP } from '@/lib/currency'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 
 function useListData<T>(key: string, endpoint: string) {
@@ -82,6 +82,7 @@ export function ReservationsPage() {
 
 export function ContractsPage() {
   const { t } = useTranslation()
+  const { formatEGP } = useFormatNumber()
   const { items, isLoading } = useListData<Record<string, unknown>>('contracts', '/contracts')
   return (
     <DataTable
@@ -102,6 +103,7 @@ export function ContractsPage() {
 
 export function CollectionsPage() {
   const { t } = useTranslation()
+  const { formatEGP } = useFormatNumber()
   const { items, isLoading } = useListData<Record<string, unknown>>('installments', '/collections/installments')
   return (
     <DataTable

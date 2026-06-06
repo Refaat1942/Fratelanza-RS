@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { SortableTable } from '@/components/ui/SortableTable'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatCard } from '@/components/ui/StatCard'
-import { formatEGP } from '@/lib/currency'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { downloadReport } from '@/lib/download'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ type FinanceTab = 'overview' | 'trial_balance' | 'profit_loss' | 'cash' | 'journ
 
 export function FinancePage() {
   const { t, i18n } = useTranslation()
+  const { formatEGP } = useFormatNumber()
   const navigate = useNavigate()
   const [tab, setTab] = useState<FinanceTab>('overview')
   const [exporting, setExporting] = useState(false)

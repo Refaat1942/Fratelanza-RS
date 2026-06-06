@@ -2,11 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Building2, Users, UserCircle } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import type { DashboardData } from '@/types'
 
 export function SuperAdminDashboard() {
   const { t } = useTranslation()
+  const { formatInteger } = useFormatNumber()
   const { data, isLoading } = useQuery({
     queryKey: ['super-admin-dashboard'],
     queryFn: async () => {
@@ -21,9 +23,9 @@ export function SuperAdminDashboard() {
     <div>
       <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('dashboard')}</h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard title={t('companies')} value={String(data?.stats.total_companies ?? 0)} icon={Building2} />
-        <StatCard title={t('users')} value={String(data?.stats.total_users ?? 0)} icon={Users} color="bg-emerald-50 text-emerald-700" />
-        <StatCard title={t('customers')} value={String(data?.stats.total_customers ?? 0)} icon={UserCircle} color="bg-amber-50 text-amber-700" />
+        <StatCard title={t('companies')} value={formatInteger(data?.stats.total_companies)} icon={Building2} />
+        <StatCard title={t('users')} value={formatInteger(data?.stats.total_users)} icon={Users} color="bg-emerald-50 text-emerald-700" />
+        <StatCard title={t('customers')} value={formatInteger(data?.stats.total_customers)} icon={UserCircle} color="bg-amber-50 text-amber-700" />
       </div>
     </div>
   )

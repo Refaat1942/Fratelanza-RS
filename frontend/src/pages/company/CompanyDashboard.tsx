@@ -7,11 +7,13 @@ import { StatCard } from '@/components/ui/StatCard'
 import { SalesChart } from '@/components/dashboard/SalesChart'
 import { PipelineChart } from '@/components/dashboard/PipelineChart'
 import { ActionPanel } from '@/components/dashboard/ActionPanel'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import type { DashboardData } from '@/types'
 
 export function CompanyDashboard() {
   const { t, i18n } = useTranslation()
+  const { formatEGP, formatInteger } = useFormatNumber()
   const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ['company-dashboard'],
@@ -41,24 +43,24 @@ export function CompanyDashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={formatKpi(0, t('total_sales'))}
-          value={data?.kpis[0]?.value ?? '0'}
+          value={formatEGP(data?.stats.total_sales)}
           icon={DollarSign}
         />
         <StatCard
           title={formatKpi(1, t('total_collections'))}
-          value={data?.kpis[1]?.value ?? '0'}
+          value={formatEGP(data?.stats.total_collections)}
           icon={Wallet}
           color="bg-emerald-50 text-emerald-700"
         />
         <StatCard
           title={formatKpi(2, t('available_units'))}
-          value={data?.kpis[2]?.value ?? '0'}
+          value={formatInteger(data?.stats.available_units)}
           icon={Home}
           color="bg-amber-50 text-amber-700"
         />
         <StatCard
           title={formatKpi(3, t('active_leads'))}
-          value={data?.kpis[3]?.value ?? '0'}
+          value={formatInteger(data?.stats.total_leads)}
           icon={Target}
           color="bg-violet-50 text-violet-700"
         />

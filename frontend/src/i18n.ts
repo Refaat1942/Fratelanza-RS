@@ -15,4 +15,11 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 })
 
+i18n.services.formatter?.add('number', (value, lng) => {
+  const locale = lng?.startsWith('ar') ? 'ar-EG' : 'en-US'
+  const n = Number(value)
+  if (Number.isNaN(n)) return String(value)
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(n)
+})
+
 export default i18n

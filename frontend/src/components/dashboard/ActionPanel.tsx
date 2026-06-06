@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Phone, AlertTriangle, Users, Wallet, ChevronRight } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { formatEGP } from '@/lib/currency'
+import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export function ActionPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { formatEGP, formatInteger } = useFormatNumber()
 
   const { data: reminderSummary } = useQuery({
     queryKey: ['reminders-summary'],
@@ -39,9 +40,9 @@ export function ActionPanel() {
       icon: Phone,
       color: 'text-primary-600 bg-primary-50',
       title: t('follow_ups_today'),
-      value: String((queue?.counts?.due_today ?? 0) + (queue?.counts?.overdue ?? 0)),
+      value: formatInteger((queue?.counts?.due_today ?? 0) + (queue?.counts?.overdue ?? 0)),
       desc: (queue?.counts?.overdue ?? reminderSummary?.overdue)
-        ? `${queue?.counts?.overdue ?? reminderSummary?.overdue} ${t('overdue')}`
+        ? `${formatInteger(queue?.counts?.overdue ?? reminderSummary?.overdue)} ${t('overdue')}`
         : t('no_overdue_calls'),
       onClick: () => navigate('/follow-ups'),
     },
@@ -57,7 +58,7 @@ export function ActionPanel() {
       icon: Users,
       color: 'text-violet-600 bg-violet-50',
       title: t('employees'),
-      value: String(employees.length),
+      value: formatInteger(employees.length),
       desc: t('manage_hr'),
       onClick: () => navigate('/hr'),
     },
