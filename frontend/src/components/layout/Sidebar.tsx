@@ -32,6 +32,7 @@ const companyLinks = [
   { to: '/warehouse', icon: Warehouse, label: 'warehouse' },
   { to: '/property', icon: Home, label: 'property' },
   { to: '/customer-service', icon: Headphones, label: 'customer_service' },
+  { to: '/users', icon: Users, label: 'users' },
   { to: '/ai-assistant', icon: Bot, label: 'ai_assistant' },
 ]
 

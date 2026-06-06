@@ -1,7 +1,12 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LayoutGrid, List, Plus } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { useModuleList } from '@/hooks/useModuleList'
 import { Button } from '@/components/ui/Button'
+import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
+import { UserFormModal } from '@/components/forms/UserFormModal'
+import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 
 function useListData<T>(key: string, endpoint: string) {
@@ -12,20 +17,44 @@ function useListData<T>(key: string, endpoint: string) {
 
 export function ProjectsPage() {
   const { t } = useTranslation()
+  const [view, setView] = useState<'list' | 'board'>('board')
   const { items, isLoading } = useListData<Record<string, unknown>>('projects', '/projects')
   return (
-    <DataTable
-      title={t('projects')}
-      loading={isLoading}
-      data={items}
-      columns={[
-        { key: 'id', label: '#' },
-        { key: 'name_ar', label: t('projects') },
-        { key: 'code', label: 'Code' },
-        { key: 'status', label: t('status') },
-        { key: 'total_units', label: t('units') },
-      ]}
-    />
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">{t('projects')}</h1>
+        <div className="flex rounded-lg border border-slate-200 bg-white p-1">
+          <button
+            onClick={() => setView('board')}
+            className={cn('flex items-center gap-1 rounded px-3 py-1.5 text-sm', view === 'board' && 'bg-primary-100 text-primary-700')}
+          >
+            <LayoutGrid className="h-4 w-4" /> {t('units_board')}
+          </button>
+          <button
+            onClick={() => setView('list')}
+            className={cn('flex items-center gap-1 rounded px-3 py-1.5 text-sm', view === 'list' && 'bg-primary-100 text-primary-700')}
+          >
+            <List className="h-4 w-4" /> {t('projects_list')}
+          </button>
+        </div>
+      </div>
+      {view === 'board' ? (
+        <UnitsBoard />
+      ) : (
+        <DataTable
+          title={t('projects')}
+          loading={isLoading}
+          data={items}
+          columns={[
+            { key: 'id', label: '#' },
+            { key: 'name_ar', label: t('projects') },
+            { key: 'code', label: 'Code' },
+            { key: 'status', label: t('status') },
+            { key: 'total_units', label: t('units') },
+          ]}
+        />
+      )}
+    </div>
   )
 }
 
@@ -214,22 +243,32 @@ export function CustomerServicePage() {
   )
 }
 
-export function UsersPage() {
+export function CompanyUsersPage() {
   const { t } = useTranslation()
-  const { items, isLoading } = useListData<Record<string, unknown>>('users', '/users')
+  const [open, setOpen] = useState(false)
+  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('company-users', '/users')
   const rows = Array.isArray(items) ? items : []
   return (
-    <DataTable
-      title={t('users')}
-      loading={isLoading}
-      data={rows}
-      columns={[
-        { key: 'email', label: t('email') },
-        { key: 'full_name_ar', label: 'Name' },
-        { key: 'system_role', label: 'Role' },
-        { key: 'status', label: t('status') },
-      ]}
-    />
+    <div>
+      <DataTable
+        title={t('users')}
+        loading={isLoading}
+        data={rows}
+        columns={[
+          { key: 'email', label: t('email') },
+          { key: 'full_name_ar', label: t('name_ar') },
+          { key: 'system_role', label: t('role') },
+          { key: 'status', label: t('status') },
+        ]}
+        actions={
+          <Button onClick={() => setOpen(true)}>
+            <Plus className="me-2 h-4 w-4" />
+            {t('add_user')}
+          </Button>
+        }
+      />
+      <UserFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
+    </div>
   )
 }
 

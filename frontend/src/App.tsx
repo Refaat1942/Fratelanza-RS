@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { SuperAdminDashboard } from '@/pages/super-admin/SuperAdminDashboard'
 import { CompaniesPage } from '@/pages/super-admin/CompaniesPage'
+import { SuperAdminUsersPage } from '@/pages/super-admin/SuperAdminUsersPage'
 import { CompanyDashboard } from '@/pages/company/CompanyDashboard'
 import { CustomersPage } from '@/pages/company/CustomersPage'
 import { LeadsPage } from '@/pages/company/LeadsPage'
@@ -13,7 +14,7 @@ import { AIAssistantPage } from '@/pages/company/AIAssistantPage'
 import {
   ProjectsPage, ReservationsPage, ContractsPage, CollectionsPage,
   BrokersPage, FinancePage, ConstructionPage, ProcurementPage,
-  WarehousePage, PropertyPage, CustomerServicePage, UsersPage,
+  WarehousePage, PropertyPage, CustomerServicePage, CompanyUsersPage,
   AuditLogsPage, SubscriptionsPage, SettingsPage,
 } from '@/pages/company/ModulePages'
 
@@ -33,7 +34,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/super-admin" element={<ProtectedRoute superAdminOnly><SuperAdminDashboard /></ProtectedRoute>} />
         <Route path="/super-admin/companies" element={<ProtectedRoute superAdminOnly><CompaniesPage /></ProtectedRoute>} />
-        <Route path="/super-admin/users" element={<ProtectedRoute superAdminOnly><UsersPage /></ProtectedRoute>} />
+        <Route path="/super-admin/users" element={<ProtectedRoute superAdminOnly><SuperAdminUsersPage /></ProtectedRoute>} />
         <Route path="/super-admin/subscriptions" element={<ProtectedRoute superAdminOnly><SubscriptionsPage /></ProtectedRoute>} />
         <Route path="/super-admin/audit-logs" element={<ProtectedRoute superAdminOnly><AuditLogsPage /></ProtectedRoute>} />
         <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly><SettingsPage /></ProtectedRoute>} />
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="/warehouse" element={<WarehousePage />} />
         <Route path="/property" element={<PropertyPage />} />
         <Route path="/customer-service" element={<CustomerServicePage />} />
+        <Route path="/users" element={<CompanyUsersPage />} />
         <Route path="/ai-assistant" element={<AIAssistantPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

@@ -1,11 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { Building2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { CompanyFormModal } from '@/components/forms/CompanyFormModal'
 import api from '@/lib/api'
 import type { Company, Paginated } from '@/types'
 
 export function CompaniesPage() {
   const { t, i18n } = useTranslation()
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
   const { data, isLoading } = useQuery({
     queryKey: ['companies'],
     queryFn: async () => {
@@ -14,9 +20,22 @@ export function CompaniesPage() {
     },
   })
 
+  const suspendCompany = useMutation({
+    mutationFn: async (id: number) => {
+      await api.post(`/super-admin/companies/${id}/suspend`)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
+  })
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('companies')}</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900">{t('companies')}</h1>
+        <Button onClick={() => setOpen(true)}>
+          <Building2 className="me-2 h-4 w-4" />
+          {t('add_company')}
+        </Button>
+      </div>
       <Card>
         {isLoading ? (
           <p className="text-slate-500">{t('loading')}</p>
@@ -31,6 +50,7 @@ export function CompaniesPage() {
                   <th className="pb-3 text-start font-medium">{t('companies')}</th>
                   <th className="pb-3 text-start font-medium">{t('status')}</th>
                   <th className="pb-3 text-start font-medium">Code</th>
+                  <th className="pb-3 text-start font-medium">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -41,11 +61,24 @@ export function CompaniesPage() {
                       {i18n.language === 'ar' ? company.name_ar : company.name_en}
                     </td>
                     <td className="py-3">
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        company.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                      }`}>
                         {company.status}
                       </span>
                     </td>
                     <td className="py-3 text-slate-500">{company.code}</td>
+                    <td className="py-3">
+                      {company.status === 'active' && (
+                        <Button
+                          variant="secondary"
+                          loading={suspendCompany.isPending}
+                          onClick={() => suspendCompany.mutate(company.id)}
+                        >
+                          {t('suspend')}
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -53,6 +86,7 @@ export function CompaniesPage() {
           </div>
         )}
       </Card>
+      <CompanyFormModal open={open} onClose={() => { setOpen(false); qc.invalidateQueries({ queryKey: ['companies'] }) }} />
     </div>
   )
 }

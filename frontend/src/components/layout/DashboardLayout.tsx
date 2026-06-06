@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
+import { QuickActions } from './QuickActions'
 
 export function DashboardLayout() {
   return (
@@ -8,6 +9,7 @@ export function DashboardLayout() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
+        <QuickActions />
         <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
           <Outlet />
         </main>

@@ -83,6 +83,38 @@ async def list_project_units(
     )
 
 
+@router.get("/units/board")
+async def units_status_board(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    query = (
+        select(Unit)
+        .join(Floor, Unit.floor_id == Floor.id)
+        .join(Building, Floor.building_id == Building.id)
+        .join(Project, Building.project_id == Project.id)
+        .where(Unit.is_deleted == False)
+    )
+    if not current_user.is_super_admin and current_user.company_id:
+        query = query.where(Project.company_id == current_user.company_id)
+    result = await db.execute(query)
+    units = result.scalars().all()
+    board: dict[str, list] = {}
+    for u in units:
+        st = u.status.value
+        board.setdefault(st, []).append(
+            {
+                "id": u.id,
+                "unit_code": u.unit_code,
+                "unit_number": u.unit_number,
+                "unit_type": u.unit_type.value,
+                "price": float(u.price),
+                "area_sqm": float(u.area_sqm),
+            }
+        )
+    return board
+
+
 @router.post("/units", response_model=UnitResponse)
 async def create_unit(
     data: UnitCreate,

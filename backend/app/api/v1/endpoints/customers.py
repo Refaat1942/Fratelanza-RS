@@ -9,9 +9,73 @@ from app.core.database import get_db
 from app.models.customers import Customer, CustomerActivity
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
+from app.models.crm import Lead, LeadSource, LeadStage
+from app.models.customers import ActivityType, CustomerActivity
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.user import ClientOnboard
+from app.services.ai_service import AIService
 
 router = APIRouter()
+
+
+@router.post("/onboard", response_model=CustomerResponse)
+async def onboard_client(
+    data: ClientOnboard,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    """Odoo-style quick client registration with optional lead creation."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    customer = Customer(
+        company_id=current_user.company_id,
+        full_name_ar=data.full_name_ar,
+        full_name_en=data.full_name_en,
+        mobile=data.mobile,
+        email=data.email,
+        whatsapp=data.whatsapp,
+        city=data.city,
+        national_id=data.national_id,
+        notes=data.notes,
+        assigned_to_id=current_user.id,
+    )
+    db.add(customer)
+    await db.flush()
+
+    db.add(
+        CustomerActivity(
+            customer_id=customer.id,
+            activity_type=ActivityType.NOTE,
+            title="Client registered",
+            description="New client onboarded via quick registration",
+            created_by_id=current_user.id,
+        )
+    )
+
+    if data.create_lead:
+        try:
+            source = LeadSource(data.source)
+        except ValueError:
+            source = LeadSource.WALK_IN
+        lead = Lead(
+            company_id=current_user.company_id,
+            customer_id=customer.id,
+            full_name=data.full_name_en,
+            mobile=data.mobile,
+            email=data.email,
+            source=source,
+            stage=LeadStage.NEW,
+            assigned_to_id=current_user.id,
+            notes=data.notes,
+        )
+        score, ai_score, qual = AIService.score_lead(lead)
+        lead.score = score
+        lead.ai_score = ai_score
+        lead.ai_qualification = qual
+        db.add(lead)
+
+    await db.flush()
+    return CustomerResponse.model_validate(customer)
 
 
 @router.get("", response_model=PaginatedResponse[CustomerResponse])

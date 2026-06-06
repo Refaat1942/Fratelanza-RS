@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_company_user
 from app.core.database import get_db
-from app.models.crm import Lead
+from app.models.crm import Lead, LeadStage
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.lead import LeadCreate, LeadResponse, LeadUpdate
@@ -59,6 +59,53 @@ async def create_lead(
     db.add(lead)
     await db.flush()
     return LeadResponse.model_validate(lead)
+
+
+@router.patch("/{lead_id}/stage", response_model=LeadResponse)
+async def update_lead_stage(
+    lead_id: int,
+    stage: LeadStage,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if not current_user.is_super_admin and lead.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    lead.stage = stage
+    score, ai_score, qualification = AIService.score_lead(lead)
+    lead.score = score
+    lead.ai_score = ai_score
+    lead.ai_qualification = qualification
+    await db.flush()
+    return LeadResponse.model_validate(lead)
+
+
+@router.get("/kanban")
+async def leads_kanban(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    query = select(Lead).where(Lead.is_deleted == False)
+    if not current_user.is_super_admin:
+        query = query.where(Lead.company_id == current_user.company_id)
+    result = await db.execute(query.order_by(Lead.score.desc()))
+    leads = result.scalars().all()
+    board: dict[str, list] = {s.value: [] for s in LeadStage}
+    for lead in leads:
+        board[lead.stage.value].append(
+            {
+                "id": lead.id,
+                "full_name": lead.full_name,
+                "mobile": lead.mobile,
+                "source": lead.source.value,
+                "score": lead.score,
+                "ai_qualification": lead.ai_qualification,
+            }
+        )
+    return board
 
 
 @router.put("/{lead_id}", response_model=LeadResponse)

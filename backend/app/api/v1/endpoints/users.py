@@ -10,8 +10,34 @@ from app.core.security import get_password_hash
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import UserResponse
 from app.schemas.common import PaginatedResponse
+from app.schemas.user import UserCreate
+from app.services.auth_service import AuthService
 
 router = APIRouter()
+
+
+@router.post("", response_model=UserResponse)
+async def create_user(
+    data: UserCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    company_id = data.company_id if current_user.is_super_admin else current_user.company_id
+    if not company_id and not current_user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    user = await AuthService.create_user(
+        db,
+        email=data.email,
+        password=data.password,
+        full_name_ar=data.full_name_ar,
+        full_name_en=data.full_name_en,
+        system_role=data.system_role,
+        company_id=company_id,
+    )
+    if data.phone:
+        user.phone = data.phone
+    await db.flush()
+    return UserResponse.model_validate(user)
 
 
 @router.get("", response_model=PaginatedResponse[UserResponse])

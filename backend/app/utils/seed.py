@@ -102,7 +102,6 @@ async def seed_database() -> None:
             )
             db.add(demo_admin)
         else:
-            demo_admin.password_hash = get_password_hash(demo_password)
             demo_admin.status = UserStatus.ACTIVE
             demo_admin.is_deleted = False
             if company and not demo_admin.company_id:

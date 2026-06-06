@@ -53,5 +53,22 @@
   "status": "Status",
   "actions": "Actions",
   "no_data": "No data available",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "add_client": "Add Client",
+  "add_user": "Add User",
+  "add_company": "Add Company",
+  "name_ar": "Name (Arabic)",
+  "name_en": "Name (English)",
+  "mobile": "Mobile",
+  "city": "City",
+  "national_id": "National ID",
+  "role": "Role",
+  "lead_source": "Lead Source",
+  "create_lead_auto": "Create lead automatically",
+  "units_board": "Units Board",
+  "projects_list": "Projects List",
+  "suspend": "Suspend",
+  "activate": "Activate",
+  "kanban_view": "Kanban",
+  "list_view": "List"
 }
