@@ -4,10 +4,9 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import api from '@/lib/api'
+import { SYSTEM_ROLES, roleLabel } from '@/constants/roles'
 
-const ROLES = ['sales_agent', 'sales_manager', 'collection_officer', 'accountant', 'company_admin', 'customer_service', 'hr_officer']
-
-interface AdminUser {
+export interface AdminUser {
   id: number
   username?: string
   email: string
@@ -24,9 +23,10 @@ interface UserEditModalProps {
   onClose: () => void
   user: AdminUser | null
   onSaved: () => void
+  showCompanyId?: boolean
 }
 
-export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalProps) {
+export function UserEditModal({ open, onClose, user, onSaved, showCompanyId = true }: UserEditModalProps) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -62,7 +62,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
         full_name_ar: form.full_name_ar,
         full_name_en: form.full_name_en,
         system_role: form.system_role,
-        company_id: form.company_id ? Number(form.company_id) : undefined,
+        ...(showCompanyId ? { company_id: form.company_id ? Number(form.company_id) : undefined } : {}),
       })
       onSaved()
       onClose()
@@ -82,10 +82,12 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
           <div>
             <label className="mb-1 block text-sm font-medium">{t('role')}</label>
             <select className="input-field" value={form.system_role} onChange={(e) => setForm({ ...form, system_role: e.target.value })}>
-              {ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+              {SYSTEM_ROLES.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
             </select>
           </div>
-          <Input label={t('company_id')} type="number" value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })} />
+          {showCompanyId && (
+            <Input label={t('company_id')} type="number" value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })} />
+          )}
           <div className="flex gap-3">
             <Button type="submit" loading={loading}>{t('save')}</Button>
             <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>

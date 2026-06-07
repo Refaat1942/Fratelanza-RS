@@ -71,9 +71,9 @@ export function Sidebar() {
 
   if (!user?.is_super_admin && isEnabled('users')) {
     companyLinks.push({
-      to: '/feature-settings',
+      to: '/settings',
       icon: Settings,
-      label: 'feature_settings',
+      label: 'settings',
     })
   }
 

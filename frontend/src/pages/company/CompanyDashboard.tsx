@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, Wallet, Home, Target, BarChart3, LayoutDashboard, RefreshCw } from 'lucide-react'
+import { DollarSign, Wallet, Home, Target, BarChart3, LayoutDashboard, RefreshCw, Database } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
@@ -18,20 +18,31 @@ export function CompanyDashboard() {
   const { formatEGP, formatInteger } = useFormatNumber()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const reseed = useMutation({
-    mutationFn: async () => api.post('/dashboard/reseed-demo'),
-    onSuccess: () => {
-      qc.invalidateQueries()
-      alert(t('demo_data_loaded'))
-    },
-  })
-  const { data, isLoading } = useQuery({
+  const dashboardQuery = useQuery({
     queryKey: ['company-dashboard'],
     queryFn: async () => {
       const { data } = await api.get<DashboardData>('/dashboard/company')
       return data
     },
   })
+  const refresh = useMutation({
+    mutationFn: async () => dashboardQuery.refetch(),
+    onError: () => alert(t('dashboard_refresh_failed')),
+  })
+  const reseed = useMutation({
+    mutationFn: async () => api.post('/dashboard/reseed-demo'),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['company-dashboard'] }),
+        qc.invalidateQueries({ queryKey: ['reports-catalog'] }),
+        qc.invalidateQueries({ queryKey: ['report'] }),
+      ])
+      alert(t('demo_data_loaded'))
+    },
+    onError: () => alert(t('demo_data_failed')),
+  })
+
+  const { data, isLoading } = dashboardQuery
 
   if (isLoading) return <LoadingState />
 
@@ -50,8 +61,12 @@ export function CompanyDashboard() {
         accentIndex={0}
         actions={
           <>
-            <Button variant="secondary" onClick={() => reseed.mutate()} loading={reseed.isPending}>
+            <Button variant="secondary" onClick={() => refresh.mutate()} loading={refresh.isPending || dashboardQuery.isFetching}>
               <RefreshCw className="me-2 h-4 w-4" />
+              {t('refresh_dashboard')}
+            </Button>
+            <Button variant="secondary" onClick={() => reseed.mutate()} loading={reseed.isPending}>
+              <Database className="me-2 h-4 w-4" />
               {t('load_demo_data')}
             </Button>
             <Button variant="secondary" onClick={() => navigate('/reports')}>

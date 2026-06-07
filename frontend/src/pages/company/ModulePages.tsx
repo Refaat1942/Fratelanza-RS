@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, CheckCircle, FileText, CreditCard, Sliders } from 'lucide-react'
+import { Plus, CheckCircle, FileText, CreditCard, Sliders, KeyRound, Power } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { useListData } from '@/hooks/useListData'
@@ -10,6 +10,8 @@ import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UserFormModal } from '@/components/forms/UserFormModal'
+import { UserEditModal, type AdminUser } from '@/components/forms/UserEditModal'
+import { ResetPasswordModal } from '@/components/forms/ResetPasswordModal'
 import { UserFeaturesModal } from '@/components/forms/UserFeaturesModal'
 import {
   ReservationFormModal, ContractFormModal,
@@ -19,6 +21,7 @@ import {
 } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
+import { roleLabel } from '@/constants/roles'
 
 function EntityLink({ to, label }: { to: string; label: string }) {
   return <Link to={to} className="font-medium text-primary-600 hover:underline">{label}</Link>
@@ -320,15 +323,33 @@ export function CustomerServicePage() {
 
 export function CompanyUsersPage() {
   const { t, i18n } = useTranslation()
+  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const [featuresUser, setFeaturesUser] = useState<Record<string, unknown> | null>(null)
+  const [editUser, setEditUser] = useState<AdminUser | null>(null)
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null)
   const deleteUser = useDeleteEntity('/users', ['company-users'])
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('company-users', '/users')
+  const toggleStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const action = status === 'active' ? 'suspend' : 'activate'
+      await api.post(`/users/${id}/${action}`)
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['company-users'] })
+      refetch()
+    },
+  })
   const rows = Array.isArray(items) ? items : []
+  const onSaved = () => {
+    qc.invalidateQueries({ queryKey: ['company-users'] })
+    refetch()
+  }
   return (
     <div>
       <DataTable
         title={t('users')}
+        subtitle={t('company_users_help')}
         loading={isLoading}
         exportFilename="users"
         data={rows}
@@ -336,7 +357,7 @@ export function CompanyUsersPage() {
           { key: 'username', label: t('username') },
           { key: 'full_name_ar', label: t('name_ar') },
           { key: 'email', label: t('email') },
-          { key: 'system_role', label: t('role') },
+          { key: 'system_role', label: t('role'), render: (row) => roleLabel(String(row.system_role ?? '')) },
           { key: 'status', label: t('status') },
         ]}
         actions={
@@ -347,27 +368,63 @@ export function CompanyUsersPage() {
         }
         rowActions={(row) => (
           <RowActions
+            onEdit={() => setEditUser(row as unknown as AdminUser)}
             onDelete={() => confirmDelete(t) && deleteUser.mutate(row.id as number, { onSuccess: () => { refetch() } })}
             extra={
-              <Button
-                variant="ghost"
-                className="!px-2 !py-1.5"
-                onClick={() => setFeaturesUser(row)}
-                title={t('user_feature_access')}
-              >
-                <Sliders className="h-4 w-4 text-primary-600" />
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  className="!px-2 !py-1.5 text-xs"
+                  onClick={() => setFeaturesUser(row)}
+                  title={t('user_feature_access')}
+                >
+                  <Sliders className="me-1 h-3.5 w-3.5 text-primary-600" />
+                  {t('features')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="!px-2 !py-1.5 text-xs"
+                  onClick={() => setResetUser(row as unknown as AdminUser)}
+                  title={t('reset_password')}
+                >
+                  <KeyRound className="me-1 h-3.5 w-3.5 text-amber-600" />
+                  {t('reset_password')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="!px-2 !py-1.5 text-xs"
+                  loading={toggleStatus.isPending && toggleStatus.variables?.id === row.id}
+                  onClick={() => toggleStatus.mutate({ id: row.id as number, status: String(row.status) })}
+                  title={row.status === 'active' ? t('suspend') : t('activate')}
+                >
+                  <Power className="me-1 h-3.5 w-3.5" />
+                  {row.status === 'active' ? t('suspend') : t('activate')}
+                </Button>
+              </>
             }
           />
         )}
       />
       <UserFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
+      <UserEditModal
+        open={!!editUser}
+        user={editUser}
+        showCompanyId={false}
+        onClose={() => setEditUser(null)}
+        onSaved={onSaved}
+      />
+      <ResetPasswordModal
+        open={!!resetUser}
+        userId={resetUser?.id ?? null}
+        userEmail={resetUser?.email ?? ''}
+        onClose={() => setResetUser(null)}
+      />
       <UserFeaturesModal
         open={!!featuresUser}
         userId={featuresUser?.id as number}
-        userName={String(i18n.language === 'ar' ? featuresUser?.full_name_ar : featuresUser?.full_name_en ?? '')}
+        userName={String((i18n.language === 'ar' ? featuresUser?.full_name_ar : featuresUser?.full_name_en) ?? '')}
         onClose={() => setFeaturesUser(null)}
-        onSaved={() => refetch()}
+        onSaved={onSaved}
       />
     </div>
   )
