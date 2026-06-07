@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Plus, Wallet, Calendar, Clock, Users, FileText, Download } from 'lucide-react'
+import { Plus, Wallet, Calendar, Clock, Users, FileText, Download, Pencil } from 'lucide-react'
+import { ReportLinkButton } from '@/components/ui/ReportLinkButton'
 import { SortableTable } from '@/components/ui/SortableTable'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +21,7 @@ export function HRPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('employees')
   const [empOpen, setEmpOpen] = useState(false)
+  const [editEmployee, setEditEmployee] = useState<Record<string, unknown> | null>(null)
   const [leaveOpen, setLeaveOpen] = useState(false)
   const [attOpen, setAttOpen] = useState(false)
   const [selectedRun, setSelectedRun] = useState<number | null>(null)
@@ -99,6 +101,20 @@ export function HRPage() {
     enabled: tab === 'payslips',
   })
 
+  useEffect(() => {
+    if (editEmployee && empOpen) {
+      setForm({
+        employee_code: String(editEmployee.employee_code ?? ''),
+        full_name_ar: String(editEmployee.full_name_ar ?? ''),
+        full_name_en: String(editEmployee.full_name_en ?? ''),
+        department: String(editEmployee.department ?? ''),
+        position: String(editEmployee.position ?? ''),
+        salary: String(editEmployee.salary ?? ''),
+        hire_date: String(editEmployee.hire_date ?? ''),
+      })
+    }
+  }, [editEmployee, empOpen])
+
   const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
     { key: 'employees', label: t('employees'), icon: Users },
     { key: 'payroll', label: t('payroll'), icon: Wallet },
@@ -115,7 +131,8 @@ export function HRPage() {
           <p className="text-sm text-slate-500">{t('hr_help')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {tab === 'employees' && <Button onClick={() => setEmpOpen(true)}><Plus className="me-2 h-4 w-4" />{t('add_employee')}</Button>}
+          <ReportLinkButton reportKey="hr_employees" />
+          {tab === 'employees' && <Button onClick={() => { setEditEmployee(null); setEmpOpen(true) }}><Plus className="me-2 h-4 w-4" />{t('add_employee')}</Button>}
           {tab === 'leaves' && <Button onClick={() => setLeaveOpen(true)}><Plus className="me-2 h-4 w-4" />{t('request_leave')}</Button>}
           {tab === 'attendance' && <Button onClick={() => setAttOpen(true)}><Plus className="me-2 h-4 w-4" />{t('record_attendance')}</Button>}
           {tab === 'payroll' && (
@@ -148,13 +165,18 @@ export function HRPage() {
                   <p className="font-medium">{e.full_name_en as string} <span className="text-slate-400">({e.employee_code as string})</span></p>
                   <p className="text-xs text-slate-500">{e.department as string} · {formatEGP(e.salary as number)}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => window.confirm(t('confirm_delete')) && deleteEmployee.mutate(e.id as number)}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  {t('delete')}
-                </button>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => { setEditEmployee(e); setEmpOpen(true) }} className="text-sm text-primary-600 hover:underline">
+                    <Pencil className="inline h-3.5 w-3.5 me-1" />{t('edit')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.confirm(t('confirm_delete')) && deleteEmployee.mutate(e.id as number)}
+                    className="text-sm text-red-600 hover:underline"
+                  >
+                    {t('delete')}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -290,11 +312,17 @@ export function HRPage() {
         )
       )}
 
-      <Modal open={empOpen} onClose={() => setEmpOpen(false)} title={t('add_employee')}>
+      <Modal open={empOpen} onClose={() => { setEmpOpen(false); setEditEmployee(null) }} title={editEmployee ? t('edit_employee') : t('add_employee')}>
         <form onSubmit={async (e) => {
           e.preventDefault()
-          await api.post('/hr/employees', { ...form, salary: Number(form.salary) || 0 })
+          const payload = { ...form, salary: Number(form.salary) || 0 }
+          if (editEmployee?.id) {
+            await api.put(`/hr/employees/${editEmployee.id}`, payload)
+          } else {
+            await api.post('/hr/employees', payload)
+          }
           setEmpOpen(false)
+          setEditEmployee(null)
           qc.invalidateQueries({ queryKey: ['hr-employees'] })
         }} className="space-y-4">
           <Input label={t('employee_code')} value={form.employee_code} onChange={(e) => setForm({ ...form, employee_code: e.target.value })} required />

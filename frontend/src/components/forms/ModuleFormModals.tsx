@@ -89,27 +89,38 @@ export function ProjectFormModal({ open, onClose, editRow }: ModalProps) {
   )
 }
 
-export function UnitFormModal({ open, onClose }: ModalProps) {
+export function UnitFormModal({ open, onClose, editRow }: ModalProps) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: floors = [] } = useFloorsLookup()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    floor_id: '', unit_code: '', unit_number: '', unit_type: 'apartment', area_sqm: '120', bedrooms: '2', bathrooms: '2', price: '2500000',
+    floor_id: '', unit_code: '', unit_number: '', unit_type: 'apartment', area_sqm: '120', bedrooms: '2', bathrooms: '2', price: '2500000', status: 'available',
   })
 
   useEffect(() => {
-    if (open && floors.length && !form.floor_id) {
+    if (editRow && open) {
+      setForm({
+        floor_id: String(editRow.floor_id ?? ''),
+        unit_code: String(editRow.unit_code ?? ''),
+        unit_number: String(editRow.unit_number ?? ''),
+        unit_type: String(editRow.unit_type ?? 'apartment'),
+        area_sqm: String(editRow.area_sqm ?? '120'),
+        bedrooms: String(editRow.bedrooms ?? '2'),
+        bathrooms: String(editRow.bathrooms ?? '2'),
+        price: String(editRow.price ?? ''),
+        status: String(editRow.status ?? 'available'),
+      })
+    } else if (open && floors.length && !form.floor_id) {
       setForm((f) => ({ ...f, floor_id: String(floors[0].id) }))
     }
-  }, [open, floors, form.floor_id])
+  }, [open, floors, editRow])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post('/projects/units', {
-        floor_id: Number(form.floor_id),
+      const payload = {
         unit_code: form.unit_code,
         unit_number: form.unit_number,
         unit_type: form.unit_type,
@@ -117,7 +128,13 @@ export function UnitFormModal({ open, onClose }: ModalProps) {
         bedrooms: Number(form.bedrooms),
         bathrooms: Number(form.bathrooms),
         price: form.price,
-      })
+        status: form.status,
+      }
+      if (editRow?.id) {
+        await api.put(`/projects/units/${editRow.id}`, payload)
+      } else {
+        await api.post('/projects/units', { ...payload, floor_id: Number(form.floor_id) })
+      }
       qc.invalidateQueries({ queryKey: ['units-board'] })
       qc.invalidateQueries({ queryKey: ['units-lookup'] })
       onClose()
@@ -127,7 +144,7 @@ export function UnitFormModal({ open, onClose }: ModalProps) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t('add_unit')}>
+    <Modal open={open} onClose={onClose} title={editRow ? t('edit_unit') : t('add_unit')}>
       <form onSubmit={submit} className="space-y-4">
         <SelectField label={t('floor')} value={form.floor_id} onChange={(v) => setForm({ ...form, floor_id: v })} required
           options={floors.map((f) => ({ value: String(f.id), label: `${f.project_name} - ${f.name_ar}` }))} />
@@ -140,6 +157,14 @@ export function UnitFormModal({ open, onClose }: ModalProps) {
         ]} />
         <Input label="Area (m²)" value={form.area_sqm} onChange={(e) => setForm({ ...form, area_sqm: e.target.value })} required />
         <Input label={t('price')} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+        {editRow && (
+          <SelectField label={t('status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={[
+            { value: 'available', label: 'Available' },
+            { value: 'reserved', label: 'Reserved' },
+            { value: 'contracted', label: 'Contracted' },
+            { value: 'sold', label: 'Sold' },
+          ]} />
+        )}
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
@@ -229,7 +254,7 @@ export function ContractFormModal({ open, onClose, editRow, preselectedReservati
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     customer_id: '', unit_id: '', reservation_id: preselectedReservationId ? String(preselectedReservationId) : '',
-    total_price: '2500000', contract_date: today,
+    total_price: '2500000', contract_date: today, status: 'draft', is_signed: 'false',
   })
 
   useEffect(() => {
@@ -240,6 +265,8 @@ export function ContractFormModal({ open, onClose, editRow, preselectedReservati
         reservation_id: String(editRow.reservation_id ?? ''),
         total_price: String(editRow.total_price ?? ''),
         contract_date: String(editRow.contract_date ?? today),
+        status: String(editRow.status ?? 'draft'),
+        is_signed: String(editRow.is_signed ?? false),
       })
     }
   }, [editRow, open, today])
@@ -256,7 +283,11 @@ export function ContractFormModal({ open, onClose, editRow, preselectedReservati
         contract_date: form.contract_date,
       }
       if (editRow?.id) {
-        await api.put(`/contracts/${editRow.id}`, payload)
+        await api.put(`/contracts/${editRow.id}`, {
+          ...payload,
+          status: form.status,
+          is_signed: form.is_signed === 'true',
+        })
       } else {
         await api.post('/contracts', payload)
       }
@@ -278,7 +309,21 @@ export function ContractFormModal({ open, onClose, editRow, preselectedReservati
         <SelectField label={t('units')} value={form.unit_id} onChange={(v) => setForm({ ...form, unit_id: v })} required
           options={units.map((u) => ({ value: String(u.id), label: u.unit_code }))} />
         <Input label={t('total_sales')} value={form.total_price} onChange={(e) => setForm({ ...form, total_price: e.target.value })} required />
-        <Input label="Date" type="date" value={form.contract_date} onChange={(e) => setForm({ ...form, contract_date: e.target.value })} required />
+        <Input label={t('contract_date')} type="date" value={form.contract_date} onChange={(e) => setForm({ ...form, contract_date: e.target.value })} required />
+        {editRow && (
+          <>
+            <SelectField label={t('status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={[
+              { value: 'draft', label: 'Draft' },
+              { value: 'active', label: 'Active' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]} />
+            <SelectField label={t('signed')} value={form.is_signed} onChange={(v) => setForm({ ...form, is_signed: v })} options={[
+              { value: 'false', label: t('no') },
+              { value: 'true', label: t('yes') },
+            ]} />
+          </>
+        )}
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
@@ -777,7 +822,7 @@ export function MaintenanceFormModal({ open, onClose, editRow }: ModalProps) {
         ]} />
         {editRow && (
           <SelectField label={t('status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={[
-            { value: 'open', label: 'Open' }, { value: 'in_progress', label: 'In Progress' }, { value: 'resolved', label: 'Resolved' },
+            { value: 'open', label: 'Open' }, { value: 'in_progress', label: 'In Progress' }, { value: 'completed', label: 'Completed' },
           ]} />
         )}
         <div className="flex gap-3 pt-2">

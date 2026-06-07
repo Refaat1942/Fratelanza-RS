@@ -1,23 +1,19 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, CheckCircle, FileText, CreditCard, Sliders, KeyRound, Ban } from 'lucide-react'
+import { Plus, CheckCircle, FileText, CreditCard, XCircle } from 'lucide-react'
+import { ReportLinkButton } from '@/components/ui/ReportLinkButton'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { useListData } from '@/hooks/useListData'
 import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
-import { UserFormModal } from '@/components/forms/UserFormModal'
-import { UserEditModal } from '@/components/forms/UserEditModal'
-import { UserFeaturesModal } from '@/components/forms/UserFeaturesModal'
-import { ResetPasswordModal } from '@/components/forms/ResetPasswordModal'
 import {
   ReservationFormModal, ContractFormModal,
-  PaymentFormModal, BrokerFormModal,
-  VendorFormModal, ConstructionPhaseFormModal,
-  TicketFormModal,
+  PaymentFormModal,
 } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
@@ -46,10 +42,15 @@ export function ReservationsPage() {
     mutationFn: (id: number) => api.post(`/reservations/${id}/approve`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reservations'] }),
   })
+  const cancelRes = useMutation({
+    mutationFn: (id: number) => api.put(`/reservations/${id}`, { status: 'cancelled' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reservations'] }),
+  })
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('reservations', '/reservations')
 
   return (
     <div>
+      <PageHeader title={t('reservations')} subtitle={t('reservations_help')} actions={<ReportLinkButton reportKey="reservations" />} />
       <DataTable
         title={t('reservations')}
         loading={isLoading}
@@ -82,6 +83,11 @@ export function ReservationsPage() {
                     <FileText className="h-4 w-4 text-primary-600" />
                   </Button>
                 )}
+                {row.status !== 'cancelled' && row.status !== 'converted' && (
+                  <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => cancelRes.mutate(row.id as number)} title={t('cancel_reservation')}>
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  </Button>
+                )}
               </>
             }
           />
@@ -96,6 +102,7 @@ export function ReservationsPage() {
 
 export function ContractsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { formatEGP } = useFormatNumber()
   const modal = useCrudModal()
   const deleteContract = useDeleteEntity('/contracts', ['contracts'])
@@ -103,6 +110,7 @@ export function ContractsPage() {
 
   return (
     <div>
+      <PageHeader title={t('contracts')} actions={<ReportLinkButton reportKey="sales_register" />} />
       <DataTable
         title={t('contracts')}
         loading={isLoading}
@@ -124,7 +132,7 @@ export function ContractsPage() {
             onEdit={() => modal.openEdit(row)}
             onDelete={() => confirmDelete(t) && deleteContract.mutate(row.id as number, { onSuccess: () => { refetch() } })}
             extra={
-              <Button variant="ghost" className="!px-2 !py-1.5" title={t('collections')} onClick={() => { window.location.href = '/collections' }}>
+              <Button variant="ghost" className="!px-2 !py-1.5" title={t('collections')} onClick={() => navigate('/collections')}>
                 <CreditCard className="h-4 w-4 text-primary-600" />
               </Button>
             }
@@ -141,16 +149,35 @@ export function CollectionsPage() {
   const { formatEGP } = useFormatNumber()
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [installment, setInstallment] = useState<Record<string, unknown> | null>(null)
+  const [statusFilter, setStatusFilter] = useState('all')
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('installments', '/collections/installments')
+
+  const filteredItems = useMemo(() => {
+    if (statusFilter === 'all') return items
+    if (statusFilter === 'overdue') return items.filter((r) => r.status === 'overdue' || (Number(r.remaining_balance) > 0 && r.status !== 'paid'))
+    return items.filter((r) => r.status === statusFilter)
+  }, [items, statusFilter])
 
   return (
     <div>
+      <PageHeader title={t('collections')} subtitle={t('collections_help')} actions={<ReportLinkButton reportKey="collections_overdue" />} />
+      <div className="mb-4 flex flex-wrap gap-2">
+        {['all', 'due', 'overdue', 'partial', 'paid'].map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setStatusFilter(s)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize ${statusFilter === s ? 'bg-primary-700 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}
+          >
+            {s === 'all' ? t('all') : s}
+          </button>
+        ))}
+      </div>
       <DataTable
         title={t('collections')}
-        subtitle={t('collections_help')}
         loading={isLoading}
         exportFilename="collections"
-        data={items}
+        data={filteredItems}
         columns={[
           { key: 'contract_number', label: t('contracts'), render: (row) => <EntityLink to="/contracts" label={String(row.contract_number)} /> },
           { key: 'customer_name', label: t('customers'), render: (row) => <EntityLink to="/customers" label={String(row.customer_name)} /> },
@@ -175,238 +202,6 @@ export function CollectionsPage() {
         )}
       />
       <PaymentFormModal open={paymentOpen} onClose={() => { setPaymentOpen(false); setInstallment(null); refetch() }} installment={installment} />
-    </div>
-  )
-}
-
-export function BrokersPage() {
-  const { t, i18n } = useTranslation()
-  const modal = useCrudModal()
-  const deleteBroker = useDeleteEntity('/brokers', ['brokers'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('brokers', '/brokers')
-
-  return (
-    <div>
-      <DataTable
-        title={t('brokers')}
-        loading={isLoading}
-        exportFilename="brokers"
-        data={items}
-        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_broker')}</Button>}
-        emptyActionLabel={t('add_broker')}
-        onEmptyAction={modal.openCreate}
-        columns={[
-          { key: 'id', label: '#' },
-          { key: 'name', label: t('brokers'), render: (row) => String(i18n.language === 'ar' ? row.name_ar : row.name_en) },
-          { key: 'mobile', label: 'Mobile' },
-          { key: 'commission_rate', label: 'Rate %' },
-          { key: 'rank_score', label: 'Rank' },
-        ]}
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => modal.openEdit(row)}
-            onDelete={() => confirmDelete(t) && deleteBroker.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-          />
-        )}
-      />
-      <BrokerFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-    </div>
-  )
-}
-
-export function ConstructionPage() {
-  const { t } = useTranslation()
-  const { formatEGP } = useFormatNumber()
-  const modal = useCrudModal()
-  const deletePhase = useDeleteEntity('/construction/phases', ['phases'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('phases', '/construction/phases')
-
-  return (
-    <div>
-      <DataTable
-        title={t('construction')}
-        loading={isLoading}
-        exportFilename="construction"
-        data={items}
-        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_phase')}</Button>}
-        emptyActionLabel={t('add_phase')}
-        onEmptyAction={modal.openCreate}
-        columns={[
-          { key: 'project_name', label: t('projects'), render: (row) => <EntityLink to="/projects" label={String(row.project_name)} /> },
-          { key: 'name_ar', label: t('construction') },
-          { key: 'progress_percent', label: 'Progress %' },
-          { key: 'planned_cost', label: 'Planned', render: (row) => formatEGP(row.planned_cost as number) },
-          { key: 'actual_cost', label: 'Actual', render: (row) => formatEGP(row.actual_cost as number) },
-        ]}
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => modal.openEdit(row)}
-            onDelete={() => confirmDelete(t) && deletePhase.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-          />
-        )}
-      />
-      <ConstructionPhaseFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-    </div>
-  )
-}
-
-export function ProcurementPage() {
-  const { t } = useTranslation()
-  const modal = useCrudModal()
-  const deleteVendor = useDeleteEntity('/procurement/vendors', ['vendors'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('vendors', '/procurement/vendors')
-
-  return (
-    <div>
-      <DataTable
-        title={t('procurement')}
-        loading={isLoading}
-        exportFilename="procurement"
-        data={items}
-        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_vendor')}</Button>}
-        emptyActionLabel={t('add_vendor')}
-        onEmptyAction={modal.openCreate}
-        columns={[
-          { key: 'name_ar', label: 'Vendor' },
-          { key: 'contact_person', label: 'Contact' },
-          { key: 'phone', label: 'Phone' },
-          { key: 'rating', label: 'Rating' },
-        ]}
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => modal.openEdit(row)}
-            onDelete={() => confirmDelete(t) && deleteVendor.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-          />
-        )}
-      />
-      <VendorFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-    </div>
-  )
-}
-
-export function CustomerServicePage() {
-  const { t } = useTranslation()
-  const modal = useCrudModal()
-  const deleteTicket = useDeleteEntity('/tickets', ['tickets'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('tickets', '/tickets')
-  return (
-    <div>
-      <DataTable
-        title={t('customer_service')}
-        subtitle={t('customer_service_help')}
-        loading={isLoading}
-        exportFilename="tickets"
-        data={items}
-        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_ticket')}</Button>}
-        emptyActionLabel={t('add_ticket')}
-        onEmptyAction={modal.openCreate}
-        columns={[
-          { key: 'ticket_number', label: '#' },
-          { key: 'subject', label: 'Subject' },
-          { key: 'customer_name', label: t('customers') },
-          { key: 'category', label: 'Category' },
-          { key: 'priority', label: 'Priority' },
-          { key: 'status', label: t('status') },
-        ]}
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => modal.openEdit(row)}
-            onDelete={() => confirmDelete(t) && deleteTicket.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-          />
-        )}
-      />
-      <TicketFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-    </div>
-  )
-}
-
-export function CompanyUsersPage() {
-  const { t, i18n } = useTranslation()
-  const qc = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [editUser, setEditUser] = useState<Record<string, unknown> | null>(null)
-  const [featuresUser, setFeaturesUser] = useState<Record<string, unknown> | null>(null)
-  const [resetUser, setResetUser] = useState<Record<string, unknown> | null>(null)
-  const deleteUser = useDeleteEntity('/users', ['company-users'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('company-users', '/users')
-  const toggleStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const endpoint = status === 'active' ? 'suspend' : 'activate'
-      return api.post(`/users/${id}/${endpoint}`)
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['company-users'] })
-      refetch()
-    },
-  })
-  const rows = Array.isArray(items) ? items : []
-  return (
-    <div>
-      <DataTable
-        title={t('users')}
-        subtitle={t('settings_users_help')}
-        loading={isLoading}
-        exportFilename="users"
-        data={rows}
-        columns={[
-          { key: 'username', label: t('username') },
-          { key: 'full_name_ar', label: t('name_ar') },
-          { key: 'email', label: t('email') },
-          { key: 'system_role', label: t('role'), render: (row) => String(row.system_role).replace(/_/g, ' ') },
-          { key: 'status', label: t('status') },
-        ]}
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="me-2 h-4 w-4" />
-            {t('add_user')}
-          </Button>
-        }
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => setEditUser(row)}
-            onDelete={() => confirmDelete(t) && deleteUser.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-            extra={
-              <>
-                <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => setFeaturesUser(row)} title={t('user_feature_access')}>
-                  <Sliders className="h-4 w-4 text-primary-600" />
-                </Button>
-                <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => setResetUser(row)} title={t('reset_password')}>
-                  <KeyRound className="h-4 w-4 text-amber-600" />
-                </Button>
-                {row.status === 'active' ? (
-                  <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => toggleStatus.mutate({ id: row.id as number, status: 'active' })} title={t('suspend_user')}>
-                    <Ban className="h-4 w-4 text-red-600" />
-                  </Button>
-                ) : (
-                  <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => toggleStatus.mutate({ id: row.id as number, status: 'suspended' })} title={t('activate_user')}>
-                    <CheckCircle className="h-4 w-4 text-emerald-600" />
-                  </Button>
-                )}
-              </>
-            }
-          />
-        )}
-      />
-      <UserFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
-      <UserEditModal
-        open={!!editUser}
-        user={editUser as Parameters<typeof UserEditModal>[0]['user']}
-        onClose={() => setEditUser(null)}
-        onSaved={() => refetch()}
-      />
-      <UserFeaturesModal
-        open={!!featuresUser}
-        userId={featuresUser?.id as number}
-        userName={String(i18n.language === 'ar' ? featuresUser?.full_name_ar : featuresUser?.full_name_en ?? '')}
-        onClose={() => setFeaturesUser(null)}
-        onSaved={() => refetch()}
-      />
-      <ResetPasswordModal
-        open={!!resetUser}
-        userId={resetUser?.id as number}
-        userEmail={String(resetUser?.email ?? '')}
-        onClose={() => setResetUser(null)}
-      />
     </div>
   )
 }

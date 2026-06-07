@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Package, Warehouse as WarehouseIcon, AlertTriangle, Boxes, Plus, LayoutGrid } from 'lucide-react'
+import { Package, Warehouse as WarehouseIcon, AlertTriangle, Boxes, Plus, LayoutGrid, ArrowLeftRight } from 'lucide-react'
+import { ReportLinkButton } from '@/components/ui/ReportLinkButton'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -15,7 +16,7 @@ import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type Tab = 'inventory' | 'warehouses' | 'overview'
+type Tab = 'inventory' | 'warehouses' | 'movements' | 'overview'
 
 function useCrudModal() {
   const [open, setOpen] = useState(false)
@@ -46,10 +47,16 @@ export function WarehousePage() {
     queryKey: ['warehouse-summary'],
     queryFn: async () => (await api.get('/warehouse/summary')).data,
   })
+  const { data: movements = [], isLoading: movementsLoading } = useQuery({
+    queryKey: ['warehouse-movements'],
+    queryFn: async () => (await api.get('/warehouse/movements')).data,
+    enabled: tab === 'movements',
+  })
 
   const tabs: { key: Tab; label: string; icon: typeof Package }[] = [
     { key: 'inventory', label: t('inventory'), icon: Package },
     { key: 'warehouses', label: t('warehouse_locations'), icon: WarehouseIcon },
+    { key: 'movements', label: t('stock_movements'), icon: ArrowLeftRight },
     { key: 'overview', label: t('overview'), icon: LayoutGrid },
   ]
 
@@ -65,6 +72,7 @@ export function WarehousePage() {
         accentIndex={5}
         actions={
           <>
+            <ReportLinkButton reportKey="warehouse_inventory" />
             <Button variant="secondary" onClick={() => modal.openCreate()}>
               <Plus className="me-2 h-4 w-4" />{t('add_warehouse')}
             </Button>
@@ -160,6 +168,21 @@ export function WarehousePage() {
               onDelete={() => confirmDelete(t) && deleteItem.mutate(row.id as number, { onSuccess: () => { refetchItems() } })}
             />
           )}
+        />
+      )}
+
+      {tab === 'movements' && (
+        <DataTable
+          title={t('stock_movements')}
+          loading={movementsLoading}
+          exportFilename="stock-movements"
+          data={Array.isArray(movements) ? movements : []}
+          columns={[
+            { key: 'id', label: '#' },
+            { key: 'item_id', label: t('inventory') },
+            { key: 'movement_type', label: t('movement_type') },
+            { key: 'quantity', label: t('quantity') },
+          ]}
         />
       )}
 

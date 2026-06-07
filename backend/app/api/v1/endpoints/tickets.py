@@ -119,6 +119,38 @@ async def delete_ticket(
     return {"message": "Deleted", "success": True}
 
 
+@router.get("/{ticket_id}/comments")
+async def list_comments(
+    ticket_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Ticket).where(Ticket.id == ticket_id))
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    if not current_user.is_super_admin and ticket.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    comments = (
+        await db.execute(
+            select(TicketComment, User)
+            .join(User, TicketComment.user_id == User.id)
+            .where(TicketComment.ticket_id == ticket_id)
+            .order_by(TicketComment.id.asc())
+        )
+    ).all()
+    return [
+        {
+            "id": c.id,
+            "comment": c.comment,
+            "is_internal": c.is_internal,
+            "user_name": u.full_name_en,
+            "created_at": c.created_at.isoformat() if c.created_at else "",
+        }
+        for c, u in comments
+    ]
+
+
 @router.post("/{ticket_id}/comments")
 async def add_comment(
     ticket_id: int,

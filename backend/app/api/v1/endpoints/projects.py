@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
-from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, UnitCreate, UnitResponse
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, UnitCreate, UnitResponse, UnitUpdate
 
 router = APIRouter()
 
@@ -193,6 +193,32 @@ async def create_unit(
 ):
     unit = Unit(**data.model_dump())
     db.add(unit)
+    await db.flush()
+    return UnitResponse.model_validate(unit)
+
+
+@router.put("/units/{unit_id}", response_model=UnitResponse)
+async def update_unit(
+    unit_id: int,
+    data: UnitUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    result = await db.execute(select(Unit).where(Unit.id == unit_id, Unit.is_deleted == False))
+    unit = result.scalar_one_or_none()
+    if not unit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
+    if not current_user.is_super_admin and current_user.company_id:
+        owner = await db.execute(
+            select(Project)
+            .join(Building, Building.project_id == Project.id)
+            .join(Floor, Floor.building_id == Building.id)
+            .where(Floor.id == unit.floor_id, Project.company_id == current_user.company_id)
+        )
+        if not owner.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(unit, field, value)
     await db.flush()
     return UnitResponse.model_validate(unit)
 

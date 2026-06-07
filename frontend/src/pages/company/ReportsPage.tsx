@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   BarChart3, Building2, FileSpreadsheet, HandCoins, Headphones, Target, Users, Wallet,
   HardHat, Shield, AlertCircle,
@@ -47,7 +47,9 @@ const CATEGORY_ICONS: Record<string, typeof BarChart3> = {
 export function ReportsPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const reportFromUrl = searchParams.get('report')
+  const [selectedKey, setSelectedKey] = useState<string | null>(reportFromUrl)
   const [category, setCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [exporting, setExporting] = useState(false)
@@ -59,6 +61,10 @@ export function ReportsPage() {
       return data
     },
   })
+
+  useEffect(() => {
+    if (reportFromUrl) setSelectedKey(reportFromUrl)
+  }, [reportFromUrl])
 
   const activeKey = selectedKey ?? catalog?.[0]?.key ?? null
 

@@ -26,6 +26,17 @@ class EmployeeCreate(BaseModel):
     salary: Optional[float] = None
 
 
+class EmployeeUpdate(BaseModel):
+    employee_code: Optional[str] = None
+    full_name_ar: Optional[str] = None
+    full_name_en: Optional[str] = None
+    department: Optional[str] = None
+    position: Optional[str] = None
+    hire_date: Optional[str] = None
+    salary: Optional[float] = None
+    is_active: Optional[bool] = None
+
+
 class AttendanceCreate(BaseModel):
     employee_id: int
     date: str
@@ -81,6 +92,31 @@ async def create_employee(
     db.add(employee)
     await db.flush()
     return {"id": employee.id, "employee_code": employee.employee_code}
+
+
+@router.put("/employees/{employee_id}")
+async def update_employee(
+    employee_id: int,
+    data: EmployeeUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    result = await db.execute(
+        select(Employee).where(
+            Employee.id == employee_id,
+            Employee.company_id == current_user.company_id,
+            Employee.is_deleted == False,
+        )
+    )
+    emp = result.scalar_one_or_none()
+    if not emp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(emp, field, value)
+    await db.flush()
+    return {"id": emp.id, "employee_code": emp.employee_code, "success": True}
 
 
 @router.delete("/employees/{employee_id}")

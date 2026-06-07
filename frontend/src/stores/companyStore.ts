@@ -10,6 +10,7 @@ export interface CompanyProfile {
   theme: string
   currency: string
   city?: string
+  phone?: string
   country: string
 }
 

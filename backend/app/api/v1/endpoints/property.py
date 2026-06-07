@@ -44,11 +44,12 @@ async def property_summary(
     by_status: dict[str, int] = {}
     for r in requests:
         by_status[r.status] = by_status.get(r.status, 0) + 1
+    completed = by_status.get("completed", 0) + by_status.get("resolved", 0)
     return {
         "total": len(requests),
         "open": by_status.get("open", 0),
         "in_progress": by_status.get("in_progress", 0),
-        "completed": by_status.get("completed", 0),
+        "completed": completed,
     }
 
 
@@ -132,6 +133,14 @@ async def delete_maintenance(
     return {"message": "Deleted", "success": True}
 
 
+class HandoverCreate(BaseModel):
+    unit_id: int
+    customer_id: int
+    handover_date: str
+    status: str = "scheduled"
+    notes: Optional[str] = None
+
+
 @router.get("/handovers")
 async def list_handovers(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -142,7 +151,32 @@ async def list_handovers(
         query = query.where(HandoverRecord.company_id == current_user.company_id)
     result = await db.execute(query)
     handovers = result.scalars().all()
-    return [
-        {"id": h.id, "unit_id": h.unit_id, "customer_id": h.customer_id, "handover_date": h.handover_date, "status": h.status}
-        for h in handovers
-    ]
+    rows = []
+    for h in handovers:
+        unit = (await db.execute(select(Unit).where(Unit.id == h.unit_id))).scalar_one_or_none()
+        customer = (await db.execute(select(Customer).where(Customer.id == h.customer_id))).scalar_one_or_none()
+        rows.append({
+            "id": h.id,
+            "unit_id": h.unit_id,
+            "unit_code": unit.unit_code if unit else "",
+            "customer_id": h.customer_id,
+            "customer_name": customer.full_name_en if customer else "",
+            "handover_date": h.handover_date,
+            "status": h.status,
+            "notes": h.notes or "",
+        })
+    return rows
+
+
+@router.post("/handovers")
+async def create_handover(
+    data: HandoverCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    record = HandoverRecord(company_id=current_user.company_id, **data.model_dump())
+    db.add(record)
+    await db.flush()
+    return {"id": record.id, "status": record.status}

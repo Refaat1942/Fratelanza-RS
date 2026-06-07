@@ -56,6 +56,17 @@ class UnitCreate(BaseModel):
     delivery_date: Optional[str] = None
 
 
+class UnitUpdate(BaseModel):
+    unit_code: Optional[str] = None
+    unit_number: Optional[str] = None
+    unit_type: Optional[UnitType] = None
+    area_sqm: Optional[Decimal] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    price: Optional[Decimal] = None
+    status: Optional[UnitStatus] = None
+
+
 class UnitResponse(UnitCreate):
     id: int
     status: UnitStatus

@@ -25,10 +25,12 @@ import { WarehousePage } from '@/pages/company/WarehousePage'
 import { PropertyPage } from '@/pages/company/PropertyPage'
 import {
   ReservationsPage, ContractsPage, CollectionsPage,
-  BrokersPage, ConstructionPage, ProcurementPage,
-  CustomerServicePage, CompanyUsersPage,
   AuditLogsPage,
 } from '@/pages/company/ModulePages'
+import { ConstructionPage } from '@/pages/company/ConstructionPage'
+import { ProcurementPage } from '@/pages/company/ProcurementPage'
+import { BrokersPage } from '@/pages/company/BrokersPage'
+import { CustomerServicePage } from '@/pages/company/CustomerServicePage'
 
 function ProtectedRoute({ children, superAdminOnly = false }: { children: React.ReactNode; superAdminOnly?: boolean }) {
   const user = useAuthStore((s) => s.user)
@@ -68,7 +70,7 @@ function AppRoutes() {
         <Route path="/warehouse" element={<ModuleRoute moduleKey="warehouse"><WarehousePage /></ModuleRoute>} />
         <Route path="/property" element={<ModuleRoute moduleKey="property"><PropertyPage /></ModuleRoute>} />
         <Route path="/customer-service" element={<ModuleRoute moduleKey="customer_service"><CustomerServicePage /></ModuleRoute>} />
-        <Route path="/users" element={<ModuleRoute moduleKey="users"><CompanyUsersPage /></ModuleRoute>} />
+        <Route path="/users" element={<Navigate to="/settings" replace />} />
         <Route path="/settings" element={<ModuleRoute moduleKey="users"><CompanySettingsPage /></ModuleRoute>} />
         <Route path="/feature-settings" element={<Navigate to="/settings" replace />} />
         <Route path="/reports" element={<ModuleRoute moduleKey="reports"><ReportsPage /></ModuleRoute>} />

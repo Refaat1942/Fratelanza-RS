@@ -11,6 +11,7 @@ import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
 import { ProjectFormModal, UnitFormModal, ReservationFormModal } from '@/components/forms/ModuleFormModals'
+import { ReportLinkButton } from '@/components/ui/ReportLinkButton'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export function ProjectsPage() {
   const [tab, setTab] = useState<Tab>('overview')
   const modal = useCrudModal()
   const [unitOpen, setUnitOpen] = useState(false)
+  const [editUnit, setEditUnit] = useState<Record<string, unknown> | null>(null)
   const [reserveUnitId, setReserveUnitId] = useState<number | undefined>()
   const [reservationOpen, setReservationOpen] = useState(false)
   const deleteProject = useDeleteEntity('/projects', ['projects'])
@@ -75,7 +77,8 @@ export function ProjectsPage() {
         accentIndex={2}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setUnitOpen(true)}>
+            <ReportLinkButton reportKey="units_inventory" />
+            <Button variant="secondary" onClick={() => { setEditUnit(null); setUnitOpen(true) }}>
               <Plus className="me-2 h-4 w-4" />{t('add_unit')}
             </Button>
             <Button onClick={modal.openCreate}>
@@ -158,6 +161,7 @@ export function ProjectsPage() {
           ]}
           rowActions={(row) => (
             <RowActions
+              onEdit={() => { setEditUnit(row); setUnitOpen(true) }}
               onDelete={() => confirmDelete(t) && deleteUnit.mutate(row.id as number)}
               extra={
                 row.status === 'available' ? (
@@ -172,7 +176,7 @@ export function ProjectsPage() {
       )}
 
       <ProjectFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-      <UnitFormModal open={unitOpen} onClose={() => setUnitOpen(false)} />
+      <UnitFormModal open={unitOpen} onClose={() => { setUnitOpen(false); setEditUnit(null) }} editRow={editUnit} />
       <ReservationFormModal open={reservationOpen} onClose={() => { setReservationOpen(false); setReserveUnitId(undefined) }} preselectedUnitId={reserveUnitId} />
     </div>
   )

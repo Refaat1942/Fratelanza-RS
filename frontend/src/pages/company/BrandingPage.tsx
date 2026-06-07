@@ -23,7 +23,7 @@ export function BrandingPage() {
       setForm({
         name_ar: company.name_ar,
         name_en: company.name_en,
-        phone: '',
+        phone: company.phone || '',
         city: company.city || '',
         currency: company.currency || 'EGP',
       })
@@ -88,6 +88,7 @@ export function BrandingPage() {
             <h2 className="font-semibold">{t('company_details')}</h2>
             <Input label={t('name_ar')} value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required />
             <Input label={t('name_en')} value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} required />
+            <Input label={t('mobile')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             <Input label={t('city')} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
             <div>
               <label className="mb-1 block text-sm font-medium">{t('currency')}</label>

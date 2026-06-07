@@ -9,7 +9,11 @@ import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { downloadReport } from '@/lib/download'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Landmark, TrendingUp, Wallet, FileText, ArrowRight } from 'lucide-react'
+import { Landmark, TrendingUp, Wallet, FileText, ArrowRight, Plus } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
+import { ReportLinkButton } from '@/components/ui/ReportLinkButton'
 
 type FinanceTab = 'overview' | 'trial_balance' | 'profit_loss' | 'cash' | 'journal' | 'accounts'
 
@@ -20,6 +24,9 @@ export function FinancePage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<FinanceTab>('overview')
   const [exporting, setExporting] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [accountForm, setAccountForm] = useState({ code: '', name_ar: '', name_en: '', account_type: 'asset' })
+  const [accountLoading, setAccountLoading] = useState(false)
 
   const deleteAccount = useMutation({
     mutationFn: (id: number) => api.delete(`/finance/accounts/${id}`),
@@ -75,9 +82,17 @@ export function FinancePage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t('finance')}</h1>
-        <p className="text-sm text-slate-500">{t('finance_help')}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{t('finance')}</h1>
+          <p className="text-sm text-slate-500">{t('finance_help')}</p>
+        </div>
+        <div className="flex gap-2">
+          <ReportLinkButton reportKey="finance_profit_loss" />
+          {tab === 'accounts' && (
+            <Button onClick={() => setAccountOpen(true)}><Plus className="me-2 h-4 w-4" />{t('add_account')}</Button>
+          )}
+        </div>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -126,9 +141,45 @@ export function FinancePage() {
         />
       )}
 
+      <Modal open={accountOpen} onClose={() => setAccountOpen(false)} title={t('add_account')}>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault()
+            setAccountLoading(true)
+            try {
+              await api.post('/finance/accounts', accountForm)
+              qc.invalidateQueries({ queryKey: ['finance-accounts'] })
+              setAccountOpen(false)
+              setAccountForm({ code: '', name_ar: '', name_en: '', account_type: 'asset' })
+            } finally {
+              setAccountLoading(false)
+            }
+          }}
+          className="space-y-4"
+        >
+          <Input label={t('account_code')} value={accountForm.code} onChange={(e) => setAccountForm({ ...accountForm, code: e.target.value })} required />
+          <Input label={t('name_ar')} value={accountForm.name_ar} onChange={(e) => setAccountForm({ ...accountForm, name_ar: e.target.value })} required />
+          <Input label={t('name_en')} value={accountForm.name_en} onChange={(e) => setAccountForm({ ...accountForm, name_en: e.target.value })} required />
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t('account_type')}</label>
+            <select className="input-field" value={accountForm.account_type} onChange={(e) => setAccountForm({ ...accountForm, account_type: e.target.value })}>
+              <option value="asset">{t('asset')}</option>
+              <option value="liability">{t('liability')}</option>
+              <option value="equity">{t('equity')}</option>
+              <option value="revenue">{t('revenue')}</option>
+              <option value="expense">{t('expense')}</option>
+            </select>
+          </div>
+          <div className="flex gap-3">
+            <Button type="submit" loading={accountLoading}>{t('save')}</Button>
+            <Button type="button" variant="secondary" onClick={() => setAccountOpen(false)}>{t('cancel')}</Button>
+          </div>
+        </form>
+      </Modal>
+
       {tab === 'accounts' && (
         accounts.length === 0 ? (
-          <EmptyState icon={<Landmark className="h-10 w-10" />} title={t('no_accounts')} description={t('no_accounts_help')} />
+          <EmptyState icon={<Landmark className="h-10 w-10" />} title={t('no_accounts')} description={t('no_accounts_help')} actionLabel={t('add_account')} onAction={() => setAccountOpen(true)} />
         ) : (
           <SortableTable
             columns={[
