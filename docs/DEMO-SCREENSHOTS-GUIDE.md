@@ -1,6 +1,7 @@
 # Fratelanza Platform — Demo Screenshots Guide (English + Arabic)
 
 **Audience:** Prospective customers evaluating the company demo (not Super Admin)  
+**Demo URL:** https://rs.fratelanza.com/login (Real Estate — **not** hub.fratelanza.com)  
 **Login:** username `demo_admin` (or `admin@demo.fratelanza.com` on older deployments) · password `Demo123456`  
 **Total screens:** 26
 
@@ -12,7 +13,7 @@ Each screenshot includes a **bilingual overlay** (English left, Arabic right) de
 
 ## Quick start
 
-1. Open the demo URL and log in with `demo_admin`
+1. Open **https://rs.fratelanza.com/login** and log in with `demo_admin`
 2. Click **Load Demo Data** on the Dashboard if tables are empty
 3. Use the sidebar to open each module below
 4. Match each screenshot to your live session

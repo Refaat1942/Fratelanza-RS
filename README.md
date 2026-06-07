@@ -75,9 +75,18 @@ cd frontend && npm install && npm run dev
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:5173 |
-| API | http://localhost:8000 |
-| API Docs | http://localhost:8000/docs |
+| **Live demo (Real Estate)** | https://rs.fratelanza.com/login |
+| Direct (if domain shows Hub) | http://187.124.15.14:9000/login |
+| Fratelanza Hub (different app) | https://hub.fratelanza.com |
+| Frontend (local dev) | http://localhost:5173 |
+| API (local dev) | http://localhost:8000 |
+| API Docs (local dev) | http://localhost:8000/docs |
+
+If `rs.fratelanza.com` opens **Fratelanza Hub** instead of Real Estate, run on the VPS:
+
+```bash
+cd /opt/fratelanza && bash scripts/fix-rs-domain.sh
+```
 
 ## Default Credentials
 

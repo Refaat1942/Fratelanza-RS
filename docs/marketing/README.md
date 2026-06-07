@@ -14,6 +14,7 @@ Every screenshot covers **one company module** (no Super Admin) with a **bilingu
 # or: DEMO_URL=https://rs.fratelanza.com npm run demo-screenshots
 ```
 
+**Demo URL:** https://rs.fratelanza.com/login (Real Estate — not hub.fratelanza.com)  
 **Login for capture:** `admin@demo.fratelanza.com` or `demo_admin` · password `Demo123456`
 
 ---

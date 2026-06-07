@@ -26,7 +26,7 @@ This manual walks you through the **demo environment** step by step so you can e
 
 | Item | Value |
 |------|--------|
-| **Login page** | Open your demo URL (e.g. `http://your-server:9000/login`) |
+| **Login page** | https://rs.fratelanza.com/login (Real Estate — not hub.fratelanza.com) |
 | **Username** | `demo_admin` |
 | **Password** | `Demo123456` |
 | **Role** | Company Administrator (full access to company modules) |

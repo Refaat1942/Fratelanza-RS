@@ -7,9 +7,13 @@
 
 | | |
 |---|---|
-| **URL** | Your demo site `/login` |
+| **URL** | **https://rs.fratelanza.com/login** (Real Estate platform) |
+| **Not this** | `hub.fratelanza.com` is a different product (Fratelanza Hub) |
 | **Username** | `demo_admin` (or `admin@demo.fratelanza.com`) |
 | **Password** | `Demo123456` |
+
+If `rs.fratelanza.com` opens Fratelanza Hub, use the direct link until DNS/nginx is fixed:  
+**http://187.124.15.14:9000/login** — then on the VPS run `bash scripts/fix-rs-domain.sh`.
 
 ## Screenshots download | تحميل لقطات الشاشة
 
