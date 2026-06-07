@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, CheckCircle, FileText, CreditCard, Sliders } from 'lucide-react'
+import { Plus, CheckCircle, FileText, CreditCard } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { useListData } from '@/hooks/useListData'
 import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
-import { UserFormModal } from '@/components/forms/UserFormModal'
-import { UserFeaturesModal } from '@/components/forms/UserFeaturesModal'
+import { UserAdministrationPanel } from '@/components/settings/UserAdministrationPanel'
 import {
   ReservationFormModal, ContractFormModal,
   PaymentFormModal, BrokerFormModal,
@@ -319,58 +318,7 @@ export function CustomerServicePage() {
 }
 
 export function CompanyUsersPage() {
-  const { t, i18n } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [featuresUser, setFeaturesUser] = useState<Record<string, unknown> | null>(null)
-  const deleteUser = useDeleteEntity('/users', ['company-users'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('company-users', '/users')
-  const rows = Array.isArray(items) ? items : []
-  return (
-    <div>
-      <DataTable
-        title={t('users')}
-        loading={isLoading}
-        exportFilename="users"
-        data={rows}
-        columns={[
-          { key: 'username', label: t('username') },
-          { key: 'full_name_ar', label: t('name_ar') },
-          { key: 'email', label: t('email') },
-          { key: 'system_role', label: t('role') },
-          { key: 'status', label: t('status') },
-        ]}
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="me-2 h-4 w-4" />
-            {t('add_user')}
-          </Button>
-        }
-        rowActions={(row) => (
-          <RowActions
-            onDelete={() => confirmDelete(t) && deleteUser.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-            extra={
-              <Button
-                variant="ghost"
-                className="!px-2 !py-1.5"
-                onClick={() => setFeaturesUser(row)}
-                title={t('user_feature_access')}
-              >
-                <Sliders className="h-4 w-4 text-primary-600" />
-              </Button>
-            }
-          />
-        )}
-      />
-      <UserFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
-      <UserFeaturesModal
-        open={!!featuresUser}
-        userId={featuresUser?.id as number}
-        userName={String(i18n.language === 'ar' ? featuresUser?.full_name_ar : featuresUser?.full_name_en ?? '')}
-        onClose={() => setFeaturesUser(null)}
-        onSaved={() => refetch()}
-      />
-    </div>
-  )
+  return <UserAdministrationPanel />
 }
 
 export function AuditLogsPage() {

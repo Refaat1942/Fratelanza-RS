@@ -4,8 +4,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import api from '@/lib/api'
-
-const ROLES = ['sales_agent', 'sales_manager', 'collection_officer', 'accountant', 'company_admin', 'customer_service', 'hr_officer']
+import { COMPANY_USER_ROLES, formatRole } from '@/lib/userRoles'
 
 interface AdminUser {
   id: number
@@ -16,6 +15,7 @@ interface AdminUser {
   system_role: string
   status: string
   company_id?: number
+  phone?: string
   is_super_admin: boolean
 }
 
@@ -24,9 +24,10 @@ interface UserEditModalProps {
   onClose: () => void
   user: AdminUser | null
   onSaved: () => void
+  showCompanyField?: boolean
 }
 
-export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalProps) {
+export function UserEditModal({ open, onClose, user, onSaved, showCompanyField = true }: UserEditModalProps) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -35,6 +36,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
     full_name_ar: '',
     full_name_en: '',
     system_role: 'sales_agent',
+    phone: '',
     company_id: '' as string | number,
   })
 
@@ -46,6 +48,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
         full_name_ar: user.full_name_ar,
         full_name_en: user.full_name_en,
         system_role: user.system_role,
+        phone: user.phone ?? '',
         company_id: user.company_id ?? '',
       })
     }
@@ -62,6 +65,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
         full_name_ar: form.full_name_ar,
         full_name_en: form.full_name_en,
         system_role: form.system_role,
+        phone: form.phone,
         company_id: form.company_id ? Number(form.company_id) : undefined,
       })
       onSaved()
@@ -79,13 +83,16 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
           <Input label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <Input label={t('name_ar')} value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required />
           <Input label={t('name_en')} value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} required />
+          <Input label={t('mobile')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <div>
             <label className="mb-1 block text-sm font-medium">{t('role')}</label>
             <select className="input-field" value={form.system_role} onChange={(e) => setForm({ ...form, system_role: e.target.value })}>
-              {ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+              {COMPANY_USER_ROLES.map((r) => <option key={r} value={r}>{formatRole(r)}</option>)}
             </select>
           </div>
-          <Input label={t('company_id')} type="number" value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })} />
+          {showCompanyField && (
+            <Input label={t('company_id')} type="number" value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })} />
+          )}
           <div className="flex gap-3">
             <Button type="submit" loading={loading}>{t('save')}</Button>
             <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Loader2 } from 'lucide-react'
 import { ButtonHTMLAttributes } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,9 +17,11 @@ export function Button({ variant = 'primary', loading, className, children, disa
         className,
       )}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {loading ? '...' : children}
+      {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" aria-hidden="true" />}
+      {children}
     </button>
   )
 }

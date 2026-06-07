@@ -458,5 +458,19 @@
   "price_one_time": "One-time price (EGP)",
   "hosting_fee_monthly": "Monthly hosting fee (EGP)",
   "one_time_payment": "one-time",
-  "hosting_fee_label": "server hosting"
+  "hosting_fee_label": "server hosting",
+  "reload_dashboard": "Reload Dashboard",
+  "available_reports": "Available reports",
+  "no_reports_available": "No reports are available for this category.",
+  "suspended_users": "Suspended users",
+  "company_admins": "Company admins",
+  "authorizations": "Authorizations",
+  "users_and_authorizations": "Users & Authorizations",
+  "company_users_admin_help": "Create users, edit their details, reset passwords, suspend accounts, and control per-user feature access.",
+  "company_settings_help": "Manage company users, authorization, enabled features, and account security from one place.",
+  "security": "Security",
+  "account_security": "Account security",
+  "account_security_help": "Review your current role and update your password.",
+  "authorization_model": "How authorization works",
+  "authorization_model_help": "Company features are enabled by the platform plan. Company admins can then narrow each user's access from Users & Authorizations; disabled features disappear from the sidebar and are blocked by the API."
 }

@@ -22,6 +22,9 @@ interface SortableTableProps {
   onSearchChange?: (value: string) => void
   searchValue?: string
   total?: number
+  sortKey?: string | null
+  sortDir?: 'asc' | 'desc'
+  onSortChange?: (key: string, dir: 'asc' | 'desc') => void
 }
 
 export function SortableTable({
@@ -34,6 +37,9 @@ export function SortableTable({
   onSearchChange,
   searchValue = '',
   total,
+  sortKey: controlledSortKey,
+  sortDir: controlledSortDir,
+  onSortChange,
 }: SortableTableProps) {
   const { t, i18n } = useTranslation()
   const [sortKey, setSortKey] = useState<string | null>(null)
@@ -42,6 +48,8 @@ export function SortableTable({
 
   const search = onSearchChange ? searchValue : localSearch
   const setSearch = onSearchChange ?? setLocalSearch
+  const activeSortKey = controlledSortKey ?? sortKey
+  const activeSortDir = controlledSortDir ?? sortDir
 
   const sortedRows = useMemo(() => {
     let data = [...rows]
@@ -51,25 +59,27 @@ export function SortableTable({
         Object.values(row).some((v) => v != null && String(v).toLowerCase().includes(q)),
       )
     }
-    if (sortKey) {
+    if (!onSortChange && activeSortKey) {
       data.sort((a, b) => {
-        const av = a[sortKey]
-        const bv = b[sortKey]
+        const av = a[activeSortKey]
+        const bv = b[activeSortKey]
         if (av == null && bv == null) return 0
         if (av == null) return 1
         if (bv == null) return -1
         if (typeof av === 'number' && typeof bv === 'number') {
-          return sortDir === 'asc' ? av - bv : bv - av
+          return activeSortDir === 'asc' ? av - bv : bv - av
         }
         const cmp = String(av).localeCompare(String(bv))
-        return sortDir === 'asc' ? cmp : -cmp
+        return activeSortDir === 'asc' ? cmp : -cmp
       })
     }
     return data
-  }, [rows, sortKey, sortDir, search, onSearchChange])
+  }, [rows, activeSortKey, activeSortDir, search, onSearchChange, onSortChange])
 
   const toggleSort = (key: string) => {
-    if (sortKey === key) {
+    if (onSortChange) {
+      onSortChange(key, activeSortKey === key && activeSortDir === 'asc' ? 'desc' : 'asc')
+    } else if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortKey(key)
@@ -120,12 +130,12 @@ export function SortableTable({
                         onClick={() => toggleSort(col.key)}
                         className={cn(
                           'inline-flex items-center gap-1 hover:text-slate-700',
-                          sortKey === col.key && 'text-primary-700',
+                          activeSortKey === col.key && 'text-primary-700',
                         )}
                       >
                         {label(col)}
-                        {sortKey === col.key ? (
-                          sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                        {activeSortKey === col.key ? (
+                          activeSortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
                         ) : (
                           <ArrowUpDown className="h-3.5 w-3.5 opacity-40" />
                         )}

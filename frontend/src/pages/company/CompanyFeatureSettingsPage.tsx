@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import api from '@/lib/api'
 
-export function CompanyFeatureSettingsPage() {
+export function CompanyFeatureSettingsPage({ embedded = false }: { embedded?: boolean }) {
   const { t, i18n } = useTranslation()
 
   const { data, isLoading } = useQuery({
@@ -25,12 +25,14 @@ export function CompanyFeatureSettingsPage() {
 
   return (
     <div>
-      <PageHeader
-        title={t('feature_settings')}
-        subtitle={t('feature_settings_help')}
-        icon={Settings}
-        accentIndex={3}
-      />
+      {!embedded && (
+        <PageHeader
+          title={t('feature_settings')}
+          subtitle={t('feature_settings_help')}
+          icon={Settings}
+          accentIndex={3}
+        />
+      )}
       <Card className="mb-6 border-blue-200 bg-blue-50/50">
         <div className="flex items-start gap-3">
           <Shield className="mt-0.5 h-5 w-5 text-blue-600" />
