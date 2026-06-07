@@ -5,15 +5,18 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.brokers import Broker, BrokerCommission
-from app.models.crm import Lead
+from app.models.construction import ConstructionPhase
+from app.models.crm import CustomerReminder, Lead
 from app.models.customers import Customer
 from app.models.customer_service import Ticket
+from app.models.procurement import PurchaseOrder, Vendor
+from app.models.property import MaintenanceRequest
 from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.sales import Contract, Installment, Payment, PaymentPlan, Reservation
 from app.models.tenant import Company
 from app.models.users import User
 from app.models.hr import Employee, PayrollRun, Payslip
-from app.models.crm import CustomerReminder
+from app.models.warehouse import InventoryItem, Warehouse
 from app.services.finance_service import FinanceService
 
 
@@ -38,6 +41,14 @@ REPORT_CATALOG: list[dict[str, Any]] = [
     {"key": "hr_employees", "category": "hr", "name_en": "Employees Register", "name_ar": "سجل الموظفين"},
     {"key": "hr_payroll", "category": "hr", "name_en": "Payroll Summary", "name_ar": "ملخص الرواتب"},
     {"key": "customer_reminders", "category": "crm", "name_en": "Call Reminders", "name_ar": "تذكيرات المكالمات"},
+    {"key": "sales_summary", "category": "sales", "name_en": "Sales Summary by Status", "name_ar": "ملخص المبيعات حسب الحالة"},
+    {"key": "collections_aging", "category": "collections", "name_en": "Collections Aging Summary", "name_ar": "ملخص أعمار التحصيلات"},
+    {"key": "construction_progress", "category": "operations", "name_en": "Construction Progress", "name_ar": "تقدم المقاولات"},
+    {"key": "procurement_vendors", "category": "operations", "name_en": "Vendors Register", "name_ar": "سجل الموردين"},
+    {"key": "procurement_orders", "category": "operations", "name_en": "Purchase Orders", "name_ar": "أوامر الشراء"},
+    {"key": "warehouse_inventory", "category": "operations", "name_en": "Warehouse Inventory", "name_ar": "مخزون المستودعات"},
+    {"key": "property_maintenance", "category": "operations", "name_en": "Maintenance Requests", "name_ar": "طلبات الصيانة"},
+    {"key": "team_users", "category": "admin", "name_en": "Team Users", "name_ar": "مستخدمو الفريق"},
 ]
 
 
@@ -111,6 +122,14 @@ class ReportsService:
             "hr_employees": ReportsService._hr_employees,
             "hr_payroll": ReportsService._hr_payroll,
             "customer_reminders": ReportsService._customer_reminders,
+            "sales_summary": ReportsService._sales_summary,
+            "collections_aging": ReportsService._collections_aging,
+            "construction_progress": ReportsService._construction_progress,
+            "procurement_vendors": ReportsService._procurement_vendors,
+            "procurement_orders": ReportsService._procurement_orders,
+            "warehouse_inventory": ReportsService._warehouse_inventory,
+            "property_maintenance": ReportsService._property_maintenance,
+            "team_users": ReportsService._team_users,
         }
         if report_key not in fetchers:
             return [], []
@@ -234,6 +253,64 @@ class ReportsService:
                 "system_role": ("Role", "الدور"),
                 "status": ("Status", "الحالة"),
                 "company_id": ("Company ID", "الشركة"),
+            },
+            "sales_summary": {
+                "status": ("Status", "الحالة"),
+                "contract_count": ("Contracts", "العقود"),
+                "total_value": ("Total Value", "القيمة الإجمالية"),
+                "avg_value": ("Average Value", "متوسط القيمة"),
+            },
+            "collections_aging": {
+                "aging_bucket": ("Aging Bucket", "فئة التأخير"),
+                "installment_count": ("Installments", "الأقساط"),
+                "total_due": ("Total Due", "إجمالي المستحق"),
+                "total_remaining": ("Remaining", "المتبقي"),
+            },
+            "construction_progress": {
+                "project": ("Project", "المشروع"),
+                "phase": ("Phase", "المرحلة"),
+                "progress_percent": ("Progress %", "نسبة الإنجاز"),
+                "planned_cost": ("Planned Cost", "التكلفة المخططة"),
+                "actual_cost": ("Actual Cost", "التكلفة الفعلية"),
+                "variance": ("Variance", "الفرق"),
+            },
+            "procurement_vendors": {
+                "name_en": ("Vendor", "المورد"),
+                "contact_person": ("Contact", "جهة الاتصال"),
+                "phone": ("Phone", "الهاتف"),
+                "email": ("Email", "البريد"),
+                "rating": ("Rating", "التقييم"),
+                "status": ("Status", "الحالة"),
+            },
+            "procurement_orders": {
+                "po_number": ("PO #", "رقم أمر الشراء"),
+                "vendor": ("Vendor", "المورد"),
+                "project": ("Project", "المشروع"),
+                "total_amount": ("Amount", "المبلغ"),
+                "status": ("Status", "الحالة"),
+            },
+            "warehouse_inventory": {
+                "warehouse": ("Warehouse", "المستودع"),
+                "sku": ("SKU", "الرمز"),
+                "name_en": ("Item", "الصنف"),
+                "quantity": ("Quantity", "الكمية"),
+                "min_stock_level": ("Min Stock", "الحد الأدنى"),
+                "unit": ("Unit", "الوحدة"),
+                "stock_status": ("Status", "الحالة"),
+            },
+            "property_maintenance": {
+                "title": ("Title", "العنوان"),
+                "unit_code": ("Unit", "الوحدة"),
+                "customer": ("Customer", "العميل"),
+                "priority": ("Priority", "الأولوية"),
+                "status": ("Status", "الحالة"),
+            },
+            "team_users": {
+                "username": ("Username", "اسم المستخدم"),
+                "full_name_en": ("Name", "الاسم"),
+                "email": ("Email", "البريد"),
+                "system_role": ("Role", "الدور"),
+                "status": ("Status", "الحالة"),
             },
         }
         mapping = labels.get(report_key, {})
@@ -593,6 +670,197 @@ class ReportsService:
                 "notes": r.notes or "",
             }
             for r in reminders
+        ]
+
+    @staticmethod
+    async def _sales_summary(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        query = select(Contract).where(Contract.is_deleted == False)
+        if company_id:
+            query = query.where(Contract.company_id == company_id)
+        contracts = (await db.execute(query)).scalars().all()
+        buckets: dict[str, dict] = {}
+        for c in contracts:
+            status = c.status.value
+            if status not in buckets:
+                buckets[status] = {"status": status, "contract_count": 0, "total_value": 0.0}
+            buckets[status]["contract_count"] += 1
+            buckets[status]["total_value"] += float(c.total_price)
+        rows = []
+        for b in buckets.values():
+            count = b["contract_count"]
+            b["total_value"] = round(b["total_value"], 2)
+            b["avg_value"] = round(b["total_value"] / count, 2) if count else 0
+            rows.append(b)
+        return rows
+
+    @staticmethod
+    async def _collections_aging(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        installments = await ReportsService._collections_installments(db, company_id, _)
+        overdue = [r for r in installments if r["remaining_balance"] > 0]
+        buckets: dict[str, dict] = {}
+        for r in overdue:
+            days = r.get("aging_days", 0)
+            if days <= 0:
+                bucket = "Current"
+            elif days <= 30:
+                bucket = "1-30 days"
+            elif days <= 60:
+                bucket = "31-60 days"
+            elif days <= 90:
+                bucket = "61-90 days"
+            else:
+                bucket = "90+ days"
+            if bucket not in buckets:
+                buckets[bucket] = {
+                    "aging_bucket": bucket,
+                    "installment_count": 0,
+                    "total_due": 0.0,
+                    "total_remaining": 0.0,
+                }
+            buckets[bucket]["installment_count"] += 1
+            buckets[bucket]["total_due"] += r["due_amount"]
+            buckets[bucket]["total_remaining"] += r["remaining_balance"]
+        order = ["Current", "1-30 days", "31-60 days", "61-90 days", "90+ days"]
+        return [
+            {
+                **buckets[k],
+                "total_due": round(buckets[k]["total_due"], 2),
+                "total_remaining": round(buckets[k]["total_remaining"], 2),
+            }
+            for k in order
+            if k in buckets
+        ]
+
+    @staticmethod
+    async def _construction_progress(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        query = (
+            select(ConstructionPhase, Project)
+            .join(Project, ConstructionPhase.project_id == Project.id)
+            .where(Project.is_deleted == False)
+        )
+        if company_id:
+            query = query.where(Project.company_id == company_id)
+        result = await db.execute(query)
+        return [
+            {
+                "project": p.name_en,
+                "phase": phase.name_en,
+                "progress_percent": phase.progress_percent,
+                "planned_cost": float(phase.planned_cost),
+                "actual_cost": float(phase.actual_cost),
+                "variance": round(float(phase.actual_cost) - float(phase.planned_cost), 2),
+            }
+            for phase, p in result.all()
+        ]
+
+    @staticmethod
+    async def _procurement_vendors(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        query = select(Vendor)
+        if company_id:
+            query = query.where(Vendor.company_id == company_id)
+        vendors = (await db.execute(query)).scalars().all()
+        return [
+            {
+                "name_en": v.name_en,
+                "name_ar": v.name_ar,
+                "contact_person": v.contact_person or "",
+                "phone": v.phone or "",
+                "email": v.email or "",
+                "rating": v.rating,
+                "status": "active" if v.is_active else "inactive",
+            }
+            for v in vendors
+        ]
+
+    @staticmethod
+    async def _procurement_orders(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        query = (
+            select(PurchaseOrder, Vendor, Project)
+            .join(Vendor, PurchaseOrder.vendor_id == Vendor.id)
+            .outerjoin(Project, PurchaseOrder.project_id == Project.id)
+        )
+        if company_id:
+            query = query.where(PurchaseOrder.company_id == company_id)
+        result = await db.execute(query)
+        return [
+            {
+                "po_number": po.po_number,
+                "vendor": v.name_en,
+                "project": p.name_en if p else "",
+                "total_amount": float(po.total_amount),
+                "status": po.status,
+            }
+            for po, v, p in result.all()
+        ]
+
+    @staticmethod
+    async def _warehouse_inventory(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        query = (
+            select(InventoryItem, Warehouse)
+            .join(Warehouse, InventoryItem.warehouse_id == Warehouse.id)
+        )
+        if company_id:
+            query = query.where(Warehouse.company_id == company_id)
+        result = await db.execute(query)
+        rows = []
+        for item, wh in result.all():
+            qty = float(item.quantity)
+            min_stock = float(item.min_stock_level)
+            rows.append({
+                "warehouse": wh.name_en,
+                "sku": item.sku,
+                "name_en": item.name_en,
+                "quantity": qty,
+                "min_stock_level": min_stock,
+                "unit": item.unit,
+                "stock_status": "low" if qty <= min_stock else "ok",
+            })
+        return rows
+
+    @staticmethod
+    async def _property_maintenance(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        query = (
+            select(MaintenanceRequest, Unit, Customer)
+            .join(Unit, MaintenanceRequest.unit_id == Unit.id)
+            .outerjoin(Customer, MaintenanceRequest.customer_id == Customer.id)
+        )
+        if company_id:
+            query = query.where(MaintenanceRequest.company_id == company_id)
+        result = await db.execute(query)
+        return [
+            {
+                "title": req.title,
+                "unit_code": u.unit_code,
+                "customer": c.full_name_en if c else "",
+                "priority": req.priority,
+                "status": req.status,
+            }
+            for req, u, c in result.all()
+        ]
+
+    @staticmethod
+    async def _team_users(db: AsyncSession, company_id: Optional[int], _: bool) -> list[dict]:
+        if not company_id:
+            return []
+        users = (
+            await db.execute(
+                select(User).where(
+                    User.company_id == company_id,
+                    User.is_deleted == False,
+                    User.is_super_admin == False,
+                )
+            )
+        ).scalars().all()
+        return [
+            {
+                "username": u.username,
+                "full_name_en": u.full_name_en,
+                "full_name_ar": u.full_name_ar,
+                "email": u.email,
+                "system_role": u.system_role.value,
+                "status": u.status.value,
+            }
+            for u in users
         ]
 
     @staticmethod

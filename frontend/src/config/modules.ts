@@ -23,6 +23,7 @@ export const COMPANY_MODULE_LINKS: { moduleKey: string; route: string; label: st
   { moduleKey: 'property', route: '/property', label: 'property' },
   { moduleKey: 'customer_service', route: '/customer-service', label: 'customer_service' },
   { moduleKey: 'users', route: '/users', label: 'users' },
+  { moduleKey: 'users', route: '/settings', label: 'settings' },
   { moduleKey: 'reports', route: '/reports', label: 'reports' },
   { moduleKey: 'hr', route: '/hr', label: 'hr' },
   { moduleKey: 'branding', route: '/branding', label: 'branding' },

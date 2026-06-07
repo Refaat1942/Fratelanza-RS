@@ -32,6 +32,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   property: Home,
   customer_service: Headphones,
   users: Users,
+  settings: Settings,
   reports: BarChart3,
   hr: Users,
   branding: Palette,
@@ -63,19 +64,14 @@ export function Sidebar() {
 
   const companyLinks = COMPANY_MODULE_LINKS
     .filter((l) => user?.is_super_admin || isEnabled(l.moduleKey))
-    .map((l) => ({
-      to: l.route,
-      icon: MODULE_ICONS[l.moduleKey] ?? LayoutDashboard,
-      label: l.label,
-    }))
-
-  if (!user?.is_super_admin && isEnabled('users')) {
-    companyLinks.push({
-      to: '/feature-settings',
-      icon: Settings,
-      label: 'feature_settings',
+    .map((l) => {
+      const routeKey = l.route.replace(/^\//, '')
+      return {
+        to: l.route,
+        icon: MODULE_ICONS[routeKey] ?? MODULE_ICONS[l.moduleKey] ?? LayoutDashboard,
+        label: l.label,
+      }
     })
-  }
 
   const links = user?.is_super_admin ? superAdminLinks : companyLinks
 

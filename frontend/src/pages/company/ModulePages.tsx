@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, CheckCircle, FileText, CreditCard, Sliders } from 'lucide-react'
+import { Plus, CheckCircle, FileText, CreditCard, Sliders, KeyRound, Ban } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { useListData } from '@/hooks/useListData'
@@ -10,7 +10,9 @@ import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UserFormModal } from '@/components/forms/UserFormModal'
+import { UserEditModal } from '@/components/forms/UserEditModal'
 import { UserFeaturesModal } from '@/components/forms/UserFeaturesModal'
+import { ResetPasswordModal } from '@/components/forms/ResetPasswordModal'
 import {
   ReservationFormModal, ContractFormModal,
   PaymentFormModal, BrokerFormModal,
@@ -320,15 +322,29 @@ export function CustomerServicePage() {
 
 export function CompanyUsersPage() {
   const { t, i18n } = useTranslation()
+  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [editUser, setEditUser] = useState<Record<string, unknown> | null>(null)
   const [featuresUser, setFeaturesUser] = useState<Record<string, unknown> | null>(null)
+  const [resetUser, setResetUser] = useState<Record<string, unknown> | null>(null)
   const deleteUser = useDeleteEntity('/users', ['company-users'])
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('company-users', '/users')
+  const toggleStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const endpoint = status === 'active' ? 'suspend' : 'activate'
+      return api.post(`/users/${id}/${endpoint}`)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['company-users'] })
+      refetch()
+    },
+  })
   const rows = Array.isArray(items) ? items : []
   return (
     <div>
       <DataTable
         title={t('users')}
+        subtitle={t('settings_users_help')}
         loading={isLoading}
         exportFilename="users"
         data={rows}
@@ -336,7 +352,7 @@ export function CompanyUsersPage() {
           { key: 'username', label: t('username') },
           { key: 'full_name_ar', label: t('name_ar') },
           { key: 'email', label: t('email') },
-          { key: 'system_role', label: t('role') },
+          { key: 'system_role', label: t('role'), render: (row) => String(row.system_role).replace(/_/g, ' ') },
           { key: 'status', label: t('status') },
         ]}
         actions={
@@ -347,27 +363,49 @@ export function CompanyUsersPage() {
         }
         rowActions={(row) => (
           <RowActions
+            onEdit={() => setEditUser(row)}
             onDelete={() => confirmDelete(t) && deleteUser.mutate(row.id as number, { onSuccess: () => { refetch() } })}
             extra={
-              <Button
-                variant="ghost"
-                className="!px-2 !py-1.5"
-                onClick={() => setFeaturesUser(row)}
-                title={t('user_feature_access')}
-              >
-                <Sliders className="h-4 w-4 text-primary-600" />
-              </Button>
+              <>
+                <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => setFeaturesUser(row)} title={t('user_feature_access')}>
+                  <Sliders className="h-4 w-4 text-primary-600" />
+                </Button>
+                <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => setResetUser(row)} title={t('reset_password')}>
+                  <KeyRound className="h-4 w-4 text-amber-600" />
+                </Button>
+                {row.status === 'active' ? (
+                  <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => toggleStatus.mutate({ id: row.id as number, status: 'active' })} title={t('suspend_user')}>
+                    <Ban className="h-4 w-4 text-red-600" />
+                  </Button>
+                ) : (
+                  <Button variant="ghost" className="!px-2 !py-1.5" onClick={() => toggleStatus.mutate({ id: row.id as number, status: 'suspended' })} title={t('activate_user')}>
+                    <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  </Button>
+                )}
+              </>
             }
           />
         )}
       />
       <UserFormModal open={open} onClose={() => { setOpen(false); refetch() }} />
+      <UserEditModal
+        open={!!editUser}
+        user={editUser as Parameters<typeof UserEditModal>[0]['user']}
+        onClose={() => setEditUser(null)}
+        onSaved={() => refetch()}
+      />
       <UserFeaturesModal
         open={!!featuresUser}
         userId={featuresUser?.id as number}
         userName={String(i18n.language === 'ar' ? featuresUser?.full_name_ar : featuresUser?.full_name_en ?? '')}
         onClose={() => setFeaturesUser(null)}
         onSaved={() => refetch()}
+      />
+      <ResetPasswordModal
+        open={!!resetUser}
+        userId={resetUser?.id as number}
+        userEmail={String(resetUser?.email ?? '')}
+        onClose={() => setResetUser(null)}
       />
     </div>
   )

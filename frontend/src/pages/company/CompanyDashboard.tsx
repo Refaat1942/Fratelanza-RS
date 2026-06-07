@@ -11,6 +11,7 @@ import { PipelineChart } from '@/components/dashboard/PipelineChart'
 import { ActionPanel } from '@/components/dashboard/ActionPanel'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
+import { cn } from '@/lib/utils'
 import type { DashboardData } from '@/types'
 
 export function CompanyDashboard() {
@@ -18,20 +19,27 @@ export function CompanyDashboard() {
   const { formatEGP, formatInteger } = useFormatNumber()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const reseed = useMutation({
-    mutationFn: async () => api.post('/dashboard/reseed-demo'),
-    onSuccess: () => {
-      qc.invalidateQueries()
-      alert(t('demo_data_loaded'))
-    },
-  })
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['company-dashboard'],
     queryFn: async () => {
       const { data } = await api.get<DashboardData>('/dashboard/company')
       return data
     },
   })
+  const reseed = useMutation({
+    mutationFn: async () => api.post('/dashboard/reseed-demo'),
+    onSuccess: async () => {
+      await qc.invalidateQueries()
+      alert(t('demo_data_loaded'))
+    },
+    onError: () => {
+      alert(t('demo_data_error'))
+    },
+  })
+  const reloadDashboard = async () => {
+    await refetch()
+    await qc.invalidateQueries({ queryKey: ['company-dashboard'] })
+  }
 
   if (isLoading) return <LoadingState />
 
@@ -50,8 +58,16 @@ export function CompanyDashboard() {
         accentIndex={0}
         actions={
           <>
+            <Button
+              variant="secondary"
+              onClick={reloadDashboard}
+              loading={isFetching && !isLoading}
+              title={t('reload_dashboard_help')}
+            >
+              <RefreshCw className={cn('me-2 h-4 w-4', isFetching && !isLoading && 'animate-spin')} />
+              {t('reload_dashboard')}
+            </Button>
             <Button variant="secondary" onClick={() => reseed.mutate()} loading={reseed.isPending}>
-              <RefreshCw className="me-2 h-4 w-4" />
               {t('load_demo_data')}
             </Button>
             <Button variant="secondary" onClick={() => navigate('/reports')}>

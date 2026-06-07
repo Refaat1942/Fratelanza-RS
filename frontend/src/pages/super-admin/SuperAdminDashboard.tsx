@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, Users, UserCircle, LayoutDashboard } from 'lucide-react'
+import { Building2, Users, UserCircle, LayoutDashboard, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { cn } from '@/lib/utils'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { StatCard } from '@/components/ui/StatCard'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
@@ -11,7 +13,7 @@ import type { DashboardData } from '@/types'
 export function SuperAdminDashboard() {
   const { t } = useTranslation()
   const { formatInteger } = useFormatNumber()
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['super-admin-dashboard'],
     queryFn: async () => {
       const { data } = await api.get<DashboardData>('/dashboard/super-admin')
@@ -23,7 +25,18 @@ export function SuperAdminDashboard() {
 
   return (
     <div>
-      <PageHeader title={t('dashboard')} subtitle={t('platform')} icon={LayoutDashboard} accentIndex={0} />
+      <PageHeader
+        title={t('dashboard')}
+        subtitle={t('platform')}
+        icon={LayoutDashboard}
+        accentIndex={0}
+        actions={
+          <Button variant="secondary" onClick={() => refetch()} loading={isFetching && !isLoading}>
+            <RefreshCw className={cn('me-2 h-4 w-4', isFetching && !isLoading && 'animate-spin')} />
+            {t('reload_dashboard')}
+          </Button>
+        }
+      />
       <div className="grid-stagger grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard title={t('companies')} value={formatInteger(data?.stats.total_companies)} icon={Building2} />
         <StatCard title={t('users')} value={formatInteger(data?.stats.total_users)} icon={Users} color="bg-emerald-50 text-emerald-700" />

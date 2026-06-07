@@ -34,6 +34,7 @@ export function UserFormModal({ open, onClose }: UserFormModalProps) {
     setLoading(true)
     try {
       await api.post('/users', { ...form, company_id: user?.company_id })
+      qc.invalidateQueries({ queryKey: ['company-users'] })
       qc.invalidateQueries({ queryKey: ['users'] })
       onClose()
     } finally {
