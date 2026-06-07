@@ -30,6 +30,7 @@ interface DataTableProps {
   subtitle?: string
   emptyActionLabel?: string
   onEmptyAction?: () => void
+  highlightRowId?: number
 }
 
 function StatusCell({ value }: { value: unknown }) {
@@ -43,7 +44,7 @@ function StatusCell({ value }: { value: unknown }) {
   return <span className={cls}>{String(value)}</span>
 }
 
-export function DataTable({ title, columns, data, loading, actions, rowActions, searchable = true, exportFilename, subtitle, emptyActionLabel, onEmptyAction }: DataTableProps) {
+export function DataTable({ title, columns, data, loading, actions, rowActions, searchable = true, exportFilename, subtitle, emptyActionLabel, onEmptyAction, highlightRowId }: DataTableProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const [search, setSearch] = useState('')
@@ -154,7 +155,10 @@ export function DataTable({ title, columns, data, loading, actions, rowActions, 
                 {filtered.map((row, i) => (
                   <tr
                     key={String(row.id ?? i)}
-                    className="table-row-animate border-b border-slate-100"
+                    className={cn(
+                      'table-row-animate border-b border-slate-100',
+                      highlightRowId != null && row.id === highlightRowId && 'bg-primary-50 ring-2 ring-inset ring-primary-300',
+                    )}
                     style={{ animationDelay: `${Math.min(i * 0.04, 0.6)}s` }}
                   >
                     {columns.map((col) => (

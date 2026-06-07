@@ -21,13 +21,17 @@ interface UnitCard {
   unit_type: string
   price: number
   area_sqm: number
+  project_id?: number
+  project_name?: string
 }
 
 interface UnitsBoardProps {
   onUnitClick?: (unitId: number, status: string) => void
+  projectId?: number
+  highlightUnitId?: number
 }
 
-export function UnitsBoard({ onUnitClick }: UnitsBoardProps) {
+export function UnitsBoard({ onUnitClick, projectId, highlightUnitId }: UnitsBoardProps) {
   const { t } = useTranslation()
   const { formatEGP, formatInteger, formatNumber, localizeDigits } = useFormatNumber()
   const { data, isLoading } = useQuery({
@@ -43,15 +47,18 @@ export function UnitsBoard({ onUnitClick }: UnitsBoardProps) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-500">{t('units_board_help')}</p>
-      {Object.entries(data ?? {}).map(([status, units]) => (
+      {Object.entries(data ?? {}).map(([status, units]) => {
+        const filtered = projectId ? units.filter((u) => u.project_id === projectId) : units
+        if (!filtered.length) return null
+        return (
         <div key={status}>
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold capitalize">
             <span className={cn('rounded-full px-2.5 py-1 text-xs', STATUS_STYLES[status] ?? 'bg-slate-100')}>
-              {status} ({formatInteger(units.length)})
+              {status} ({formatInteger(filtered.length)})
             </span>
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {units.map((u) => (
+            {filtered.map((u) => (
               <button
                 key={u.id}
                 type="button"
@@ -60,10 +67,14 @@ export function UnitsBoard({ onUnitClick }: UnitsBoardProps) {
                   'rounded-xl border-2 p-4 text-start transition hover:shadow-md',
                   STATUS_STYLES[status] ?? 'border-slate-200',
                   onUnitClick && 'cursor-pointer hover:scale-[1.02]',
+                  highlightUnitId === u.id && 'ring-2 ring-primary-600 ring-offset-2',
                 )}
               >
                 <p className="font-bold">{u.unit_code}</p>
-                <p className="text-xs opacity-75">#{localizeDigits(u.unit_number)} · {u.unit_type}</p>
+                <p className="text-xs opacity-75">
+                  #{localizeDigits(u.unit_number)} · {u.unit_type}
+                  {u.project_name && !projectId && <span className="block truncate">{u.project_name}</span>}
+                </p>
                 <p className="mt-2 text-sm font-semibold">{formatEGP(u.price)}</p>
                 <p className="text-xs opacity-75">{formatNumber(u.area_sqm)} m²</p>
                 {status === 'available' && onUnitClick && (
@@ -75,7 +86,7 @@ export function UnitsBoard({ onUnitClick }: UnitsBoardProps) {
             ))}
           </div>
         </div>
-      ))}
+      )})}
     </div>
   )
 }

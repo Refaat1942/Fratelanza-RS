@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Building2, LayoutGrid, List, Plus, Home } from 'lucide-react'
@@ -17,6 +18,12 @@ import { cn } from '@/lib/utils'
 
 type Tab = 'overview' | 'board' | 'projects' | 'units'
 
+const VALID_TABS: Tab[] = ['overview', 'board', 'projects', 'units']
+
+function parseTab(value: string | null): Tab | null {
+  return value && VALID_TABS.includes(value as Tab) ? (value as Tab) : null
+}
+
 function useCrudModal() {
   const [open, setOpen] = useState(false)
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null)
@@ -32,9 +39,19 @@ function useCrudModal() {
 export function ProjectsPage() {
   const { t } = useTranslation()
   const { formatInteger } = useFormatNumber()
-  const [tab, setTab] = useState<Tab>('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(() => parseTab(searchParams.get('tab')) ?? 'overview')
+  const [projectFilterId, setProjectFilterId] = useState<number | undefined>(() => {
+    const id = Number(searchParams.get('project_id'))
+    return Number.isFinite(id) && id > 0 ? id : undefined
+  })
+  const [highlightUnitId, setHighlightUnitId] = useState<number | undefined>(() => {
+    const id = Number(searchParams.get('unit_id'))
+    return Number.isFinite(id) && id > 0 ? id : undefined
+  })
   const modal = useCrudModal()
   const [unitOpen, setUnitOpen] = useState(false)
+  const [unitProjectId, setUnitProjectId] = useState<number | undefined>()
   const [reserveUnitId, setReserveUnitId] = useState<number | undefined>()
   const [reservationOpen, setReservationOpen] = useState(false)
   const deleteProject = useDeleteEntity('/projects', ['projects'])
@@ -55,9 +72,42 @@ export function ProjectsPage() {
     total: Object.values(board ?? {}).reduce((s, u) => s + (u as unknown[]).length, 0),
   }
 
-  const allUnits = Object.entries(board ?? {}).flatMap(([status, units]) =>
+  const allUnits: Record<string, unknown>[] = Object.entries(board ?? {}).flatMap(([status, units]) =>
     (units as Record<string, unknown>[]).map((u) => ({ ...u, status })),
   )
+
+  const filteredUnits = projectFilterId
+    ? allUnits.filter((u) => u.project_id === projectFilterId)
+    : allUnits
+
+  const filteredProjects = projectFilterId
+    ? projects.filter((p) => p.id === projectFilterId)
+    : projects
+
+  useEffect(() => {
+    const nextTab = parseTab(searchParams.get('tab'))
+    const nextProjectId = Number(searchParams.get('project_id'))
+    const nextUnitId = Number(searchParams.get('unit_id'))
+    if (nextTab) setTab(nextTab)
+    setProjectFilterId(Number.isFinite(nextProjectId) && nextProjectId > 0 ? nextProjectId : undefined)
+    setHighlightUnitId(Number.isFinite(nextUnitId) && nextUnitId > 0 ? nextUnitId : undefined)
+  }, [searchParams])
+
+  const changeTab = (key: Tab) => {
+    setTab(key)
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', key)
+    setSearchParams(params, { replace: true })
+  }
+
+  const clearProjectFilter = () => {
+    setProjectFilterId(undefined)
+    setHighlightUnitId(undefined)
+    const params = new URLSearchParams(searchParams)
+    params.delete('project_id')
+    params.delete('unit_id')
+    setSearchParams(params, { replace: true })
+  }
 
   const tabs: { key: Tab; label: string; icon: typeof Building2 }[] = [
     { key: 'overview', label: t('overview'), icon: Building2 },
@@ -75,7 +125,7 @@ export function ProjectsPage() {
         accentIndex={2}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setUnitOpen(true)}>
+            <Button variant="secondary" onClick={() => { setUnitProjectId(projectFilterId); setUnitOpen(true) }}>
               <Plus className="me-2 h-4 w-4" />{t('add_unit')}
             </Button>
             <Button onClick={modal.openCreate}>
@@ -85,12 +135,24 @@ export function ProjectsPage() {
         }
       />
 
+      {projectFilterId && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-4 py-2 text-sm text-primary-800">
+          <span>
+            {t('filtered_by_project')}:{' '}
+            <strong>{String(projects.find((p) => p.id === projectFilterId)?.name_en ?? projectFilterId)}</strong>
+          </span>
+          <button type="button" onClick={clearProjectFilter} className="font-medium underline hover:no-underline">
+            {t('show_all_projects')}
+          </button>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             type="button"
-            onClick={() => setTab(key)}
+            onClick={() => changeTab(key)}
             className={cn(
               'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition',
               tab === key ? 'bg-primary-700 text-white shadow-sm' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
@@ -109,12 +171,20 @@ export function ProjectsPage() {
             <StatCard title={t('reserved_units')} value={formatInteger(boardStats.reserved)} icon={Home} color="bg-amber-50 text-amber-700" />
             <StatCard title={t('total_units')} value={formatInteger(boardStats.total)} icon={Home} color="bg-blue-50 text-blue-700" />
           </div>
-          <UnitsBoard onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }} />
+          <UnitsBoard
+            projectId={projectFilterId}
+            highlightUnitId={highlightUnitId}
+            onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }}
+          />
         </>
       )}
 
       {tab === 'board' && (
-        <UnitsBoard onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }} />
+        <UnitsBoard
+          projectId={projectFilterId}
+          highlightUnitId={highlightUnitId}
+          onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }}
+        />
       )}
 
       {tab === 'projects' && (
@@ -122,7 +192,8 @@ export function ProjectsPage() {
           title={t('projects_list')}
           loading={isLoading}
           exportFilename="projects"
-          data={projects}
+          data={filteredProjects}
+          highlightRowId={projectFilterId}
           emptyActionLabel={t('add_project')}
           onEmptyAction={modal.openCreate}
           columns={[
@@ -147,7 +218,8 @@ export function ProjectsPage() {
         <DataTable
           title={t('units')}
           exportFilename="units"
-          data={allUnits}
+          data={filteredUnits}
+          highlightRowId={highlightUnitId}
           columns={[
             { key: 'unit_code', label: 'Code' },
             { key: 'unit_number', label: '#' },
@@ -172,7 +244,7 @@ export function ProjectsPage() {
       )}
 
       <ProjectFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-      <UnitFormModal open={unitOpen} onClose={() => setUnitOpen(false)} />
+      <UnitFormModal open={unitOpen} onClose={() => { setUnitOpen(false); setUnitProjectId(undefined) }} preselectedProjectId={unitProjectId} />
       <ReservationFormModal open={reservationOpen} onClose={() => { setReservationOpen(false); setReserveUnitId(undefined) }} preselectedUnitId={reserveUnitId} />
     </div>
   )

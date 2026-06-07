@@ -114,11 +114,24 @@ async def global_search(
             for c in contracts
         ],
         "units": [
-            {"id": u.id, "code": u.unit_code, "number": u.unit_number, "project": p.name_en, "type": "unit", "route": "/projects"}
+            {
+                "id": u.id,
+                "code": u.unit_code,
+                "number": u.unit_number,
+                "project": p.name_en,
+                "type": "unit",
+                "route": f"/projects?tab=board&unit_id={u.id}&project_id={p.id}",
+            }
             for u, p in units
         ],
         "projects": [
-            {"id": p.id, "name": p.name_en, "code": p.code, "type": "project", "route": "/projects"}
+            {
+                "id": p.id,
+                "name": p.name_en,
+                "code": p.code,
+                "type": "project",
+                "route": f"/projects?tab=board&project_id={p.id}",
+            }
             for p in projects
         ],
         "brokers": [

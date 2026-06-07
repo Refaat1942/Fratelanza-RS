@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_company_user
 from app.core.database import get_db
 from app.models.customers import Customer
-from app.models.real_estate import Unit
+from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.sales import Reservation, ReservationStatus
 from app.models.users import User
 from app.schemas.project import ReservationCreate, ReservationUpdate
@@ -16,7 +16,12 @@ from app.services.reservation_service import ReservationService
 router = APIRouter()
 
 
-def _reservation_dict(r: Reservation, customer: Customer | None = None, unit: Unit | None = None) -> dict:
+def _reservation_dict(
+    r: Reservation,
+    customer: Customer | None = None,
+    unit: Unit | None = None,
+    project: Project | None = None,
+) -> dict:
     return {
         "id": r.id,
         "reservation_number": r.reservation_number,
@@ -24,6 +29,8 @@ def _reservation_dict(r: Reservation, customer: Customer | None = None, unit: Un
         "customer_name": (customer.full_name_ar if customer else None),
         "unit_id": r.unit_id,
         "unit_code": (unit.unit_code if unit else None),
+        "project_id": (project.id if project else None),
+        "project_name": (project.name_en if project else None),
         "deposit_amount": float(r.deposit_amount),
         "status": r.status.value,
         "reservation_date": r.reservation_date,
@@ -66,15 +73,18 @@ async def list_reservations(
     current_user: Annotated[User, Depends(get_company_user)],
 ):
     query = (
-        select(Reservation, Customer, Unit)
+        select(Reservation, Customer, Unit, Project)
         .join(Customer, Reservation.customer_id == Customer.id)
         .join(Unit, Reservation.unit_id == Unit.id)
+        .join(Floor, Unit.floor_id == Floor.id)
+        .join(Building, Floor.building_id == Building.id)
+        .join(Project, Building.project_id == Project.id)
         .where(Reservation.is_deleted == False)
     )
     if not current_user.is_super_admin:
         query = query.where(Reservation.company_id == current_user.company_id)
     result = await db.execute(query.order_by(Reservation.id.desc()))
-    return [_reservation_dict(r, c, u) for r, c, u in result.all()]
+    return [_reservation_dict(r, c, u, p) for r, c, u, p in result.all()]
 
 
 @router.put("/{reservation_id}")

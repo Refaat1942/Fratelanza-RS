@@ -89,20 +89,37 @@ export function ProjectFormModal({ open, onClose, editRow }: ModalProps) {
   )
 }
 
-export function UnitFormModal({ open, onClose }: ModalProps) {
+export function UnitFormModal({ open, onClose, preselectedProjectId }: ModalProps & { preselectedProjectId?: number }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const { data: floors = [] } = useFloorsLookup()
+  const { data: projects = [] } = useProjectsLookup()
+  const [projectId, setProjectId] = useState('')
+  const { data: floors = [] } = useFloorsLookup(projectId ? Number(projectId) : undefined)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     floor_id: '', unit_code: '', unit_number: '', unit_type: 'apartment', area_sqm: '120', bedrooms: '2', bathrooms: '2', price: '2500000',
   })
 
   useEffect(() => {
-    if (open && floors.length && !form.floor_id) {
-      setForm((f) => ({ ...f, floor_id: String(floors[0].id) }))
+    if (!open) {
+      setProjectId('')
+      setForm({ floor_id: '', unit_code: '', unit_number: '', unit_type: 'apartment', area_sqm: '120', bedrooms: '2', bathrooms: '2', price: '2500000' })
+      return
     }
-  }, [open, floors, form.floor_id])
+    if (preselectedProjectId) {
+      setProjectId(String(preselectedProjectId))
+    } else if (projects.length && !projectId) {
+      setProjectId(String(projects[0].id))
+    }
+  }, [open, preselectedProjectId, projects, projectId])
+
+  useEffect(() => {
+    if (open && floors.length) {
+      setForm((f) => ({ ...f, floor_id: String(floors[0].id) }))
+    } else if (open) {
+      setForm((f) => ({ ...f, floor_id: '' }))
+    }
+  }, [open, floors, projectId])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,8 +146,10 @@ export function UnitFormModal({ open, onClose }: ModalProps) {
   return (
     <Modal open={open} onClose={onClose} title={t('add_unit')}>
       <form onSubmit={submit} className="space-y-4">
+        <SelectField label={t('projects')} value={projectId} onChange={setProjectId} required
+          options={projects.map((p) => ({ value: String(p.id), label: String(p.name_ar) }))} />
         <SelectField label={t('floor')} value={form.floor_id} onChange={(v) => setForm({ ...form, floor_id: v })} required
-          options={floors.map((f) => ({ value: String(f.id), label: `${f.project_name} - ${f.name_ar}` }))} />
+          options={floors.map((f) => ({ value: String(f.id), label: String(f.name_ar) }))} />
         <Input label="Unit Code" value={form.unit_code} onChange={(e) => setForm({ ...form, unit_code: e.target.value })} required />
         <Input label="Unit #" value={form.unit_number} onChange={(e) => setForm({ ...form, unit_number: e.target.value })} required />
         <SelectField label="Type" value={form.unit_type} onChange={(v) => setForm({ ...form, unit_type: v })} options={[
@@ -579,7 +598,7 @@ export function VendorFormModal({ open, onClose, editRow }: ModalProps) {
   )
 }
 
-export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProps) {
+export function ConstructionPhaseFormModal({ open, onClose, editRow, preselectedProjectId }: ModalProps & { preselectedProjectId?: number }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: projects = [] } = useProjectsLookup()
@@ -587,6 +606,10 @@ export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProp
   const [form, setForm] = useState({ project_id: '', name_ar: '', name_en: '', planned_start: '', planned_end: '', progress_percent: '0' })
 
   useEffect(() => {
+    if (!open) {
+      setForm({ project_id: '', name_ar: '', name_en: '', planned_start: '', planned_end: '', progress_percent: '0' })
+      return
+    }
     if (editRow) {
       setForm({
         project_id: String(editRow.project_id ?? ''),
@@ -596,10 +619,18 @@ export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProp
         planned_end: String(editRow.planned_end ?? ''),
         progress_percent: String(editRow.progress_percent ?? '0'),
       })
-    } else if (projects.length) {
-      setForm((f) => ({ ...f, project_id: String(projects[0].id) }))
+    } else {
+      const defaultProjectId = preselectedProjectId ?? projects[0]?.id
+      setForm({
+        project_id: defaultProjectId ? String(defaultProjectId) : '',
+        name_ar: '',
+        name_en: '',
+        planned_start: '',
+        planned_end: '',
+        progress_percent: '0',
+      })
     }
-  }, [editRow, open, projects])
+  }, [editRow, open, projects, preselectedProjectId])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

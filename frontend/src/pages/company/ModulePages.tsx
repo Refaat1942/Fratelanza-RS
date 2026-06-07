@@ -23,6 +23,16 @@ function EntityLink({ to, label }: { to: string; label: string }) {
   return <Link to={to} className="font-medium text-primary-600 hover:underline">{label}</Link>
 }
 
+function projectLink(projectId?: unknown) {
+  return projectId ? `/projects?tab=board&project_id=${projectId}` : '/projects'
+}
+
+function unitLink(unitId?: unknown, projectId?: unknown) {
+  if (unitId && projectId) return `/projects?tab=board&unit_id=${unitId}&project_id=${projectId}`
+  if (unitId) return `/projects?tab=board&unit_id=${unitId}`
+  return '/projects'
+}
+
 function useCrudModal() {
   const [open, setOpen] = useState(false)
   const [editRow, setEditRow] = useState<Record<string, unknown> | null>(null)
@@ -58,7 +68,7 @@ export function ReservationsPage() {
         columns={[
           { key: 'reservation_number', label: '#' },
           { key: 'customer_name', label: t('customers'), render: (row) => <EntityLink to="/customers" label={String(row.customer_name ?? row.customer_id)} /> },
-          { key: 'unit_code', label: t('units'), render: (row) => <EntityLink to="/projects" label={String(row.unit_code ?? row.unit_id)} /> },
+          { key: 'unit_code', label: t('units'), render: (row) => <EntityLink to={unitLink(row.unit_id, row.project_id)} label={String(row.unit_code ?? row.unit_id)} /> },
           { key: 'deposit_amount', label: t('deposit') },
           { key: 'status', label: t('status') },
           { key: 'expiry_date', label: t('expiry_date') },
@@ -111,7 +121,7 @@ export function ContractsPage() {
         columns={[
           { key: 'contract_number', label: '#' },
           { key: 'customer_name', label: t('customers'), render: (row) => <EntityLink to="/customers" label={String(row.customer_name ?? row.customer_id)} /> },
-          { key: 'unit_code', label: t('units'), render: (row) => <EntityLink to="/projects" label={String(row.unit_code ?? row.unit_id)} /> },
+          { key: 'unit_code', label: t('units'), render: (row) => <EntityLink to={unitLink(row.unit_id, row.project_id)} label={String(row.unit_code ?? row.unit_id)} /> },
           { key: 'total_price', label: t('total_sales'), render: (row) => formatEGP(row.total_price as number) },
           { key: 'status', label: t('status') },
           { key: 'contract_date', label: 'Date' },
@@ -229,7 +239,7 @@ export function ConstructionPage() {
         emptyActionLabel={t('add_phase')}
         onEmptyAction={modal.openCreate}
         columns={[
-          { key: 'project_name', label: t('projects'), render: (row) => <EntityLink to="/projects" label={String(row.project_name)} /> },
+          { key: 'project_name', label: t('projects'), render: (row) => <EntityLink to={projectLink(row.project_id)} label={String(row.project_name)} /> },
           { key: 'name_ar', label: t('construction') },
           { key: 'progress_percent', label: 'Progress %' },
           { key: 'planned_cost', label: 'Planned', render: (row) => formatEGP(row.planned_cost as number) },
