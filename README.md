@@ -76,6 +76,7 @@ cd frontend && npm install && npm run dev
 | Service | URL |
 |---------|-----|
 | **Live demo (Real Estate)** | https://rs.fratelanza.com/login |
+| **RS control (Super Admin)** | https://rs-control.fratelanza.com/super-admin |
 | Direct (if domain shows Hub) | http://187.124.15.14:9000/login |
 | Fratelanza Hub (different app) | https://hub.fratelanza.com |
 | Frontend (local dev) | http://localhost:5173 |

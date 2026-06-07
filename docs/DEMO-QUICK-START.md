@@ -15,6 +15,16 @@
 If `rs.fratelanza.com` opens Fratelanza Hub, use the direct link until DNS/nginx is fixed:  
 **http://187.124.15.14:9000/login** — then on the VPS run `bash scripts/fix-rs-domain.sh`.
 
+## RS control (Super Admin) | لوحة التحكم
+
+| | |
+|---|---|
+| **URL** | **https://rs-control.fratelanza.com/super-admin** (or `/super-admin` on rs.fratelanza.com) |
+| **Email** | `admin@fratelanza.com` |
+| **Password** | Set on VPS — see `/opt/fratelanza/LOGIN_PASSWORD.txt` |
+
+Same fix script also repairs `rs-control.fratelanza.com` if it opens Hub.
+
 ## Screenshots download | تحميل لقطات الشاشة
 
 **ZIP (26 PNG + bilingual guides):**  

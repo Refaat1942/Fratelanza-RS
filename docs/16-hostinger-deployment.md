@@ -139,4 +139,4 @@ docker exec fratelanza_postgres pg_dump -U fratelanza fratelanza_db > backup.sql
 | Can't connect | `docker compose -f docker-compose.prod.yml ps` |
 | 502 Bad Gateway | Wait 30s for backend startup, check logs |
 | CORS error | Add domain to `CORS_ORIGINS` in `.env` |
-| `rs.fratelanza.com` opens Fratelanza Hub | Run `bash scripts/fix-rs-domain.sh` on the VPS (Real Estate runs on port 9000; Hub is a separate app at hub.fratelanza.com) |
+| `rs.fratelanza.com` or `rs-control.fratelanza.com` opens Fratelanza Hub | Run `bash scripts/fix-rs-domain.sh` on the VPS — fixes both domains to port 9000 (Hub stays at hub.fratelanza.com) |

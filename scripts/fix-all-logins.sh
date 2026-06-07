@@ -145,8 +145,9 @@ cat > /opt/fratelanza/LOGINS.txt << EOF
  FRATELANZA — LOGIN DETAILS
 ============================================
 
-SUPER ADMIN (control panel):
-  URL:      https://rs.fratelanza.com
+SUPER ADMIN (RS control panel):
+  URL:      https://rs-control.fratelanza.com/super-admin
+  Alt URL:  https://rs.fratelanza.com/super-admin
   Email:    admin@fratelanza.com
   Password: SuperAdmin2026
 
