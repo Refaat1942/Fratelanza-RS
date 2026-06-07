@@ -108,10 +108,15 @@ asyncio.run(main())
 PYEOF
 }
 
-reset_admin_if_needed() {
-  local pass
-  pass="$(grep '^SUPER_ADMIN_PASSWORD=' .env | cut -d= -f2-)"
-  [ -f scripts/reset-admin-password.sh ] && bash scripts/reset-admin-password.sh "$pass" 2>/dev/null || true
+fix_logins() {
+  echo "Fixing all logins (super admin + demo company)..."
+  if [ -f scripts/fix-all-logins.sh ]; then
+    bash scripts/fix-all-logins.sh
+  else
+    local pass
+    pass="$(grep '^SUPER_ADMIN_PASSWORD=' .env | cut -d= -f2-)"
+    [ -f scripts/reset-admin-password.sh ] && bash scripts/reset-admin-password.sh "$pass" 2>/dev/null || true
+  fi
 }
 
 health_check() {
@@ -137,5 +142,5 @@ fix_env_if_needed
 sync_postgres_password
 deploy_stack
 restore_plans
-reset_admin_if_needed
+fix_logins
 health_check

@@ -35,8 +35,16 @@ export function LoginPage() {
       })
       setAuth(tokens.access_token, tokens.refresh_token, user)
       navigate(user.is_super_admin ? '/super-admin' : '/dashboard')
-    } catch {
-      setError(t('invalid_credentials'))
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { detail?: string }; status?: number }; message?: string }
+      const detail = ax.response?.data?.detail
+      if (detail) {
+        setError(typeof detail === 'string' ? detail : t('invalid_credentials'))
+      } else if (!ax.response) {
+        setError('Cannot reach server. Check your connection or contact support.')
+      } else {
+        setError(t('invalid_credentials'))
+      }
     } finally {
       setLoading(false)
     }

@@ -61,15 +61,18 @@ async def fix():
 
         if super_user:
             super_user.email = SUPER_EMAIL
+            super_user.username = super_user.username or "superadmin"
             super_user.password_hash = hash_pw(SUPER_PASS)
             super_user.status = UserStatus.ACTIVE
             super_user.is_deleted = False
             super_user.is_super_admin = True
             super_user.system_role = SystemRole.SUPER_ADMIN
+            super_user.company_id = None
             ok = verify(SUPER_PASS, super_user.password_hash)
             print(f"Fixed Super Admin: {SUPER_EMAIL} (verify={ok})")
         else:
             db.add(User(
+                username="superadmin",
                 email=SUPER_EMAIL,
                 password_hash=hash_pw(SUPER_PASS),
                 full_name_ar="مدير النظام",
@@ -93,10 +96,13 @@ async def fix():
             )
             db.add(company)
             await db.flush()
+        else:
+            company.status = CompanyStatus.ACTIVE
 
         r2 = await db.execute(select(User).where(User.email == DEMO_EMAIL))
         demo = r2.scalar_one_or_none()
         if demo:
+            demo.username = demo.username or "demo_admin"
             demo.password_hash = hash_pw(DEMO_PASS)
             demo.status = UserStatus.ACTIVE
             demo.is_deleted = False
@@ -107,6 +113,7 @@ async def fix():
             print(f"Fixed Demo Admin: {DEMO_EMAIL} (verify={ok})")
         else:
             db.add(User(
+                username="demo_admin",
                 email=DEMO_EMAIL,
                 password_hash=hash_pw(DEMO_PASS),
                 full_name_ar="مدير الشركة",
@@ -131,11 +138,11 @@ echo "Testing logins..."
 
 HTTP1=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@fratelanza.com","password":"SuperAdmin2026"}')
+  -d '{"username":"admin@fratelanza.com","password":"SuperAdmin2026"}')
 
 HTTP2=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:9000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@demo.fratelanza.com","password":"Demo123456"}')
+  -d '{"username":"admin@demo.fratelanza.com","password":"Demo123456"}')
 
 [ "$HTTP1" = "200" ] && echo "✓ Super Admin: OK" || echo "✗ Super Admin: FAILED (HTTP $HTTP1)"
 [ "$HTTP2" = "200" ] && echo "✓ Demo: OK" || echo "✗ Demo: FAILED (HTTP $HTTP2)"
