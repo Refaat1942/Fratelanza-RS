@@ -89,13 +89,29 @@ export function SubscriptionPlansPage() {
                 </p>
               )}
               <div className="space-y-1">
-                <p className="text-2xl font-bold text-primary-700">
-                  {formatEGP(plan.price_monthly)}
-                  <span className="text-sm font-normal text-slate-500">/{t('month')}</span>
-                </p>
-                <p className="text-sm text-slate-600">
-                  {formatEGP(plan.price_yearly)} / {t('yearly')}
-                </p>
+                {plan.billing_type === 'one_time' ? (
+                  <>
+                    <p className="text-2xl font-bold text-primary-700">
+                      {formatEGP(plan.price_one_time ?? 0)}
+                      <span className="text-sm font-normal text-slate-500"> {t('one_time_payment')}</span>
+                    </p>
+                    {(plan.hosting_fee_monthly ?? 0) > 0 && (
+                      <p className="text-sm text-slate-600">
+                        + {formatEGP(plan.hosting_fee_monthly)} / {t('month')} {t('hosting_fee_label')}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-primary-700">
+                      {formatEGP(plan.price_monthly)}
+                      <span className="text-sm font-normal text-slate-500">/{t('month')}</span>
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {formatEGP(plan.price_yearly)} / {t('yearly')}
+                    </p>
+                  </>
+                )}
               </div>
               <div className="mt-2 flex flex-wrap gap-1">
                 {(plan.support_months ?? 0) > 0 && (

@@ -19,6 +19,12 @@ class CompanyStatus(str, enum.Enum):
 class BillingCycle(str, enum.Enum):
     MONTHLY = "monthly"
     YEARLY = "yearly"
+    ONE_TIME = "one_time"
+
+
+class PlanBillingType(str, enum.Enum):
+    RECURRING = "recurring"
+    ONE_TIME = "one_time"
 
 
 class SubscriptionPaymentStatus(str, enum.Enum):
@@ -82,8 +88,11 @@ class SubscriptionPlan(Base, TimestampMixin):
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     description_ar: Mapped[Optional[str]] = mapped_column(Text)
     description_en: Mapped[Optional[str]] = mapped_column(Text)
+    billing_type: Mapped[str] = mapped_column(String(20), default=PlanBillingType.RECURRING.value)
     price_monthly: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     price_yearly: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    price_one_time: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    hosting_fee_monthly: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     max_users: Mapped[int] = mapped_column(Integer, default=10)
     max_projects: Mapped[int] = mapped_column(Integer, default=5)
     max_storage_mb: Mapped[int] = mapped_column(Integer, default=5120)

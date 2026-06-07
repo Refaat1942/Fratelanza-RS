@@ -10,8 +10,11 @@ class SubscriptionPlanCreate(BaseModel):
     code: str = Field(min_length=2, max_length=50, pattern=r"^[a-z][a-z0-9_]*$")
     description_ar: Optional[str] = None
     description_en: Optional[str] = None
-    price_monthly: Decimal = Field(ge=0)
-    price_yearly: Decimal = Field(ge=0)
+    billing_type: str = Field(default="recurring", pattern=r"^(recurring|one_time)$")
+    price_monthly: Decimal = Field(ge=0, default=0)
+    price_yearly: Decimal = Field(ge=0, default=0)
+    price_one_time: Decimal = Field(ge=0, default=0)
+    hosting_fee_monthly: Decimal = Field(ge=0, default=0)
     max_users: int = Field(ge=0, default=10, description="0 = unlimited")
     max_projects: int = Field(ge=0, default=5, description="0 = unlimited")
     max_storage_mb: int = Field(ge=0, default=5120, description="0 = unlimited")
@@ -27,8 +30,11 @@ class SubscriptionPlanUpdate(BaseModel):
     name_en: Optional[str] = None
     description_ar: Optional[str] = None
     description_en: Optional[str] = None
-    price_monthly: Optional[Decimal] = None
-    price_yearly: Optional[Decimal] = None
+    billing_type: Optional[str] = Field(default=None, pattern=r"^(recurring|one_time)$")
+    price_monthly: Optional[Decimal] = Field(default=None, ge=0)
+    price_yearly: Optional[Decimal] = Field(default=None, ge=0)
+    price_one_time: Optional[Decimal] = Field(default=None, ge=0)
+    hosting_fee_monthly: Optional[Decimal] = Field(default=None, ge=0)
     max_users: Optional[int] = Field(default=None, ge=0)
     max_projects: Optional[int] = Field(default=None, ge=0)
     max_storage_mb: Optional[int] = Field(default=None, ge=0)
@@ -46,8 +52,11 @@ class SubscriptionPlanResponse(BaseModel):
     code: str
     description_ar: Optional[str] = None
     description_en: Optional[str] = None
+    billing_type: str
     price_monthly: Decimal
     price_yearly: Decimal
+    price_one_time: Decimal
+    hosting_fee_monthly: Decimal
     max_users: int
     max_projects: int
     max_storage_mb: int

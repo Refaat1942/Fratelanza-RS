@@ -160,11 +160,19 @@ class PlanBrochureService:
                 storage = f"{p.max_storage_mb // 1024} GB"
             else:
                 storage = f"{p.max_storage_mb} MB"
+            billing_type = getattr(p, "billing_type", "recurring") or "recurring"
+            if billing_type == "one_time":
+                monthly_cell = f"Once: {PlanBrochureService._egp(p.price_one_time)}"
+                hosting = Decimal(getattr(p, "hosting_fee_monthly", 0) or 0)
+                yearly_cell = f"{PlanBrochureService._egp(hosting)}/mo host" if hosting > 0 else "—"
+            else:
+                monthly_cell = PlanBrochureService._egp(p.price_monthly)
+                yearly_cell = PlanBrochureService._egp(p.price_yearly)
             summary_data.append([
                 Paragraph(p.name_en, en_cell),
                 _ar_para(p.name_ar, ar_cell),
-                Paragraph(PlanBrochureService._egp(p.price_monthly), en_cell),
-                Paragraph(PlanBrochureService._egp(p.price_yearly), en_cell),
+                Paragraph(monthly_cell, en_cell),
+                Paragraph(yearly_cell, en_cell),
                 Paragraph(users, en_cell),
                 Paragraph(projects, en_cell),
                 Paragraph(storage, en_cell),

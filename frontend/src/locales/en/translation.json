@@ -451,5 +451,12 @@
   "support_months_badge": "{{months}} months free support",
   "includes_hosting": "Includes managed server hosting",
   "with_hosting": "With server hosting",
-  "software_only": "Software only"
+  "software_only": "Software only",
+  "billing_type": "Billing type",
+  "billing_recurring": "Monthly / yearly subscription",
+  "billing_one_time": "One-time payment (Full Plan)",
+  "price_one_time": "One-time price (EGP)",
+  "hosting_fee_monthly": "Monthly hosting fee (EGP)",
+  "one_time_payment": "one-time",
+  "hosting_fee_label": "server hosting"
 }

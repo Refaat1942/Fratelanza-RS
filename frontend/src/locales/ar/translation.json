@@ -451,5 +451,12 @@
   "support_months_badge": "دعم مجاني {{months}} أشهر",
   "includes_hosting": "يشمل استضافة سيرفر مُدارة",
   "with_hosting": "مع استضافة سيرفر",
-  "software_only": "برنامج فقط"
+  "software_only": "برنامج فقط",
+  "billing_type": "نوع الفوترة",
+  "billing_recurring": "اشتراك شهري / سنوي",
+  "billing_one_time": "دفع مرة واحدة (الباقة الكاملة)",
+  "price_one_time": "السعر لمرة واحدة (جنيه)",
+  "hosting_fee_monthly": "رسوم الاستضافة الشهرية (جنيه)",
+  "one_time_payment": "دفعة واحدة",
+  "hosting_fee_label": "استضافة سيرفر"
 }

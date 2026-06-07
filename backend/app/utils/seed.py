@@ -59,10 +59,14 @@ DEFAULT_SUBSCRIPTION_PLANS = [
         ),
         "description_en": (
             "Unlimited users and projects, every platform feature, "
-            "plus 12 months of free premium support (software only — no server hosting)."
+            "plus 12 months of free premium support. One-time payment — no monthly fees "
+            "(software only, you host on your own server)."
         ),
-        "price_monthly": Decimal("14999"),
-        "price_yearly": Decimal("149999"),
+        "billing_type": "one_time",
+        "price_monthly": Decimal("0"),
+        "price_yearly": Decimal("0"),
+        "price_one_time": Decimal("149999"),
+        "hosting_fee_monthly": Decimal("0"),
         "max_users": 0,
         "max_projects": 0,
         "max_storage_mb": 0,
@@ -75,15 +79,18 @@ DEFAULT_SUBSCRIPTION_PLANS = [
         "name_en": "Full Plan + Hosting",
         "code": "full_hosted",
         "description_ar": (
-            "كل مزايا الباقة الكاملة مع استضافة سيرفر مُدارة، نسخ احتياطي، ومراقبة — "
-            "مستخدمون ومشاريع غير محدودة، جميع الميزات، دعم مجاني 12 شهراً."
+            "كل مزايا الباقة الكاملة — دفع مرة واحدة للبرنامج، ورسوم استضافة شهرية للسيرفر "
+            "المُدار، نسخ احتياطي، ومراقبة. مستخدمون ومشاريع غير محدودة، دعم مجاني 12 شهراً."
         ),
         "description_en": (
-            "Everything in Full Plan plus managed VPS hosting, backups, and monitoring — "
-            "unlimited users and projects, all features, 12 months free premium support."
+            "Full platform paid once. Managed VPS hosting billed monthly (server, backups, monitoring). "
+            "Unlimited users and projects, all features, 12 months free premium support."
         ),
-        "price_monthly": Decimal("19999"),
-        "price_yearly": Decimal("199999"),
+        "billing_type": "one_time",
+        "price_monthly": Decimal("0"),
+        "price_yearly": Decimal("0"),
+        "price_one_time": Decimal("149999"),
+        "hosting_fee_monthly": Decimal("2499"),
         "max_users": 0,
         "max_projects": 0,
         "max_storage_mb": 0,
@@ -94,41 +101,44 @@ DEFAULT_SUBSCRIPTION_PLANS = [
 ]
 
 
-async def ensure_default_subscription_plans(db) -> int:
-    """Create missing default plans (basic, professional, enterprise). Returns count added."""
+def _apply_plan_spec(plan: SubscriptionPlan, spec: dict) -> None:
     from app.services.module_service import ModuleService
 
+    plan.name_ar = spec["name_ar"]
+    plan.name_en = spec["name_en"]
+    plan.description_ar = spec.get("description_ar")
+    plan.description_en = spec.get("description_en")
+    plan.billing_type = spec.get("billing_type", "recurring")
+    plan.price_monthly = spec["price_monthly"]
+    plan.price_yearly = spec["price_yearly"]
+    plan.price_one_time = spec.get("price_one_time", 0)
+    plan.hosting_fee_monthly = spec.get("hosting_fee_monthly", 0)
+    plan.max_users = spec["max_users"]
+    plan.max_projects = spec["max_projects"]
+    plan.max_storage_mb = spec["max_storage_mb"]
+    plan.support_months = spec.get("support_months", 0)
+    plan.includes_hosting = spec.get("includes_hosting", False)
+    plan.sort_order = spec.get("sort_order", 0)
+    plan.features = ModuleService.serialize_plan_features(ModuleService.defaults_for_plan(spec["code"]))
+    plan.is_active = True
+
+
+async def ensure_default_subscription_plans(db) -> int:
+    """Create or refresh default plans. Returns count added."""
     added = 0
     for spec in DEFAULT_SUBSCRIPTION_PLANS:
         existing = (
             await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.code == spec["code"]))
         ).scalar_one_or_none()
         if existing:
+            if spec["code"] in ("full", "full_hosted"):
+                _apply_plan_spec(existing, spec)
             continue
-        db.add(
-            SubscriptionPlan(
-                name_ar=spec["name_ar"],
-                name_en=spec["name_en"],
-                code=spec["code"],
-                description_ar=spec.get("description_ar"),
-                description_en=spec.get("description_en"),
-                price_monthly=spec["price_monthly"],
-                price_yearly=spec["price_yearly"],
-                max_users=spec["max_users"],
-                max_projects=spec["max_projects"],
-                max_storage_mb=spec["max_storage_mb"],
-                support_months=spec.get("support_months", 0),
-                includes_hosting=spec.get("includes_hosting", False),
-                sort_order=spec.get("sort_order", 0),
-                features=ModuleService.serialize_plan_features(
-                    ModuleService.defaults_for_plan(spec["code"])
-                ),
-                is_active=True,
-            )
-        )
+        plan = SubscriptionPlan(code=spec["code"])
+        _apply_plan_spec(plan, spec)
+        db.add(plan)
         added += 1
-    if added:
-        await db.flush()
+    await db.flush()
     return added
 
 
@@ -208,6 +218,15 @@ async def seed_database() -> None:
             ))
             await db.execute(text(
                 "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS includes_hosting BOOLEAN DEFAULT FALSE"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS billing_type VARCHAR(20) DEFAULT 'recurring'"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS price_one_time NUMERIC(12,2) DEFAULT 0"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS hosting_fee_monthly NUMERIC(12,2) DEFAULT 0"
             ))
             await db.execute(text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username) WHERE username IS NOT NULL"

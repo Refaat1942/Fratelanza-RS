@@ -14,8 +14,11 @@ export interface SubscriptionPlan {
   code: string
   description_ar?: string
   description_en?: string
+  billing_type?: string
   price_monthly: number
   price_yearly: number
+  price_one_time?: number
+  hosting_fee_monthly?: number
   max_users: number
   max_projects: number
   max_storage_mb: number
@@ -44,8 +47,11 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
     name_en: '',
     description_ar: '',
     description_en: '',
+    billing_type: 'recurring',
     price_monthly: '',
     price_yearly: '',
+    price_one_time: '',
+    hosting_fee_monthly: '',
     max_users: '',
     max_projects: '',
     max_storage_mb: '',
@@ -70,8 +76,11 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
         name_en: '',
         description_ar: '',
         description_en: '',
+        billing_type: 'recurring',
         price_monthly: '',
         price_yearly: '',
+        price_one_time: '',
+        hosting_fee_monthly: '',
         max_users: '10',
         max_projects: '5',
         max_storage_mb: '5120',
@@ -90,8 +99,11 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
         name_en: plan.name_en,
         description_ar: plan.description_ar ?? '',
         description_en: plan.description_en ?? '',
+        billing_type: plan.billing_type ?? 'recurring',
         price_monthly: String(plan.price_monthly),
         price_yearly: String(plan.price_yearly),
+        price_one_time: String(plan.price_one_time ?? 0),
+        hosting_fee_monthly: String(plan.hosting_fee_monthly ?? 0),
         max_users: String(plan.max_users),
         max_projects: String(plan.max_projects),
         max_storage_mb: String(plan.max_storage_mb),
@@ -133,8 +145,11 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
         name_en: form.name_en,
         description_ar: form.description_ar || undefined,
         description_en: form.description_en || undefined,
+        billing_type: form.billing_type,
         price_monthly: Number(form.price_monthly),
         price_yearly: Number(form.price_yearly),
+        price_one_time: Number(form.price_one_time),
+        hosting_fee_monthly: Number(form.hosting_fee_monthly),
         max_users: Number(form.max_users),
         max_projects: Number(form.max_projects),
         max_storage_mb: Number(form.max_storage_mb),
@@ -191,10 +206,24 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
             <textarea className="input-field min-h-[72px]" value={form.description_en} onChange={(e) => setForm({ ...form, description_en: e.target.value })} />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input label={t('price_monthly')} type="number" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
-          <Input label={t('price_yearly')} type="number" value={form.price_yearly} onChange={(e) => setForm({ ...form, price_yearly: e.target.value })} />
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">{t('billing_type')}</label>
+          <select className="input-field" value={form.billing_type} onChange={(e) => setForm({ ...form, billing_type: e.target.value })}>
+            <option value="recurring">{t('billing_recurring')}</option>
+            <option value="one_time">{t('billing_one_time')}</option>
+          </select>
         </div>
+        {form.billing_type === 'one_time' ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label={t('price_one_time')} type="number" min={0} value={form.price_one_time} onChange={(e) => setForm({ ...form, price_one_time: e.target.value })} />
+            <Input label={t('hosting_fee_monthly')} type="number" min={0} value={form.hosting_fee_monthly} onChange={(e) => setForm({ ...form, hosting_fee_monthly: e.target.value })} />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label={t('price_monthly')} type="number" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
+            <Input label={t('price_yearly')} type="number" value={form.price_yearly} onChange={(e) => setForm({ ...form, price_yearly: e.target.value })} />
+          </div>
+        )}
         <p className="text-xs text-slate-500">{t('unlimited_hint')}</p>
         <div className="grid gap-4 sm:grid-cols-4">
           <Input label={t('max_users')} type="number" min={0} value={form.max_users} onChange={(e) => setForm({ ...form, max_users: e.target.value })} />

@@ -37,6 +37,11 @@ class PlatformBillingService:
 
     @staticmethod
     def _amount_for_plan(plan: SubscriptionPlan, billing_cycle: str) -> Decimal:
+        billing_type = getattr(plan, "billing_type", "recurring") or "recurring"
+        if billing_type == "one_time":
+            if billing_cycle == BillingCycle.MONTHLY.value and Decimal(plan.hosting_fee_monthly or 0) > 0:
+                return Decimal(plan.hosting_fee_monthly or 0)
+            return Decimal(plan.price_one_time or 0)
         if billing_cycle == BillingCycle.YEARLY.value:
             return Decimal(plan.price_yearly or 0)
         return Decimal(plan.price_monthly or 0)
@@ -236,10 +241,25 @@ class PlatformBillingService:
         company.status = CompanyStatus.ACTIVE
         sub.is_active = True
 
-        cycle_days = 365 if sub.billing_cycle == BillingCycle.YEARLY.value else 30
-        sub.next_billing_date = (date.fromisoformat(paid_on) + timedelta(days=cycle_days)).isoformat()
-        if sub.plan:
-            sub.amount_due = PlatformBillingService._amount_for_plan(sub.plan, sub.billing_cycle)
+        plan = sub.plan
+        billing_type = getattr(plan, "billing_type", "recurring") if plan else "recurring"
+        if plan and billing_type == "one_time":
+            hosting = Decimal(plan.hosting_fee_monthly or 0)
+            if hosting > 0 and sub.billing_cycle == BillingCycle.ONE_TIME.value:
+                sub.billing_cycle = BillingCycle.MONTHLY.value
+                sub.amount_due = hosting
+                sub.next_billing_date = (date.fromisoformat(paid_on) + timedelta(days=30)).isoformat()
+            elif hosting > 0:
+                sub.amount_due = hosting
+                sub.next_billing_date = (date.fromisoformat(paid_on) + timedelta(days=30)).isoformat()
+            else:
+                sub.amount_due = Decimal(0)
+                sub.next_billing_date = None
+        else:
+            cycle_days = 365 if sub.billing_cycle == BillingCycle.YEARLY.value else 30
+            sub.next_billing_date = (date.fromisoformat(paid_on) + timedelta(days=cycle_days)).isoformat()
+            if plan:
+                sub.amount_due = PlatformBillingService._amount_for_plan(plan, sub.billing_cycle)
 
         await db.flush()
         return PlatformBillingService.subscription_to_summary(sub, company)  # type: ignore[return-value]
