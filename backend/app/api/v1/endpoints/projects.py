@@ -89,7 +89,7 @@ async def units_status_board(
     current_user: Annotated[User, Depends(get_company_user)],
 ):
     query = (
-        select(Unit)
+        select(Unit, Project)
         .join(Floor, Unit.floor_id == Floor.id)
         .join(Building, Floor.building_id == Building.id)
         .join(Project, Building.project_id == Project.id)
@@ -98,9 +98,8 @@ async def units_status_board(
     if not current_user.is_super_admin and current_user.company_id:
         query = query.where(Project.company_id == current_user.company_id)
     result = await db.execute(query)
-    units = result.scalars().all()
     board: dict[str, list] = {}
-    for u in units:
+    for u, project in result.all():
         st = u.status.value
         board.setdefault(st, []).append(
             {
@@ -110,6 +109,8 @@ async def units_status_board(
                 "unit_type": u.unit_type.value,
                 "price": float(u.price),
                 "area_sqm": float(u.area_sqm),
+                "project_id": project.id,
+                "project_name": project.name_en,
             }
         )
     return board

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_company_user
 from app.core.database import get_db
 from app.models.customers import Customer
-from app.models.real_estate import Unit
+from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.sales import Contract, ContractStatus
 from app.models.users import User
 from app.schemas.project import ContractCreate, ContractUpdate
@@ -16,7 +16,12 @@ from app.services.contract_service import ContractService
 router = APIRouter()
 
 
-def _contract_dict(c: Contract, customer: Customer | None = None, unit: Unit | None = None) -> dict:
+def _contract_dict(
+    c: Contract,
+    customer: Customer | None = None,
+    unit: Unit | None = None,
+    project: Project | None = None,
+) -> dict:
     return {
         "id": c.id,
         "contract_number": c.contract_number,
@@ -24,6 +29,8 @@ def _contract_dict(c: Contract, customer: Customer | None = None, unit: Unit | N
         "customer_name": (customer.full_name_ar if customer else None),
         "unit_id": c.unit_id,
         "unit_code": (unit.unit_code if unit else None),
+        "project_id": (project.id if project else None),
+        "project_name": (project.name_en if project else None),
         "reservation_id": c.reservation_id,
         "total_price": float(c.total_price),
         "contract_date": c.contract_date,
@@ -39,15 +46,18 @@ async def list_contracts(
 ):
     company_id = None if current_user.is_super_admin else current_user.company_id
     query = (
-        select(Contract, Customer, Unit)
+        select(Contract, Customer, Unit, Project)
         .join(Customer, Contract.customer_id == Customer.id)
         .join(Unit, Contract.unit_id == Unit.id)
+        .join(Floor, Unit.floor_id == Floor.id)
+        .join(Building, Floor.building_id == Building.id)
+        .join(Project, Building.project_id == Project.id)
         .where(Contract.is_deleted == False)
     )
     if company_id:
         query = query.where(Contract.company_id == company_id)
     result = await db.execute(query.order_by(Contract.id.desc()))
-    return [_contract_dict(c, cust, u) for c, cust, u in result.all()]
+    return [_contract_dict(c, cust, u, p) for c, cust, u, p in result.all()]
 
 
 @router.post("")

@@ -11,6 +11,8 @@
   "customers": "العملاء",
   "leads": "العملاء المحتملون",
   "projects": "المشاريع",
+  "filtered_by_project": "مفلتر حسب المشروع",
+  "show_all_projects": "عرض كل المشاريع",
   "units": "الوحدات",
   "reservations": "الحجوزات",
   "contracts": "العقود",

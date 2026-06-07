@@ -11,6 +11,8 @@
   "customers": "Customers",
   "leads": "Leads",
   "projects": "Projects",
+  "filtered_by_project": "Filtered by project",
+  "show_all_projects": "Show all projects",
   "units": "Units",
   "reservations": "Reservations",
   "contracts": "Contracts",
