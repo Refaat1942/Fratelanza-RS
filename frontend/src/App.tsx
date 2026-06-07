@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { ModuleRoute } from '@/components/auth/ModuleRoute'
+import { AdminRoute } from '@/components/auth/AdminRoute'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { SuperAdminDashboard } from '@/pages/super-admin/SuperAdminDashboard'
@@ -71,7 +72,7 @@ function AppRoutes() {
         <Route path="/property" element={<ModuleRoute moduleKey="property"><PropertyPage /></ModuleRoute>} />
         <Route path="/customer-service" element={<ModuleRoute moduleKey="customer_service"><CustomerServicePage /></ModuleRoute>} />
         <Route path="/users" element={<Navigate to="/settings" replace />} />
-        <Route path="/settings" element={<ModuleRoute moduleKey="users"><CompanySettingsPage /></ModuleRoute>} />
+        <Route path="/settings" element={<AdminRoute><CompanySettingsPage /></AdminRoute>} />
         <Route path="/feature-settings" element={<Navigate to="/settings" replace />} />
         <Route path="/reports" element={<ModuleRoute moduleKey="reports"><ReportsPage /></ModuleRoute>} />
         <Route path="/ai-assistant" element={<ModuleRoute moduleKey="ai_assistant"><AIAssistantPage /></ModuleRoute>} />

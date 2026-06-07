@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useCompanyStore } from '@/stores/companyStore'
 import { useModulesStore } from '@/stores/modulesStore'
 import { COMPANY_MODULE_LINKS } from '@/config/modules'
+import { isCompanyAdmin } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Building2, Users, UserCircle, Target, FolderKanban,
@@ -63,7 +64,11 @@ export function Sidebar() {
   }, [user, fetchCompany, fetchModules])
 
   const companyLinks = COMPANY_MODULE_LINKS
-    .filter((l) => user?.is_super_admin || isEnabled(l.moduleKey))
+    .filter((l) => {
+      if (user?.is_super_admin) return true
+      if (l.route === '/settings' && isCompanyAdmin(user)) return true
+      return isEnabled(l.moduleKey)
+    })
     .map((l) => {
       const routeKey = l.route.replace(/^\//, '')
       return {

@@ -4,8 +4,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import api from '@/lib/api'
-
-const ROLES = ['sales_agent', 'sales_manager', 'collection_officer', 'accountant', 'company_admin', 'customer_service', 'hr_officer']
+import { ASSIGNABLE_ROLES } from '@/lib/roles'
+import { useAuthStore } from '@/stores/authStore'
 
 interface AdminUser {
   id: number
@@ -24,10 +24,13 @@ interface UserEditModalProps {
   onClose: () => void
   user: AdminUser | null
   onSaved: () => void
+  hideCompanyId?: boolean
 }
 
-export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalProps) {
+export function UserEditModal({ open, onClose, user, onSaved, hideCompanyId }: UserEditModalProps) {
   const { t } = useTranslation()
+  const currentUser = useAuthStore((s) => s.user)
+  const showCompanyId = !hideCompanyId && currentUser?.is_super_admin
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     username: '',
@@ -82,10 +85,12 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
           <div>
             <label className="mb-1 block text-sm font-medium">{t('role')}</label>
             <select className="input-field" value={form.system_role} onChange={(e) => setForm({ ...form, system_role: e.target.value })}>
-              {ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+              {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
             </select>
           </div>
-          <Input label={t('company_id')} type="number" value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })} />
+          {showCompanyId && (
+            <Input label={t('company_id')} type="number" value={form.company_id} onChange={(e) => setForm({ ...form, company_id: e.target.value })} />
+          )}
           <div className="flex gap-3">
             <Button type="submit" loading={loading}>{t('save')}</Button>
             <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>

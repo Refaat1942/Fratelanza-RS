@@ -96,7 +96,7 @@ async def _enrich_user(db: AsyncSession, user: User) -> UserResponse:
 async def create_user(
     data: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_company_user)],
+    current_user: Annotated[User, Depends(get_company_admin)],
 ):
     company_id = data.company_id if current_user.is_super_admin else current_user.company_id
     if not company_id and not current_user.is_super_admin:

@@ -6,13 +6,12 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
+import { ASSIGNABLE_ROLES } from '@/lib/roles'
 
 interface UserFormModalProps {
   open: boolean
   onClose: () => void
 }
-
-const ROLES = ['sales_agent', 'sales_manager', 'collection_officer', 'accountant', 'company_admin', 'customer_service']
 
 export function UserFormModal({ open, onClose }: UserFormModalProps) {
   const { t } = useTranslation()
@@ -54,7 +53,7 @@ export function UserFormModal({ open, onClose }: UserFormModalProps) {
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">{t('role')}</label>
           <select className="input-field" value={form.system_role} onChange={(e) => setForm({ ...form, system_role: e.target.value })}>
-            {ROLES.map((r) => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+            {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
           </select>
         </div>
         <div className="flex gap-3 pt-2">
