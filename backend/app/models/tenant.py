@@ -87,6 +87,8 @@ class SubscriptionPlan(Base, TimestampMixin):
     max_users: Mapped[int] = mapped_column(Integer, default=10)
     max_projects: Mapped[int] = mapped_column(Integer, default=5)
     max_storage_mb: Mapped[int] = mapped_column(Integer, default=5120)
+    support_months: Mapped[int] = mapped_column(Integer, default=0)
+    includes_hosting: Mapped[bool] = mapped_column(Boolean, default=False)
     features: Mapped[Optional[str]] = mapped_column(Text)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

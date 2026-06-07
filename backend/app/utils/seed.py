@@ -49,6 +49,48 @@ DEFAULT_SUBSCRIPTION_PLANS = [
         "max_storage_mb": 51200,
         "sort_order": 3,
     },
+    {
+        "name_ar": "الباقة الكاملة",
+        "name_en": "Full Plan",
+        "code": "full",
+        "description_ar": (
+            "باقة كاملة بدون حدود — مستخدمون ومشاريع غير محدودة، جميع الميزات، "
+            "ودعم فني مجاني لمدة 12 شهراً (بدون استضافة سيرفر)."
+        ),
+        "description_en": (
+            "Unlimited users and projects, every platform feature, "
+            "plus 12 months of free premium support (software only — no server hosting)."
+        ),
+        "price_monthly": Decimal("14999"),
+        "price_yearly": Decimal("149999"),
+        "max_users": 0,
+        "max_projects": 0,
+        "max_storage_mb": 0,
+        "support_months": 12,
+        "includes_hosting": False,
+        "sort_order": 4,
+    },
+    {
+        "name_ar": "الباقة الكاملة + استضافة",
+        "name_en": "Full Plan + Hosting",
+        "code": "full_hosted",
+        "description_ar": (
+            "كل مزايا الباقة الكاملة مع استضافة سيرفر مُدارة، نسخ احتياطي، ومراقبة — "
+            "مستخدمون ومشاريع غير محدودة، جميع الميزات، دعم مجاني 12 شهراً."
+        ),
+        "description_en": (
+            "Everything in Full Plan plus managed VPS hosting, backups, and monitoring — "
+            "unlimited users and projects, all features, 12 months free premium support."
+        ),
+        "price_monthly": Decimal("19999"),
+        "price_yearly": Decimal("199999"),
+        "max_users": 0,
+        "max_projects": 0,
+        "max_storage_mb": 0,
+        "support_months": 12,
+        "includes_hosting": True,
+        "sort_order": 5,
+    },
 ]
 
 
@@ -75,6 +117,8 @@ async def ensure_default_subscription_plans(db) -> int:
                 max_users=spec["max_users"],
                 max_projects=spec["max_projects"],
                 max_storage_mb=spec["max_storage_mb"],
+                support_months=spec.get("support_months", 0),
+                includes_hosting=spec.get("includes_hosting", False),
                 sort_order=spec.get("sort_order", 0),
                 features=ModuleService.serialize_plan_features(
                     ModuleService.defaults_for_plan(spec["code"])
@@ -158,6 +202,12 @@ async def seed_database() -> None:
             ))
             await db.execute(text(
                 "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS support_months INTEGER DEFAULT 0"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS includes_hosting BOOLEAN DEFAULT FALSE"
             ))
             await db.execute(text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username) WHERE username IS NOT NULL"

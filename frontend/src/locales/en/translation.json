@@ -444,5 +444,12 @@
   "customize_user_features": "Customize features for this user",
   "reset_to_company_defaults": "Reset to company defaults",
   "enabled": "Enabled",
-  "disabled": "Disabled"
+  "disabled": "Disabled",
+  "unlimited": "Unlimited",
+  "unlimited_hint": "Enter 0 for unlimited users, projects, or storage.",
+  "support_months": "Free support (months)",
+  "support_months_badge": "{{months}} months free support",
+  "includes_hosting": "Includes managed server hosting",
+  "with_hosting": "With server hosting",
+  "software_only": "Software only"
 }

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { SubscriptionPlanModal, type SubscriptionPlan } from '@/components/forms/SubscriptionPlanModal'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
+import { formatPlanLimit } from '@/lib/planLimits'
 
 export function SubscriptionPlansPage() {
   const { t, i18n } = useTranslation()
@@ -96,10 +97,22 @@ export function SubscriptionPlansPage() {
                   {formatEGP(plan.price_yearly)} / {t('yearly')}
                 </p>
               </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {(plan.support_months ?? 0) > 0 && (
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                    {t('support_months_badge', { months: plan.support_months })}
+                  </span>
+                )}
+                {plan.includes_hosting ? (
+                  <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">{t('with_hosting')}</span>
+                ) : (
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{t('software_only')}</span>
+                )}
+              </div>
               <ul className="mt-4 flex-1 space-y-1 text-sm text-slate-600">
-                <li>{formatInteger(plan.max_users)} {t('users')}</li>
-                <li>{formatInteger(plan.max_projects)} {t('projects')}</li>
-                <li>{formatInteger(plan.max_storage_mb)} MB</li>
+                <li>{formatPlanLimit(plan.max_users, t('unlimited'))} {t('users')}</li>
+                <li>{formatPlanLimit(plan.max_projects, t('unlimited'))} {t('projects')}</li>
+                <li>{formatPlanLimit(plan.max_storage_mb, t('unlimited'))} {plan.max_storage_mb > 0 ? 'MB' : ''}</li>
                 <li>{formatInteger(plan.enabled_modules?.length ?? 0)} {t('features')}</li>
               </ul>
               <div className="mt-4 flex flex-col gap-2">

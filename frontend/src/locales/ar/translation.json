@@ -444,5 +444,12 @@
   "customize_user_features": "تخصيص الميزات لهذا المستخدم",
   "reset_to_company_defaults": "إعادة للإعدادات الافتراضية للشركة",
   "enabled": "مفعّل",
-  "disabled": "معطّل"
+  "disabled": "معطّل",
+  "unlimited": "غير محدود",
+  "unlimited_hint": "أدخل 0 لمستخدمين أو مشاريع أو تخزين غير محدود.",
+  "support_months": "دعم مجاني (أشهر)",
+  "support_months_badge": "دعم مجاني {{months}} أشهر",
+  "includes_hosting": "يشمل استضافة سيرفر مُدارة",
+  "with_hosting": "مع استضافة سيرفر",
+  "software_only": "برنامج فقط"
 }

@@ -51,6 +51,8 @@ PLAN_MODULE_DEFAULTS: dict[str, list[str]] = {
         "users", "reports", "branding",
     ],
     "enterprise": ALL_MODULE_KEYS,
+    "full": ALL_MODULE_KEYS,
+    "full_hosted": ALL_MODULE_KEYS,
 }
 
 CORE_MODULE_KEYS: list[str] = [m["key"] for m in PLATFORM_MODULES if m["core"]]

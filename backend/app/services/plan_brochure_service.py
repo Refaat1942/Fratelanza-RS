@@ -14,6 +14,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from app.core.plan_limits import format_limit, is_unlimited
 from app.models.tenant import SubscriptionPlan
 from app.services.module_service import ModuleService
 from app.services.subscription_service import SubscriptionService
@@ -151,14 +152,21 @@ class PlanBrochureService:
             ]
         ]
         for p in plans:
-            storage = f"{p.max_storage_mb // 1024} GB" if p.max_storage_mb >= 1024 else f"{p.max_storage_mb} MB"
+            users = format_limit(p.max_users)["en"]
+            projects = format_limit(p.max_projects)["en"]
+            if is_unlimited(p.max_storage_mb):
+                storage = "Unlimited"
+            elif p.max_storage_mb >= 1024:
+                storage = f"{p.max_storage_mb // 1024} GB"
+            else:
+                storage = f"{p.max_storage_mb} MB"
             summary_data.append([
                 Paragraph(p.name_en, en_cell),
                 _ar_para(p.name_ar, ar_cell),
                 Paragraph(PlanBrochureService._egp(p.price_monthly), en_cell),
                 Paragraph(PlanBrochureService._egp(p.price_yearly), en_cell),
-                Paragraph(str(p.max_users), en_cell),
-                Paragraph(str(p.max_projects), en_cell),
+                Paragraph(users, en_cell),
+                Paragraph(projects, en_cell),
                 Paragraph(storage, en_cell),
             ])
         summary_table = Table(
@@ -203,6 +211,16 @@ class PlanBrochureService:
             if plan.description_ar:
                 story.append(_ar_para(plan.description_ar, ar_style))
                 story.append(Spacer(1, 2 * mm))
+            support_months = getattr(plan, "support_months", 0) or 0
+            includes_hosting = bool(getattr(plan, "includes_hosting", False))
+            if support_months > 0:
+                story.append(Paragraph(f"• {support_months} months free premium support included", body))
+                story.append(_ar_para(f"• دعم فني مجاني لمدة {support_months} شهراً", ar_style))
+            hosting_en = "Managed server hosting included" if includes_hosting else "Software only (no server hosting)"
+            hosting_ar = "يشمل استضافة سيرفر مُدارة" if includes_hosting else "برنامج فقط (بدون استضافة سيرفر)"
+            story.append(Paragraph(f"• {hosting_en}", body))
+            story.append(_ar_para(f"• {hosting_ar}", ar_style))
+            story.append(Spacer(1, 2 * mm))
             enabled = set(PlanBrochureService._modules_for_plan(plan))
             feat_rows = [
                 [

@@ -19,6 +19,8 @@ export interface SubscriptionPlan {
   max_users: number
   max_projects: number
   max_storage_mb: number
+  support_months?: number
+  includes_hosting?: boolean
   enabled_modules: string[]
   sort_order?: number
   is_active: boolean
@@ -47,6 +49,8 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
     max_users: '',
     max_projects: '',
     max_storage_mb: '',
+    support_months: '0',
+    includes_hosting: false,
     sort_order: '0',
     is_active: true,
   })
@@ -71,6 +75,8 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
         max_users: '10',
         max_projects: '5',
         max_storage_mb: '5120',
+        support_months: '0',
+        includes_hosting: false,
         sort_order: '0',
         is_active: true,
       })
@@ -89,6 +95,8 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
         max_users: String(plan.max_users),
         max_projects: String(plan.max_projects),
         max_storage_mb: String(plan.max_storage_mb),
+        support_months: String(plan.support_months ?? 0),
+        includes_hosting: plan.includes_hosting ?? false,
         sort_order: String(plan.sort_order ?? 0),
         is_active: plan.is_active,
       })
@@ -130,6 +138,8 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
         max_users: Number(form.max_users),
         max_projects: Number(form.max_projects),
         max_storage_mb: Number(form.max_storage_mb),
+        support_months: Number(form.support_months),
+        includes_hosting: form.includes_hosting,
         sort_order: Number(form.sort_order),
         is_active: form.is_active,
         enabled_modules: Array.from(enabled),
@@ -185,11 +195,19 @@ export function SubscriptionPlanModal({ open, onClose, plan, createMode = false,
           <Input label={t('price_monthly')} type="number" value={form.price_monthly} onChange={(e) => setForm({ ...form, price_monthly: e.target.value })} />
           <Input label={t('price_yearly')} type="number" value={form.price_yearly} onChange={(e) => setForm({ ...form, price_yearly: e.target.value })} />
         </div>
+        <p className="text-xs text-slate-500">{t('unlimited_hint')}</p>
         <div className="grid gap-4 sm:grid-cols-4">
-          <Input label={t('max_users')} type="number" value={form.max_users} onChange={(e) => setForm({ ...form, max_users: e.target.value })} />
-          <Input label={t('max_projects')} type="number" value={form.max_projects} onChange={(e) => setForm({ ...form, max_projects: e.target.value })} />
-          <Input label={t('max_storage_mb')} type="number" value={form.max_storage_mb} onChange={(e) => setForm({ ...form, max_storage_mb: e.target.value })} />
+          <Input label={t('max_users')} type="number" min={0} value={form.max_users} onChange={(e) => setForm({ ...form, max_users: e.target.value })} />
+          <Input label={t('max_projects')} type="number" min={0} value={form.max_projects} onChange={(e) => setForm({ ...form, max_projects: e.target.value })} />
+          <Input label={t('max_storage_mb')} type="number" min={0} value={form.max_storage_mb} onChange={(e) => setForm({ ...form, max_storage_mb: e.target.value })} />
           <Input label={t('sort_order')} type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input label={t('support_months')} type="number" min={0} value={form.support_months} onChange={(e) => setForm({ ...form, support_months: e.target.value })} />
+          <label className="flex items-center gap-2 self-end text-sm">
+            <input type="checkbox" checked={form.includes_hosting} onChange={(e) => setForm({ ...form, includes_hosting: e.target.checked })} />
+            {t('includes_hosting')}
+          </label>
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
