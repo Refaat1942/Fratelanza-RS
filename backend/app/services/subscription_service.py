@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.platform_modules import ALL_MODULE_KEYS, CORE_MODULE_KEYS
 from app.models.tenant import SubscriptionPlan
-from app.schemas.subscription import SubscriptionPlanUpdate
+from app.schemas.subscription import SubscriptionPlanCreate, SubscriptionPlanUpdate
 from app.services.module_service import ModuleService
 
 
@@ -27,12 +27,15 @@ class SubscriptionService:
             "name_ar": plan.name_ar,
             "name_en": plan.name_en,
             "code": plan.code,
+            "description_ar": plan.description_ar,
+            "description_en": plan.description_en,
             "price_monthly": plan.price_monthly,
             "price_yearly": plan.price_yearly,
             "max_users": plan.max_users,
             "max_projects": plan.max_projects,
             "max_storage_mb": plan.max_storage_mb,
             "enabled_modules": modules,
+            "sort_order": plan.sort_order,
             "is_active": plan.is_active,
         }
 
@@ -42,6 +45,33 @@ class SubscriptionService:
         plan = result.scalar_one_or_none()
         if not plan:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+        return plan
+
+    @staticmethod
+    async def create_plan(db: AsyncSession, data: SubscriptionPlanCreate) -> SubscriptionPlan:
+        existing = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.code == data.code))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Plan code already exists")
+        modules = data.enabled_modules or ModuleService.defaults_for_plan(data.code)
+        enabled = set(modules) | set(CORE_MODULE_KEYS)
+        ordered = [k for k in ALL_MODULE_KEYS if k in enabled]
+        plan = SubscriptionPlan(
+            name_ar=data.name_ar,
+            name_en=data.name_en,
+            code=data.code,
+            description_ar=data.description_ar,
+            description_en=data.description_en,
+            price_monthly=data.price_monthly,
+            price_yearly=data.price_yearly,
+            max_users=data.max_users,
+            max_projects=data.max_projects,
+            max_storage_mb=data.max_storage_mb,
+            features=ModuleService.serialize_plan_features(ordered),
+            sort_order=data.sort_order,
+            is_active=data.is_active,
+        )
+        db.add(plan)
+        await db.flush()
         return plan
 
     @staticmethod

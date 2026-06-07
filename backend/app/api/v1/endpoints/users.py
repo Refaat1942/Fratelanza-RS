@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user, get_super_admin
+from app.api.deps import get_company_admin, get_company_user, get_super_admin
 from app.core.database import get_db
 from app.core.security import get_password_hash
 from app.models.tenant import Company, CompanySubscription
@@ -12,8 +12,11 @@ from app.services.platform_billing_service import PlatformBillingService
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import UserResponse
 from app.schemas.common import PaginatedResponse
+from app.schemas.company import CompanyModulesUpdate
 from app.schemas.user import AdminPasswordReset, UserCreate, UserUpdate
 from app.services.auth_service import AuthService
+from app.services.company_service import CompanyService
+from app.services.module_service import ModuleService
 
 router = APIRouter()
 
@@ -230,6 +233,76 @@ async def update_user(
         setattr(user, field, value)
     await db.flush()
     return await _enrich_user(db, user)
+
+
+@router.get("/{user_id}/modules")
+async def get_user_modules(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_admin)],
+):
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    company = await CompanyService.get_company(db, user.company_id)  # type: ignore[arg-type]
+    plan = company.subscription.plan if company.subscription else None
+    company_modules = ModuleService.parse_enabled(company, plan)
+    user_allowed = ModuleService.parse_user_allowed(user)
+    effective = ModuleService.parse_effective(company, plan, user)
+    return {
+        "user_id": user.id,
+        "company_modules": company_modules,
+        "user_allowed_modules": user_allowed,
+        "effective_modules": effective,
+        "inherits_company": user_allowed is None,
+        "catalog": ModuleService.catalog(),
+    }
+
+
+@router.put("/{user_id}/modules")
+async def update_user_modules(
+    user_id: int,
+    data: CompanyModulesUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_admin)],
+):
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot modify super admin modules")
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    company = await CompanyService.get_company(db, user.company_id)  # type: ignore[arg-type]
+    plan = company.subscription.plan if company.subscription else None
+    company_modules = ModuleService.parse_enabled(company, plan)
+    enabled = await ModuleService.set_user_modules(db, user, data.enabled_modules, company_modules)
+    return {
+        "user_id": user.id,
+        "enabled": enabled,
+        "message": "User feature access updated",
+    }
+
+
+@router.delete("/{user_id}/modules")
+async def reset_user_modules(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_admin)],
+):
+    """Reset user to inherit all company-enabled modules."""
+    result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not current_user.is_super_admin and user.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    await ModuleService.clear_user_modules(db, user)
+    return {"message": "User now inherits company modules", "success": True}
 
 
 @router.post("/{user_id}/reset-password")

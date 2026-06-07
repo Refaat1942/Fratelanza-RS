@@ -18,6 +18,7 @@ const ROUTE_ACCENTS: Record<string, number> = {
   '/property': 2,
   '/customer-service': 3,
   '/users': 4,
+  '/feature-settings': 5,
   '/reports': 5,
   '/branding': 0,
   '/ai-assistant': 1,

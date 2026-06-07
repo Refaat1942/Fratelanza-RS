@@ -72,7 +72,7 @@ class PlanBrochureService:
         return data.get("enabled_modules") or ModuleService.defaults_for_plan(plan.code)
 
     @staticmethod
-    def generate_pdf(plans: list[SubscriptionPlan], *, trial_days: int = 14) -> bytes:
+    def generate_pdf(plans: list[SubscriptionPlan], *, trial_days: int = 14, single_plan: bool = False) -> bytes:
         _register_fonts()
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
@@ -124,8 +124,12 @@ class PlanBrochureService:
 
         story = []
         story.append(Paragraph("FRATELANZA Real Estate Platform", title_style))
-        story.append(Paragraph("Subscription Plans", h2_style))
-        story.append(_ar_para("باقات الاشتراك", ar_bold))
+        if single_plan and len(plans) == 1:
+            story.append(Paragraph(f"{plans[0].name_en} Plan", h2_style))
+            story.append(_ar_para(f"باقة {plans[0].name_ar}", ar_bold))
+        else:
+            story.append(Paragraph("Subscription Plans", h2_style))
+            story.append(_ar_para("باقات الاشتراك", ar_bold))
         story.append(Spacer(1, 2 * mm))
         story.append(
             Paragraph(
@@ -191,8 +195,14 @@ class PlanBrochureService:
 
         all_keys = list(MODULE_LABELS.keys())
         for plan in plans:
-            story.append(Paragraph(f"{plan.name_en} Plan", h2_style))
-            story.append(_ar_para(f"باقة {plan.name_ar}", ar_bold))
+            if not single_plan:
+                story.append(Paragraph(f"{plan.name_en} Plan", h2_style))
+                story.append(_ar_para(f"باقة {plan.name_ar}", ar_bold))
+            if plan.description_en:
+                story.append(Paragraph(plan.description_en, body))
+            if plan.description_ar:
+                story.append(_ar_para(plan.description_ar, ar_style))
+                story.append(Spacer(1, 2 * mm))
             enabled = set(PlanBrochureService._modules_for_plan(plan))
             feat_rows = [
                 [

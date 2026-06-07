@@ -80,12 +80,15 @@ class SubscriptionPlan(Base, TimestampMixin):
     name_ar: Mapped[str] = mapped_column(String(255), nullable=False)
     name_en: Mapped[str] = mapped_column(String(255), nullable=False)
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    description_ar: Mapped[Optional[str]] = mapped_column(Text)
+    description_en: Mapped[Optional[str]] = mapped_column(Text)
     price_monthly: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     price_yearly: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     max_users: Mapped[int] = mapped_column(Integer, default=10)
     max_projects: Mapped[int] = mapped_column(Integer, default=5)
     max_storage_mb: Mapped[int] = mapped_column(Integer, default=5120)
     features: Mapped[Optional[str]] = mapped_column(Text)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 

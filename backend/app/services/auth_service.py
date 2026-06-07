@@ -16,13 +16,32 @@ from app.core.security import (
 from app.models.tenant import Company
 from app.models.users import SystemRole, User, UserStatus
 from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.middleware.security import clear_login_attempts, is_login_blocked, record_login_failure
 from app.services.platform_billing_service import PlatformBillingService
 
 
 class AuthService:
     @staticmethod
+    async def _max_login_attempts(db: AsyncSession) -> int:
+        from app.models.system import SystemSetting
+        from sqlalchemy import select
+
+        result = await db.execute(select(SystemSetting).where(SystemSetting.key == "max_login_attempts"))
+        setting = result.scalar_one_or_none()
+        if setting and str(setting.value).isdigit():
+            return max(3, int(setting.value))
+        return 5
+
+    @staticmethod
     async def login(db: AsyncSession, data: LoginRequest) -> tuple[TokenResponse, User]:
         login = data.username.strip().lower()
+        client_key = f"user:{login}"
+        max_attempts = await AuthService._max_login_attempts(db)
+        if is_login_blocked(client_key, max_attempts):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed login attempts. Please try again later.",
+            )
         result = await db.execute(
             select(User).where(
                 or_(User.username == login, User.email == login),
@@ -31,7 +50,9 @@ class AuthService:
         )
         user = result.scalar_one_or_none()
         if not user or not verify_password(data.password, user.password_hash):
+            record_login_failure(client_key)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        clear_login_attempts(client_key)
         if user.status == UserStatus.SUSPENDED:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
         if user.company_id and not user.is_super_admin:

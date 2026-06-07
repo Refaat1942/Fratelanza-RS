@@ -8,6 +8,7 @@ import os
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.middleware.module_guard import ModuleGuardMiddleware
+from app.middleware.security import AuthRateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.database import Base, engine
 from app.utils.seed import seed_database
 
@@ -30,6 +31,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(AuthRateLimitMiddleware)
 app.add_middleware(ModuleGuardMiddleware)
 app.add_middleware(
     CORSMiddleware,

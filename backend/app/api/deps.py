@@ -61,6 +61,16 @@ async def get_company_user(
     return current_user
 
 
+async def get_company_admin(
+    current_user: Annotated[User, Depends(get_company_user)],
+) -> User:
+    if current_user.is_super_admin:
+        return current_user
+    if current_user.system_role not in (SystemRole.COMPANY_ADMIN, SystemRole.CEO, SystemRole.MANAGING_DIRECTOR):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company admin access required")
+    return current_user
+
+
 def require_roles(*roles: SystemRole):
     async def role_checker(current_user: Annotated[User, Depends(get_current_user)]) -> User:
         if current_user.is_super_admin:

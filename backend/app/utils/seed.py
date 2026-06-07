@@ -69,6 +69,18 @@ async def seed_database() -> None:
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100)"
             ))
             await db.execute(text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS allowed_modules TEXT"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS description_ar TEXT"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS description_en TEXT"
+            ))
+            await db.execute(text(
+                "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0"
+            ))
+            await db.execute(text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username) WHERE username IS NOT NULL"
             ))
             await db.execute(text(

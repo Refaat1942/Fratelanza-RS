@@ -69,6 +69,14 @@ export function Sidebar() {
       label: l.label,
     }))
 
+  if (!user?.is_super_admin && isEnabled('users')) {
+    companyLinks.push({
+      to: '/feature-settings',
+      icon: Settings,
+      label: 'feature_settings',
+    })
+  }
+
   const links = user?.is_super_admin ? superAdminLinks : companyLinks
 
   const displayName = company

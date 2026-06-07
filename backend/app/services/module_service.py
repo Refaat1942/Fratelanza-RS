@@ -10,6 +10,7 @@ from app.core.platform_modules import (
     PLATFORM_MODULES,
 )
 from app.models.tenant import Company, SubscriptionPlan
+from app.models.users import User
 
 
 class ModuleService:
@@ -57,10 +58,63 @@ class ModuleService:
         return list(ALL_MODULE_KEYS)
 
     @staticmethod
-    def is_enabled(company: Company, module_key: str, plan: Optional[SubscriptionPlan] = None) -> bool:
+    def parse_user_allowed(user: User) -> Optional[list[str]]:
+        """Return user-specific module allowlist, or None if user inherits company modules."""
+        if not user.allowed_modules:
+            return None
+        try:
+            parsed = json.loads(user.allowed_modules)
+            if isinstance(parsed, list):
+                enabled = set(parsed) | set(CORE_MODULE_KEYS)
+                return [k for k in ALL_MODULE_KEYS if k in enabled]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return None
+
+    @staticmethod
+    def parse_effective(
+        company: Company,
+        plan: Optional[SubscriptionPlan] = None,
+        user: Optional[User] = None,
+    ) -> list[str]:
+        """Company modules intersected with user-specific allowlist when set."""
+        company_modules = set(ModuleService.parse_enabled(company, plan))
+        if user:
+            user_modules = ModuleService.parse_user_allowed(user)
+            if user_modules is not None:
+                company_modules &= set(user_modules)
+        return [k for k in ALL_MODULE_KEYS if k in company_modules]
+
+    @staticmethod
+    def is_enabled(
+        company: Company,
+        module_key: str,
+        plan: Optional[SubscriptionPlan] = None,
+        user: Optional[User] = None,
+    ) -> bool:
         if module_key in CORE_MODULE_KEYS:
             return True
-        return module_key in ModuleService.parse_enabled(company, plan)
+        return module_key in ModuleService.parse_effective(company, plan, user)
+
+    @staticmethod
+    async def set_user_modules(
+        db: AsyncSession,
+        user: User,
+        module_keys: list[str],
+        company_modules: list[str],
+    ) -> list[str]:
+        """Set user-specific modules — cannot exceed company-enabled modules."""
+        company_set = set(company_modules)
+        enabled = (set(module_keys) | set(CORE_MODULE_KEYS)) & company_set
+        ordered = [k for k in ALL_MODULE_KEYS if k in enabled]
+        user.allowed_modules = json.dumps(ordered)
+        await db.flush()
+        return ordered
+
+    @staticmethod
+    async def clear_user_modules(db: AsyncSession, user: User) -> None:
+        user.allowed_modules = None
+        await db.flush()
 
     @staticmethod
     def module_for_path(path: str) -> Optional[str]:

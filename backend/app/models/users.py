@@ -55,6 +55,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     is_2fa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     last_login_at: Mapped[Optional[str]] = mapped_column(String(50))
     last_login_ip: Mapped[Optional[str]] = mapped_column(String(50))
+    allowed_modules: Mapped[Optional[str]] = mapped_column(Text)
 
     roles: Mapped[list["UserRole"]] = relationship(back_populates="user", lazy="selectin")
 

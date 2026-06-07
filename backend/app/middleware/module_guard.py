@@ -53,7 +53,7 @@ class ModuleGuardMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
 
             plan = company.subscription.plan if company.subscription else None
-            if not ModuleService.is_enabled(company, module_key, plan):
+            if not ModuleService.is_enabled(company, module_key, plan, user):
                 return JSONResponse(
                     status_code=403,
                     content={"detail": f"Module '{module_key}' is not enabled for your company"},

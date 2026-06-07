@@ -23,7 +23,7 @@ from app.schemas.billing import (
 )
 from app.schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
 from app.services.platform_billing_service import PlatformBillingService
-from app.schemas.subscription import SubscriptionPlanUpdate
+from app.schemas.subscription import SubscriptionPlanCreate, SubscriptionPlanUpdate
 from app.services.company_service import CompanyService
 from app.services.plan_brochure_service import PlanBrochureService
 from app.services.subscription_service import SubscriptionService
@@ -153,9 +153,21 @@ async def list_subscription_plans(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(get_super_admin)],
 ):
-    result = await db.execute(select(SubscriptionPlan).order_by(SubscriptionPlan.id))
+    result = await db.execute(
+        select(SubscriptionPlan).order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
+    )
     plans = result.scalars().all()
     return [SubscriptionService.plan_to_dict(p) for p in plans]
+
+
+@router.post("/subscription-plans", status_code=status.HTTP_201_CREATED)
+async def create_subscription_plan(
+    data: SubscriptionPlanCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    plan = await SubscriptionService.create_plan(db, data)
+    return SubscriptionService.plan_to_dict(plan)
 
 
 @router.get("/subscription-plans/brochure.pdf")
@@ -163,7 +175,11 @@ async def download_subscription_plans_brochure(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(get_super_admin)],
 ):
-    result = await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.is_active == True).order_by(SubscriptionPlan.id))
+    result = await db.execute(
+        select(SubscriptionPlan)
+        .where(SubscriptionPlan.is_active == True)
+        .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
+    )
     plans = list(result.scalars().all())
     if not plans:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No subscription plans found")
@@ -173,6 +189,25 @@ async def download_subscription_plans_brochure(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="fratelanza-subscription-plans.pdf"'},
+    )
+
+
+@router.get("/subscription-plans/{plan_id}/brochure.pdf")
+async def download_single_plan_brochure(
+    plan_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_super_admin)],
+):
+    plan = await SubscriptionService.get_plan(db, plan_id)
+    if not plan.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not active")
+    trial_days = await PlatformBillingService.get_trial_days(db)
+    pdf_bytes = PlanBrochureService.generate_pdf([plan], trial_days=trial_days, single_plan=True)
+    filename = f"fratelanza-plan-{plan.code}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

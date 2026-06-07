@@ -19,6 +19,7 @@ import { HRPage } from '@/pages/company/HRPage'
 import { FinancePage } from '@/pages/company/FinancePage'
 import { FollowUpsPage } from '@/pages/company/FollowUpsPage'
 import { BrandingPage } from '@/pages/company/BrandingPage'
+import { CompanyFeatureSettingsPage } from '@/pages/company/CompanyFeatureSettingsPage'
 import { ProjectsPage } from '@/pages/company/ProjectsPage'
 import { WarehousePage } from '@/pages/company/WarehousePage'
 import { PropertyPage } from '@/pages/company/PropertyPage'
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="/property" element={<ModuleRoute moduleKey="property"><PropertyPage /></ModuleRoute>} />
         <Route path="/customer-service" element={<ModuleRoute moduleKey="customer_service"><CustomerServicePage /></ModuleRoute>} />
         <Route path="/users" element={<ModuleRoute moduleKey="users"><CompanyUsersPage /></ModuleRoute>} />
+        <Route path="/feature-settings" element={<ModuleRoute moduleKey="users"><CompanyFeatureSettingsPage /></ModuleRoute>} />
         <Route path="/reports" element={<ModuleRoute moduleKey="reports"><ReportsPage /></ModuleRoute>} />
         <Route path="/ai-assistant" element={<ModuleRoute moduleKey="ai_assistant"><AIAssistantPage /></ModuleRoute>} />
       </Route>

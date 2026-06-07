@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user, get_super_admin
+from app.api.deps import get_company_admin, get_company_user, get_super_admin
 from app.core.database import get_db
 from app.models.users import User
 from app.schemas.company import CompanyModulesUpdate
@@ -35,7 +35,7 @@ async def my_company_modules(
     company = await CompanyService.get_company(db, current_user.company_id)
     plan = company.subscription.plan if company.subscription else None
     return {
-        "enabled": ModuleService.parse_enabled(company, plan),
+        "enabled": ModuleService.parse_effective(company, plan, current_user),
         "catalog": ModuleService.catalog(),
     }
 
@@ -68,4 +68,20 @@ async def update_company_modules_admin(
         "company_id": company.id,
         "enabled": enabled,
         "message": "Company modules updated",
+    }
+
+
+@router.get("/company/me")
+async def my_company_modules_admin(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_admin)],
+):
+    """Company admin view of modules enabled for their company (set by super admin)."""
+    company = await CompanyService.get_company(db, current_user.company_id)  # type: ignore[arg-type]
+    plan = company.subscription.plan if company.subscription else None
+    return {
+        "company_id": company.id,
+        "enabled": ModuleService.parse_enabled(company, plan),
+        "catalog": ModuleService.catalog(),
+        "message": "Contact super admin to add or remove company-level features",
     }
