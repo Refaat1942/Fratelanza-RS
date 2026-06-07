@@ -9,6 +9,85 @@ from app.models.tenant import Company, CompanyStatus, CompanySubscription, Subsc
 from app.models.users import SystemRole, User, UserStatus
 
 
+DEFAULT_SUBSCRIPTION_PLANS = [
+    {
+        "name_ar": "أساسي",
+        "name_en": "Basic",
+        "code": "basic",
+        "description_ar": "باقة أساسية للشركات الصغيرة — CRM ومبيعات وتقارير.",
+        "description_en": "Starter plan for small teams — CRM, sales pipeline, and reports.",
+        "price_monthly": Decimal("999"),
+        "price_yearly": Decimal("9999"),
+        "max_users": 10,
+        "max_projects": 3,
+        "max_storage_mb": 2048,
+        "sort_order": 1,
+    },
+    {
+        "name_ar": "احترافي",
+        "name_en": "Professional",
+        "code": "professional",
+        "description_ar": "باقة متكاملة — مالية، موارد بشرية، مقاولات، ومشتريات.",
+        "description_en": "Full operations — finance, HR, construction, and procurement.",
+        "price_monthly": Decimal("2499"),
+        "price_yearly": Decimal("24999"),
+        "max_users": 50,
+        "max_projects": 15,
+        "max_storage_mb": 10240,
+        "sort_order": 2,
+    },
+    {
+        "name_ar": "مؤسسي",
+        "name_en": "Enterprise",
+        "code": "enterprise",
+        "description_ar": "كل الميزات بما فيها المساعد الذكي — للشركات الكبيرة.",
+        "description_en": "All features including AI assistant — for large developers.",
+        "price_monthly": Decimal("4999"),
+        "price_yearly": Decimal("49999"),
+        "max_users": 500,
+        "max_projects": 100,
+        "max_storage_mb": 51200,
+        "sort_order": 3,
+    },
+]
+
+
+async def ensure_default_subscription_plans(db) -> int:
+    """Create missing default plans (basic, professional, enterprise). Returns count added."""
+    from app.services.module_service import ModuleService
+
+    added = 0
+    for spec in DEFAULT_SUBSCRIPTION_PLANS:
+        existing = (
+            await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.code == spec["code"]))
+        ).scalar_one_or_none()
+        if existing:
+            continue
+        db.add(
+            SubscriptionPlan(
+                name_ar=spec["name_ar"],
+                name_en=spec["name_en"],
+                code=spec["code"],
+                description_ar=spec.get("description_ar"),
+                description_en=spec.get("description_en"),
+                price_monthly=spec["price_monthly"],
+                price_yearly=spec["price_yearly"],
+                max_users=spec["max_users"],
+                max_projects=spec["max_projects"],
+                max_storage_mb=spec["max_storage_mb"],
+                sort_order=spec.get("sort_order", 0),
+                features=ModuleService.serialize_plan_features(
+                    ModuleService.defaults_for_plan(spec["code"])
+                ),
+                is_active=True,
+            )
+        )
+        added += 1
+    if added:
+        await db.flush()
+    return added
+
+
 async def seed_database() -> None:
     async with AsyncSessionLocal() as db:
         try:
@@ -92,46 +171,7 @@ async def seed_database() -> None:
             ))
         except Exception:
             pass
-        # Subscription plans
-        result = await db.execute(select(SubscriptionPlan).limit(1))
-        if not result.scalar_one_or_none():
-            from app.services.module_service import ModuleService
-            plans = [
-                SubscriptionPlan(
-                    name_ar="أساسي",
-                    name_en="Basic",
-                    code="basic",
-                    price_monthly=Decimal("999"),
-                    price_yearly=Decimal("9999"),
-                    max_users=10,
-                    max_projects=3,
-                    max_storage_mb=2048,
-                    features=ModuleService.serialize_plan_features(ModuleService.defaults_for_plan("basic")),
-                ),
-                SubscriptionPlan(
-                    name_ar="احترافي",
-                    name_en="Professional",
-                    code="professional",
-                    price_monthly=Decimal("2499"),
-                    price_yearly=Decimal("24999"),
-                    max_users=50,
-                    max_projects=15,
-                    max_storage_mb=10240,
-                    features=ModuleService.serialize_plan_features(ModuleService.defaults_for_plan("professional")),
-                ),
-                SubscriptionPlan(
-                    name_ar="مؤسسي",
-                    name_en="Enterprise",
-                    code="enterprise",
-                    price_monthly=Decimal("4999"),
-                    price_yearly=Decimal("49999"),
-                    max_users=500,
-                    max_projects=100,
-                    max_storage_mb=51200,
-                    features=ModuleService.serialize_plan_features(ModuleService.defaults_for_plan("enterprise")),
-                ),
-            ]
-            db.add_all(plans)
+        await ensure_default_subscription_plans(db)
 
         from app.models.system import SystemSetting
         settings_seed = [
