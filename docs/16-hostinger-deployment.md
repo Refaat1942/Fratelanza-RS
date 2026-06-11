@@ -55,18 +55,23 @@ In Hostinger Panel → VPS → **Security**:
 ```bash
 ssh root@187.124.15.14
 
-# One-command deploy
-curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-RS/cursor/hostinger-deploy-all-phases-8cb9/scripts/deploy-hostinger.sh | bash
-
-# Or manual:
-git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
-cd /opt/fratelanza
-git checkout cursor/hostinger-deploy-all-phases-8cb9
-cp .env.production.example .env
-nano .env   # Set strong passwords!
-chmod +x scripts/deploy-hostinger.sh
-./scripts/deploy-hostinger.sh
+# ONE command — clone/update, kill old Hub, deploy Real Estate :9000, fix rs.fratelanza.com
+curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-RS/main/scripts/deploy.sh | bash
 ```
+
+Or:
+
+```bash
+cd /opt/fratelanza && bash scripts/deploy.sh
+```
+
+What `scripts/deploy.sh` does:
+
+1. Pulls latest `main`
+2. Removes legacy **Fratelanza Hub** containers (`fratelanza-app-1`, etc.)
+3. `docker compose -p fratelanza -f docker-compose.prod.yml up -d --build --remove-orphans`
+4. Verifies port **9000** serves **Real Estate** (not Hub)
+5. Runs `fix-rs-domain.sh` for `rs.fratelanza.com` + `rs-control.fratelanza.com`
 
 ## Step 4: Configure .env
 

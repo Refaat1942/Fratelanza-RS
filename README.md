@@ -42,24 +42,27 @@ docker compose up -d --build
 
 ## Production Deploy (Hostinger VPS — Port 9000)
 
+**One command** (stops old Hub, deploys Real Estate on port 9000, fixes `rs.fratelanza.com`):
+
 ```bash
 ssh root@187.124.15.14
-git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
-cd /opt/fratelanza
-cp .env.production.example .env && nano .env
-chmod +x scripts/deploy-hostinger.sh
-./scripts/deploy-hostinger.sh
-
-# Connect domain (optional):
-./scripts/setup-domain-proxy.sh erp.yourdomain.com
+curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-RS/main/scripts/deploy.sh | bash
 ```
+
+Or if the repo is already at `/opt/fratelanza`:
+
+```bash
+cd /opt/fratelanza && bash scripts/deploy.sh
+```
+
+First time only: edit `/opt/fratelanza/.env` after deploy (passwords from `.env.production.example`).
 
 See [docs/16-hostinger-deployment.md](docs/16-hostinger-deployment.md) for full guide.
 
-### Manual Start
+### Manual Start (local dev only — not VPS)
 
 ```bash
-# With Docker
+# Local development
 docker compose up -d --build
 
 # Or locally:
