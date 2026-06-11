@@ -20,6 +20,7 @@ export const COMPANY_MODULE_LINKS: { moduleKey: string; route: string; label: st
   { moduleKey: 'construction', route: '/construction', label: 'construction' },
   { moduleKey: 'procurement', route: '/procurement', label: 'procurement' },
   { moduleKey: 'warehouse', route: '/warehouse', label: 'warehouse' },
+  { moduleKey: 'documents', route: '/documents', label: 'documents' },
   { moduleKey: 'property', route: '/property', label: 'property' },
   { moduleKey: 'customer_service', route: '/customer-service', label: 'customer_service' },
   { moduleKey: 'users', route: '/users', label: 'users' },

@@ -8,7 +8,7 @@ import { COMPANY_MODULE_LINKS } from '@/config/modules'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Building2, Users, UserCircle, Target, FolderKanban,
-  FileText, Wallet, HardHat, ShoppingCart, Warehouse, Home, Headphones,
+  FileText, Wallet, HardHat, ShoppingCart, Warehouse, Home, Headphones, Files,
   Settings, ScrollText, CreditCard, Bot, BarChart3, Phone, Palette,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -29,6 +29,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   construction: HardHat,
   procurement: ShoppingCart,
   warehouse: Warehouse,
+  documents: Files,
   property: Home,
   customer_service: Headphones,
   users: Users,

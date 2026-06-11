@@ -238,6 +238,52 @@ async def seed_database() -> None:
                 "social_insurance NUMERIC(12,2), net_salary NUMERIC(12,2), status VARCHAR(50), "
                 "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
             ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS documents ("
+                "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL REFERENCES companies(id), "
+                "name VARCHAR(255) NOT NULL, file_url VARCHAR(500) NOT NULL, "
+                "category VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT NOW(), "
+                "updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS name_ar VARCHAR(255)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS name_en VARCHAR(255)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS description TEXT"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_path VARCHAR(500)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_size INTEGER"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS entity_type VARCHAR(100)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS entity_id INTEGER"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_by_id INTEGER REFERENCES users(id)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_type VARCHAR(100)"
+            ))
         except Exception:
             pass
         await ensure_default_subscription_plans(db)
@@ -848,7 +894,77 @@ async def seed_database() -> None:
                     db.add(JournalLine(journal_entry_id=entry.id, account_id=cash.id, debit=Decimal("250000"), credit=Decimal("0")))
                     db.add(JournalLine(journal_entry_id=entry.id, account_id=revenue.id, debit=Decimal("0"), credit=Decimal("250000")))
 
+            from app.models.system import Document
+            from app.core.config import settings as app_settings
+            from pathlib import Path
+            from reportlab.pdfgen import canvas
+
+            if not (await db.execute(select(Document).where(Document.company_id == company.id).limit(1))).scalar_one_or_none():
+                docs_dir = Path(app_settings.STORAGE_LOCAL_PATH) / "documents" / str(company.id)
+                docs_dir.mkdir(parents=True, exist_ok=True)
+
+                demo_specs = [
+                    ("legal-contract-demo.pdf", "legal_contract", "عقد بيع وحدة", "Unit Sale Contract", "Demo legal contract PDF"),
+                    ("building-permit-demo.pdf", "permit", "تصريح بناء", "Building Permit", "Demo municipal building permit"),
+                    ("floor-plan-demo.png", "engineering_drawing", "مخطط الدور الأرضي", "Ground Floor Plan", "Demo engineering drawing image"),
+                ]
+                png_bytes = bytes.fromhex(
+                    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+                    "0000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082"
+                )
+                for filename, category, name_ar, name_en, pdf_title in demo_specs:
+                    rel = f"documents/{company.id}/{filename}"
+                    abs_path = Path(app_settings.STORAGE_LOCAL_PATH) / rel
+                    if filename.endswith(".pdf"):
+                        pdf = canvas.Canvas(str(abs_path))
+                        pdf.setFont("Helvetica", 14)
+                        pdf.drawString(72, 750, pdf_title)
+                        pdf.drawString(72, 730, "Fratelanza Real Estate — Demo Document")
+                        pdf.save()
+                        mime = "application/pdf"
+                        size = abs_path.stat().st_size
+                    else:
+                        abs_path.write_bytes(png_bytes)
+                        mime = "image/png"
+                        size = len(png_bytes)
+                    db.add(
+                        Document(
+                            company_id=company.id,
+                            name=name_en,
+                            name_ar=name_ar,
+                            name_en=name_en,
+                            description=f"Seeded demo document — {name_en}",
+                            file_url="",
+                            file_path=rel,
+                            original_filename=filename,
+                            file_type=mime,
+                            file_size=size,
+                            category=category,
+                            project_id=project.id,
+                            entity_type="project",
+                            entity_id=project.id,
+                        )
+                    )
+                await db.flush()
+                seeded = (await db.execute(select(Document).where(Document.company_id == company.id))).scalars().all()
+                for doc in seeded:
+                    doc.file_url = f"/api/v1/documents/{doc.id}/download"
+
         if company:
             company.currency = "EGP"
+            from app.services.module_service import ModuleService
+            sub = (
+                await db.execute(
+                    select(CompanySubscription).where(CompanySubscription.company_id == company.id)
+                )
+            ).scalar_one_or_none()
+            if sub:
+                plan = (
+                    await db.execute(select(SubscriptionPlan).where(SubscriptionPlan.id == sub.plan_id))
+                ).scalar_one_or_none()
+                if plan:
+                    await ModuleService.set_company_modules(
+                        db, company, ModuleService.defaults_for_plan(plan.code)
+                    )
 
         await db.commit()

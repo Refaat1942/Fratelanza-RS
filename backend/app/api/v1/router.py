@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     customer_portal,
     customers,
     dashboard,
+    documents,
     exports,
     finance,
     hr,
@@ -54,6 +55,7 @@ api_router.include_router(finance.router, prefix="/finance", tags=["Finance"])
 api_router.include_router(hr.router, prefix="/hr", tags=["HR"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["Customer Service"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard & BI"])
+api_router.include_router(documents.router, prefix="/documents", tags=["Documents"])
 api_router.include_router(modules.router, prefix="/modules", tags=["Modules"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])

@@ -38,6 +38,7 @@ MODULE_LABELS = {
     "construction": ("Construction", "المقاولات"),
     "procurement": ("Procurement", "المشتريات"),
     "warehouse": ("Warehouse", "المستودع"),
+    "documents": ("Document Management", "إدارة المستندات"),
     "property": ("Property Mgmt", "إدارة الممتلكات"),
     "customer_service": ("Customer Service", "خدمة العملاء"),
     "users": ("Team Users", "مستخدمي الفريق"),
