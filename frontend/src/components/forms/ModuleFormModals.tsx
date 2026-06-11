@@ -404,8 +404,9 @@ export function BrokerFormModal({ open, onClose, editRow }: ModalProps) {
 export function WarehouseFormModal({ open, onClose, editRow }: ModalProps) {
   const { t } = useTranslation()
   const qc = useQueryClient()
+  const { data: projects = [] } = useProjectsLookup()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name_ar: '', name_en: '', code: '', location: '' })
+  const [form, setForm] = useState({ name_ar: '', name_en: '', code: '', location: '', warehouse_type: 'central', project_id: '' })
 
   useEffect(() => {
     if (editRow) {
@@ -414,9 +415,11 @@ export function WarehouseFormModal({ open, onClose, editRow }: ModalProps) {
         name_en: String(editRow.name_en ?? ''),
         code: String(editRow.code ?? ''),
         location: String(editRow.location ?? ''),
+        warehouse_type: String(editRow.warehouse_type ?? 'central'),
+        project_id: editRow.project_id ? String(editRow.project_id) : '',
       })
     } else {
-      setForm({ name_ar: '', name_en: '', code: '', location: '' })
+      setForm({ name_ar: '', name_en: '', code: '', location: '', warehouse_type: 'central', project_id: '' })
     }
   }, [editRow, open])
 
@@ -424,10 +427,14 @@ export function WarehouseFormModal({ open, onClose, editRow }: ModalProps) {
     e.preventDefault()
     setLoading(true)
     try {
+      const payload = {
+        ...form,
+        project_id: form.project_id ? Number(form.project_id) : null,
+      }
       if (editRow?.id) {
-        await api.put(`/warehouse/${editRow.id}`, form)
+        await api.put(`/warehouse/${editRow.id}`, payload)
       } else {
-        await api.post('/warehouse', form)
+        await api.post('/warehouse', payload)
       }
       qc.invalidateQueries({ queryKey: ['warehouse'] })
       qc.invalidateQueries({ queryKey: ['warehouses-lookup'] })
@@ -444,6 +451,23 @@ export function WarehouseFormModal({ open, onClose, editRow }: ModalProps) {
         <Input label={t('name_en')} value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} required />
         <Input label="Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required />
         <Input label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        <SelectField
+          label={t('type')}
+          value={form.warehouse_type}
+          onChange={(v) => setForm({ ...form, warehouse_type: v })}
+          options={[
+            { value: 'central', label: t('central_warehouse') },
+            { value: 'site', label: t('site_warehouse') },
+          ]}
+        />
+        {form.warehouse_type === 'site' && (
+          <SelectField
+            label={t('project')}
+            value={form.project_id}
+            onChange={(v) => setForm({ ...form, project_id: v })}
+            options={projects.map((p) => ({ value: String(p.id), label: String(p.name_en) }))}
+          />
+        )}
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
@@ -458,21 +482,30 @@ export function WarehouseItemFormModal({ open, onClose, editRow }: ModalProps) {
   const qc = useQueryClient()
   const { data: warehouses = [] } = useWarehousesLookup()
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ warehouse_id: '', sku: '', name_ar: '', name_en: '', quantity: '0', min_stock_level: '10', unit: 'pcs' })
+  const [form, setForm] = useState({
+    warehouse_id: '', sku: '', barcode: '', name_ar: '', name_en: '', category: '',
+    quantity: '0', min_stock_level: '10', unit: 'pcs', unit_cost: '0',
+  })
 
   useEffect(() => {
     if (editRow) {
       setForm({
         warehouse_id: String(editRow.warehouse_id ?? ''),
         sku: String(editRow.sku ?? ''),
+        barcode: String(editRow.barcode ?? ''),
         name_ar: String(editRow.name_ar ?? ''),
         name_en: String(editRow.name_en ?? ''),
+        category: String(editRow.category ?? ''),
         quantity: String(editRow.quantity ?? '0'),
         min_stock_level: String(editRow.min_stock_level ?? '10'),
         unit: String(editRow.unit ?? 'pcs'),
+        unit_cost: String(editRow.unit_cost ?? '0'),
       })
     } else if (open) {
-      setForm({ warehouse_id: warehouses.length ? String(warehouses[0].id) : '', sku: '', name_ar: '', name_en: '', quantity: '0', min_stock_level: '10', unit: 'pcs' })
+      setForm({
+        warehouse_id: warehouses.length ? String(warehouses[0].id) : '', sku: '', barcode: '',
+        name_ar: '', name_en: '', category: '', quantity: '0', min_stock_level: '10', unit: 'pcs', unit_cost: '0',
+      })
     }
   }, [editRow, open, warehouses])
 
@@ -483,19 +516,26 @@ export function WarehouseItemFormModal({ open, onClose, editRow }: ModalProps) {
       const payload = {
         warehouse_id: Number(form.warehouse_id),
         sku: form.sku,
+        barcode: form.barcode || null,
         name_ar: form.name_ar,
         name_en: form.name_en,
+        category: form.category || null,
         quantity: form.quantity,
         min_stock_level: form.min_stock_level,
         unit: form.unit,
+        unit_cost: form.unit_cost,
+        item_type: 'raw_material',
       }
       if (editRow?.id) {
         await api.put(`/warehouse/items/${editRow.id}`, {
           name_ar: payload.name_ar,
           name_en: payload.name_en,
+          barcode: payload.barcode,
+          category: payload.category,
           quantity: payload.quantity,
           min_stock_level: payload.min_stock_level,
           unit: payload.unit,
+          unit_cost: payload.unit_cost,
         })
       } else {
         await api.post('/warehouse/items', payload)
@@ -514,9 +554,12 @@ export function WarehouseItemFormModal({ open, onClose, editRow }: ModalProps) {
         <SelectField label={t('warehouse')} value={form.warehouse_id} onChange={(v) => setForm({ ...form, warehouse_id: v })} required
           options={warehouses.map((w) => ({ value: String(w.id), label: String(w.name_ar) }))} />
         <Input label="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
+        <Input label={t('barcode')} value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
         <Input label={t('name_ar')} value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required />
         <Input label={t('name_en')} value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} required />
+        <Input label={t('category')} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
         <Input label={t('quantity')} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
+        <Input label={t('unit_cost')} value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} />
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>

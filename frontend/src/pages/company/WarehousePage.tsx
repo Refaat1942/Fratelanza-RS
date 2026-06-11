@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Package, Warehouse as WarehouseIcon, AlertTriangle, Boxes, Plus, LayoutGrid } from 'lucide-react'
+import { Package, Warehouse as WarehouseIcon, AlertTriangle, Boxes, Plus, LayoutGrid, Truck, ArrowLeftRight } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -11,11 +11,12 @@ import { useListData } from '@/hooks/useListData'
 import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { WarehouseFormModal, WarehouseItemFormModal } from '@/components/forms/ModuleFormModals'
+import { EquipmentPanel, StockTransfersPanel } from '@/components/warehouse/InventoryPanels'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type Tab = 'inventory' | 'warehouses' | 'overview'
+type Tab = 'materials' | 'equipment' | 'transfers' | 'warehouses' | 'overview'
 
 function useCrudModal() {
   const [open, setOpen] = useState(false)
@@ -32,7 +33,7 @@ function useCrudModal() {
 export function WarehousePage() {
   const { t, i18n } = useTranslation()
   const { formatInteger } = useFormatNumber()
-  const [tab, setTab] = useState<Tab>('inventory')
+  const [tab, setTab] = useState<Tab>('materials')
   const modal = useCrudModal()
   const [itemOpen, setItemOpen] = useState(false)
   const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null)
@@ -48,13 +49,20 @@ export function WarehousePage() {
   })
 
   const tabs: { key: Tab; label: string; icon: typeof Package }[] = [
-    { key: 'inventory', label: t('inventory'), icon: Package },
+    { key: 'materials', label: t('raw_materials'), icon: Package },
+    { key: 'equipment', label: t('heavy_equipment'), icon: Truck },
+    { key: 'transfers', label: t('stock_transfers'), icon: ArrowLeftRight },
     { key: 'warehouses', label: t('warehouse_locations'), icon: WarehouseIcon },
     { key: 'overview', label: t('overview'), icon: LayoutGrid },
   ]
 
   const itemName = (row: Record<string, unknown>) =>
     i18n.language === 'ar' ? String(row.name_ar) : String(row.name_en)
+
+  const warehouseTypeLabel = (type: unknown) => {
+    if (type === 'site') return t('site_warehouse')
+    return t('central_warehouse')
+  }
 
   return (
     <div>
@@ -80,11 +88,12 @@ export function WarehousePage() {
         <p className="mt-1">{t('warehouse_explainer_body')}</p>
       </div>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title={t('inventory_items')} value={formatInteger(summary?.items_count)} icon={Boxes} />
-        <StatCard title={t('warehouse_locations')} value={formatInteger(summary?.warehouses_count)} icon={WarehouseIcon} color="bg-blue-50 text-blue-700" />
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard title={t('raw_materials')} value={formatInteger(summary?.items_count)} icon={Boxes} />
+        <StatCard title={t('heavy_equipment')} value={formatInteger(summary?.equipment_count)} icon={Truck} color="bg-violet-50 text-violet-700" />
+        <StatCard title={t('central_warehouses')} value={formatInteger(summary?.central_warehouses)} icon={WarehouseIcon} color="bg-blue-50 text-blue-700" />
+        <StatCard title={t('site_warehouses')} value={formatInteger(summary?.site_warehouses)} icon={WarehouseIcon} color="bg-amber-50 text-amber-700" />
         <StatCard title={t('low_stock_items')} value={formatInteger(summary?.low_stock_count)} icon={AlertTriangle} color="bg-red-50 text-red-700" />
-        <StatCard title={t('total_stock_qty')} value={formatInteger(summary?.total_quantity)} icon={Package} color="bg-emerald-50 text-emerald-700" />
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -106,7 +115,7 @@ export function WarehousePage() {
       {tab === 'overview' && (
         <div className="grid gap-6 lg:grid-cols-2">
           <DataTable
-            title={t('inventory')}
+            title={t('raw_materials')}
             subtitle={t('inventory_overview_help')}
             loading={itemsLoading}
             exportFilename="inventory"
@@ -127,15 +136,16 @@ export function WarehousePage() {
             columns={[
               { key: 'code', label: 'Code' },
               { key: 'name_en', label: t('name') },
+              { key: 'warehouse_type', label: t('type'), render: (row) => warehouseTypeLabel(row.warehouse_type) },
               { key: 'location', label: t('location') },
             ]}
           />
         </div>
       )}
 
-      {tab === 'inventory' && (
+      {tab === 'materials' && (
         <DataTable
-          title={t('inventory')}
+          title={t('raw_materials')}
           subtitle={t('inventory_help')}
           loading={itemsLoading}
           exportFilename="inventory"
@@ -145,9 +155,11 @@ export function WarehousePage() {
           columns={[
             { key: 'sku', label: 'SKU' },
             { key: 'name', label: t('name'), render: (row) => itemName(row) },
+            { key: 'category', label: t('category') },
             { key: 'warehouse_code', label: t('warehouse') },
+            { key: 'warehouse_type', label: t('type'), render: (row) => warehouseTypeLabel(row.warehouse_type) },
             { key: 'quantity', label: t('quantity'), render: (row) => `${row.quantity} ${row.unit}` },
-            { key: 'min_stock_level', label: t('min_stock') },
+            { key: 'unit_cost', label: t('unit_cost') },
             { key: 'low_stock', label: t('stock_alert'), render: (row) => (
               row.low_stock
                 ? <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">{t('low_stock')}</span>
@@ -163,6 +175,10 @@ export function WarehousePage() {
         />
       )}
 
+      {tab === 'equipment' && <EquipmentPanel />}
+
+      {tab === 'transfers' && <StockTransfersPanel />}
+
       {tab === 'warehouses' && (
         <DataTable
           title={t('warehouse_locations')}
@@ -177,6 +193,7 @@ export function WarehousePage() {
             { key: 'code', label: 'Code' },
             { key: 'name_ar', label: t('name_ar') },
             { key: 'name_en', label: t('name_en') },
+            { key: 'warehouse_type', label: t('type'), render: (row) => warehouseTypeLabel(row.warehouse_type) },
             { key: 'location', label: t('location') },
           ]}
           rowActions={(row) => (
