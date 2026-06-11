@@ -101,6 +101,7 @@ class Unit(Base, TimestampMixin, SoftDeleteMixin):
     roof_area_sqm: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     bedrooms: Mapped[int] = mapped_column(Integer, default=0)
     bathrooms: Mapped[int] = mapped_column(Integer, default=0)
+    base_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2))
     price: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     maintenance_fee: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
     delivery_date: Mapped[Optional[str]] = mapped_column(String(20))

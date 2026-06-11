@@ -18,6 +18,7 @@ from app.api.v1.endpoints import (
     leads,
     modules,
     notifications,
+    pricing,
     procurement,
     projects,
     property,
@@ -40,6 +41,7 @@ api_router.include_router(customers.router, prefix="/customers", tags=["Customer
 api_router.include_router(leads.router, prefix="/leads", tags=["CRM & Leads"])
 api_router.include_router(reminders.router, prefix="/reminders", tags=["Reminders"])
 api_router.include_router(projects.router, prefix="/projects", tags=["Projects & Units"])
+api_router.include_router(pricing.router, prefix="/pricing", tags=["Dynamic Pricing"])
 api_router.include_router(reservations.router, prefix="/reservations", tags=["Reservations"])
 api_router.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])
 api_router.include_router(collections.router, prefix="/collections", tags=["Collections"])

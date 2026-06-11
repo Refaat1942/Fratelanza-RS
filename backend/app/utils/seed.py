@@ -232,6 +232,25 @@ async def seed_database() -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username) WHERE username IS NOT NULL"
             ))
             await db.execute(text(
+                "ALTER TABLE units ADD COLUMN IF NOT EXISTS base_price NUMERIC(14,2)"
+            ))
+            await db.execute(text(
+                "UPDATE units SET base_price = price WHERE base_price IS NULL"
+            ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS pricing_rules ("
+                "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL REFERENCES companies(id), "
+                "project_id INTEGER REFERENCES projects(id), "
+                "name_en VARCHAR(255) NOT NULL, name_ar VARCHAR(255) NOT NULL, "
+                "trigger_type VARCHAR(50) NOT NULL, threshold_percent INTEGER NOT NULL DEFAULT 0, "
+                "adjustment_percent NUMERIC(6,2) NOT NULL DEFAULT 0, is_active BOOLEAN DEFAULT TRUE, "
+                "sort_order INTEGER DEFAULT 0, "
+                "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_pricing_rules_company_id ON pricing_rules (company_id)"
+            ))
+            await db.execute(text(
                 "CREATE TABLE IF NOT EXISTS payslips ("
                 "id SERIAL PRIMARY KEY, payroll_run_id INTEGER NOT NULL, employee_id INTEGER NOT NULL, "
                 "basic_salary NUMERIC(12,2), allowances NUMERIC(12,2), deductions NUMERIC(12,2), "
@@ -414,6 +433,7 @@ async def seed_database() -> None:
                             bedrooms=2,
                             bathrooms=2,
                             price=Decimal("2500000"),
+                            base_price=Decimal("2500000"),
                             status=UnitStatus.AVAILABLE,
                         )
                     )
@@ -850,5 +870,71 @@ async def seed_database() -> None:
 
         if company:
             company.currency = "EGP"
+            from decimal import Decimal as D
+            from app.models.pricing import PricingRule, PricingTriggerType
+            from app.models.real_estate import Project
+            from app.services.dynamic_pricing_service import DynamicPricingService
+
+            await db.execute(text("UPDATE units SET base_price = price WHERE base_price IS NULL"))
+
+            demo_project = (
+                await db.execute(select(Project).where(Project.company_id == company.id).limit(1))
+            ).scalar_one_or_none()
+
+            if demo_project and not (
+                await db.execute(
+                    select(PricingRule).where(PricingRule.company_id == company.id).limit(1)
+                )
+            ).scalar_one_or_none():
+                rules = [
+                    PricingRule(
+                        company_id=company.id,
+                        project_id=demo_project.id,
+                        name_en="Early sales — 10% sold",
+                        name_ar="مبيعات مبكرة — 10٪",
+                        trigger_type=PricingTriggerType.SALES_VOLUME,
+                        threshold_percent=10,
+                        adjustment_percent=D("3"),
+                        sort_order=1,
+                    ),
+                    PricingRule(
+                        company_id=company.id,
+                        project_id=demo_project.id,
+                        name_en="Strong sales — 30% sold",
+                        name_ar="مبيعات قوية — 30٪",
+                        trigger_type=PricingTriggerType.SALES_VOLUME,
+                        threshold_percent=30,
+                        adjustment_percent=D("7"),
+                        sort_order=2,
+                    ),
+                    PricingRule(
+                        company_id=company.id,
+                        project_id=demo_project.id,
+                        name_en="Construction 25% complete",
+                        name_ar="إنجاز البناء 25٪",
+                        trigger_type=PricingTriggerType.CONSTRUCTION_PROGRESS,
+                        threshold_percent=25,
+                        adjustment_percent=D("2"),
+                        sort_order=3,
+                    ),
+                    PricingRule(
+                        company_id=company.id,
+                        project_id=demo_project.id,
+                        name_en="Construction 50% complete",
+                        name_ar="إنجاز البناء 50٪",
+                        trigger_type=PricingTriggerType.CONSTRUCTION_PROGRESS,
+                        threshold_percent=50,
+                        adjustment_percent=D("5"),
+                        sort_order=4,
+                    ),
+                ]
+                for rule in rules:
+                    db.add(rule)
+                await db.flush()
+
+            if demo_project:
+                await DynamicPricingService.recalculate_project_prices(
+                    db, company.id, demo_project.id
+                )
 
         await db.commit()

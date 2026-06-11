@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.construction import ConstructionMilestone, ConstructionPhase, ConstructionTask
 from app.models.real_estate import Project
 from app.models.users import User
+from app.services.dynamic_pricing_service import DynamicPricingService
 
 router = APIRouter()
 
@@ -91,6 +92,14 @@ async def update_phase(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(phase, field, value)
     await db.flush()
+    if data.progress_percent is not None:
+        project = (
+            await db.execute(select(Project).where(Project.id == phase.project_id))
+        ).scalar_one_or_none()
+        if project:
+            await DynamicPricingService.recalculate_project_prices(
+                db, project.company_id, phase.project_id
+            )
     return {"id": phase.id, "success": True}
 
 

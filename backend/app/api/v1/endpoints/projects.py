@@ -10,6 +10,8 @@ from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, UnitCreate, UnitResponse
+from app.services.dynamic_pricing_service import DynamicPricingService
+from app.services.unit_pricing_helpers import unit_to_response
 
 router = APIRouter()
 
@@ -75,7 +77,7 @@ async def list_project_units(
     units = result.scalars().all()
     pages = (total + page_size - 1) // page_size
     return PaginatedResponse(
-        items=[UnitResponse.model_validate(u) for u in units],
+        items=[unit_to_response(u) for u in units],
         total=total,
         page=page,
         page_size=page_size,
@@ -102,13 +104,18 @@ async def units_status_board(
     board: dict[str, list] = {}
     for u in units:
         st = u.status.value
+        base = float(u.base_price or u.price)
+        price = float(u.price)
+        adjustment = round((price - base) / base * 100, 2) if base > 0 else 0.0
         board.setdefault(st, []).append(
             {
                 "id": u.id,
                 "unit_code": u.unit_code,
                 "unit_number": u.unit_number,
                 "unit_type": u.unit_type.value,
-                "price": float(u.price),
+                "price": price,
+                "base_price": base,
+                "adjustment_percent": adjustment,
                 "area_sqm": float(u.area_sqm),
             }
         )
@@ -191,10 +198,19 @@ async def create_unit(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    unit = Unit(**data.model_dump())
+    payload = data.model_dump()
+    if payload.get("base_price") is None:
+        payload["base_price"] = payload["price"]
+    unit = Unit(**payload)
     db.add(unit)
     await db.flush()
-    return UnitResponse.model_validate(unit)
+    if current_user.company_id:
+        project_id = await DynamicPricingService.get_project_id_for_unit(db, unit.id)
+        if project_id:
+            await DynamicPricingService.recalculate_project_prices(
+                db, current_user.company_id, project_id
+            )
+    return unit_to_response(unit)
 
 
 @router.delete("/units/{unit_id}")
