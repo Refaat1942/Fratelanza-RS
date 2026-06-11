@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, LayoutGrid, List, Plus, Home } from 'lucide-react'
+import { Building2, LayoutGrid, List, Plus, Home, TrendingUp } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -10,12 +10,13 @@ import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
+import { DynamicPricingPanel } from '@/components/real-estate/DynamicPricingPanel'
 import { ProjectFormModal, UnitFormModal, ReservationFormModal } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type Tab = 'overview' | 'board' | 'projects' | 'units'
+type Tab = 'overview' | 'board' | 'projects' | 'units' | 'pricing'
 
 function useCrudModal() {
   const [open, setOpen] = useState(false)
@@ -59,11 +60,14 @@ export function ProjectsPage() {
     (units as Record<string, unknown>[]).map((u) => ({ ...u, status })),
   )
 
+  const defaultProject = projects[0] as Record<string, unknown> | undefined
+
   const tabs: { key: Tab; label: string; icon: typeof Building2 }[] = [
     { key: 'overview', label: t('overview'), icon: Building2 },
     { key: 'board', label: t('units_board'), icon: LayoutGrid },
     { key: 'projects', label: t('projects_list'), icon: List },
     { key: 'units', label: t('units'), icon: Home },
+    { key: 'pricing', label: t('dynamic_pricing'), icon: TrendingUp },
   ]
 
   return (
@@ -143,6 +147,17 @@ export function ProjectsPage() {
         />
       )}
 
+      {tab === 'pricing' && (
+        <DynamicPricingPanel
+          projectId={(defaultProject?.id as number) ?? null}
+          projectName={
+            defaultProject
+              ? String(defaultProject.name_en ?? defaultProject.name_ar ?? '')
+              : undefined
+          }
+        />
+      )}
+
       {tab === 'units' && (
         <DataTable
           title={t('units')}
@@ -154,7 +169,25 @@ export function ProjectsPage() {
             { key: 'unit_type', label: 'Type' },
             { key: 'status', label: t('status') },
             { key: 'area_sqm', label: 'm²' },
-            { key: 'price', label: t('price') },
+            {
+              key: 'price',
+              label: t('price'),
+              render: (row) => {
+                const base = row.base_price as number | undefined
+                const price = row.price as number
+                const adj = row.adjustment_percent as number | undefined
+                if (base && adj && adj > 0 && base !== price) {
+                  return (
+                    <span>
+                      <span className="text-slate-400 line-through">{base.toLocaleString()}</span>{' '}
+                      <span className="font-semibold text-emerald-700">{price.toLocaleString()}</span>
+                      <span className="ms-1 text-xs text-emerald-600">(+{adj}%)</span>
+                    </span>
+                  )
+                }
+                return String(price ?? '-')
+              },
+            },
           ]}
           rowActions={(row) => (
             <RowActions

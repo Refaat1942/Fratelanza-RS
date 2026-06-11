@@ -20,6 +20,8 @@ interface UnitCard {
   unit_number: string
   unit_type: string
   price: number
+  base_price?: number
+  adjustment_percent?: number
   area_sqm: number
 }
 
@@ -64,7 +66,21 @@ export function UnitsBoard({ onUnitClick }: UnitsBoardProps) {
               >
                 <p className="font-bold">{u.unit_code}</p>
                 <p className="text-xs opacity-75">#{localizeDigits(u.unit_number)} · {u.unit_type}</p>
-                <p className="mt-2 text-sm font-semibold">{formatEGP(u.price)}</p>
+                <div className="mt-2">
+                  {u.base_price && u.adjustment_percent && u.adjustment_percent > 0 && u.base_price !== u.price ? (
+                    <>
+                      <p className="text-xs text-slate-400 line-through">{formatEGP(u.base_price)}</p>
+                      <p className="text-sm font-semibold text-emerald-800">
+                        {formatEGP(u.price)}
+                        <span className="ms-1 text-xs font-normal text-emerald-600">
+                          (+{localizeDigits(String(u.adjustment_percent))}%)
+                        </span>
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm font-semibold">{formatEGP(u.price)}</p>
+                  )}
+                </div>
                 <p className="text-xs opacity-75">{formatNumber(u.area_sqm)} m²</p>
                 {status === 'available' && onUnitClick && (
                   <p className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700">

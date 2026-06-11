@@ -17,6 +17,7 @@ from app.models.sales import (
     ReservationStatus,
 )
 from app.schemas.project import ContractCreate
+from app.services.dynamic_pricing_service import DynamicPricingService
 from app.services.installment_calculator_service import build_schedule, money
 
 
@@ -93,6 +94,9 @@ class ContractService:
                 )
             )
         await db.flush()
+        project_id = await DynamicPricingService.get_project_id_for_unit(db, unit.id)
+        if project_id:
+            await DynamicPricingService.recalculate_project_prices(db, company_id, project_id)
         return contract
 
     @staticmethod

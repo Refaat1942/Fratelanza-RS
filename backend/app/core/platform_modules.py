@@ -19,7 +19,7 @@ PLATFORM_MODULES: list[PlatformModule] = [
     {"key": "customers", "name_en": "Customers", "name_ar": "العملاء", "category_en": "CRM", "category_ar": "إدارة العملاء", "api_prefixes": ["/customers"], "route": "/customers", "core": False},
     {"key": "leads", "name_en": "Leads & CRM", "name_ar": "العملاء المحتملون", "category_en": "CRM", "category_ar": "إدارة العملاء", "api_prefixes": ["/leads"], "route": "/leads", "core": False},
     {"key": "follow_ups", "name_en": "Follow-ups & Calls", "name_ar": "المتابعات والمكالمات", "category_en": "CRM", "category_ar": "إدارة العملاء", "api_prefixes": ["/reminders"], "route": "/follow-ups", "core": False},
-    {"key": "projects", "name_en": "Projects & Units", "name_ar": "المشاريع والوحدات", "category_en": "Real Estate", "category_ar": "العقارات", "api_prefixes": ["/projects"], "route": "/projects", "core": False},
+    {"key": "projects", "name_en": "Projects & Units", "name_ar": "المشاريع والوحدات", "category_en": "Real Estate", "category_ar": "العقارات", "api_prefixes": ["/projects", "/pricing"], "route": "/projects", "core": False},
     {"key": "reservations", "name_en": "Reservations", "name_ar": "الحجوزات", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/reservations"], "route": "/reservations", "core": False},
     {"key": "contracts", "name_en": "Contracts", "name_ar": "العقود", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/contracts"], "route": "/contracts", "core": False},
     {"key": "collections", "name_en": "Collections", "name_ar": "التحصيل", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/collections"], "route": "/collections", "core": False},

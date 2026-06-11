@@ -3,6 +3,7 @@ from app.models.tenant import Company, Branch, SubscriptionPlan, CompanySubscrip
 from app.models.users import User, Role, Permission, UserRole, RolePermission
 from app.models.customers import Customer, CustomerDocument, CustomerActivity
 from app.models.crm import Lead, LeadActivity, CustomerReminder
+from app.models.pricing import PricingRule, PricingTriggerType
 from app.models.real_estate import Project, Building, Floor, Unit
 from app.models.sales import Reservation, Contract, PaymentPlan, Installment, Payment
 from app.models.brokers import Broker, BrokerCommission
@@ -33,6 +34,8 @@ __all__ = [
     "Lead",
     "LeadActivity",
     "CustomerReminder",
+    "PricingRule",
+    "PricingTriggerType",
     "Project",
     "Building",
     "Floor",

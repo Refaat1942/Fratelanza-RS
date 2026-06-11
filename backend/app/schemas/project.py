@@ -52,6 +52,7 @@ class UnitCreate(BaseModel):
     bedrooms: int = 0
     bathrooms: int = 0
     price: Decimal
+    base_price: Optional[Decimal] = None
     maintenance_fee: Optional[Decimal] = None
     delivery_date: Optional[str] = None
 
@@ -60,6 +61,7 @@ class UnitResponse(UnitCreate):
     id: int
     status: UnitStatus
     is_locked: bool
+    adjustment_percent: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
