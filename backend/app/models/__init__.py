@@ -10,7 +10,13 @@ from app.models.finance import ChartOfAccount, JournalEntry, JournalLine, BankAc
 from app.models.hr import Employee, Attendance, LeaveRequest, PayrollRun, Payslip
 from app.models.construction import ConstructionPhase, ConstructionTask, ConstructionMilestone
 from app.models.procurement import Vendor, PurchaseOrder, RFQ
-from app.models.warehouse import Warehouse, InventoryItem, StockMovement
+from app.models.warehouse import (
+    Warehouse,
+    InventoryItem,
+    StockMovement,
+    HeavyEquipment,
+    EquipmentTransfer,
+)
 from app.models.property import MaintenanceRequest, HandoverRecord
 from app.models.customer_service import Ticket, TicketComment
 from app.models.system import AuditLog, Notification, Document, SystemSetting
@@ -62,6 +68,8 @@ __all__ = [
     "Warehouse",
     "InventoryItem",
     "StockMovement",
+    "HeavyEquipment",
+    "EquipmentTransfer",
     "MaintenanceRequest",
     "HandoverRecord",
     "Ticket",

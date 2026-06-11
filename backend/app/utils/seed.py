@@ -238,6 +238,38 @@ async def seed_database() -> None:
                 "social_insurance NUMERIC(12,2), net_salary NUMERIC(12,2), status VARCHAR(50), "
                 "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
             ))
+            await db.execute(text(
+                "ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS warehouse_type VARCHAR(30) DEFAULT 'central'"
+            ))
+            await db.execute(text(
+                "ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS item_type VARCHAR(30) DEFAULT 'raw_material'"
+            ))
+            await db.execute(text(
+                "ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS category VARCHAR(100)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS notes TEXT"
+            ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS heavy_equipment ("
+                "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL REFERENCES companies(id), "
+                "asset_code VARCHAR(50) NOT NULL, name_ar VARCHAR(255) NOT NULL, name_en VARCHAR(255) NOT NULL, "
+                "equipment_type VARCHAR(50) NOT NULL, serial_number VARCHAR(100), status VARCHAR(30) DEFAULT 'available', "
+                "current_warehouse_id INTEGER REFERENCES warehouses(id), project_id INTEGER REFERENCES projects(id), "
+                "notes TEXT, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW(), "
+                "updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS equipment_transfers ("
+                "id SERIAL PRIMARY KEY, equipment_id INTEGER NOT NULL REFERENCES heavy_equipment(id), "
+                "from_warehouse_id INTEGER REFERENCES warehouses(id), to_warehouse_id INTEGER REFERENCES warehouses(id), "
+                "from_project_id INTEGER REFERENCES projects(id), to_project_id INTEGER REFERENCES projects(id), "
+                "reference VARCHAR(100), notes TEXT, created_by_id INTEGER REFERENCES users(id), "
+                "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
+            ))
         except Exception:
             pass
         await ensure_default_subscription_plans(db)
@@ -559,7 +591,13 @@ async def seed_database() -> None:
                 )
 
             from app.models.brokers import Broker
-            from app.models.warehouse import Warehouse, InventoryItem
+            from app.models.warehouse import (
+                Warehouse,
+                InventoryItem,
+                HeavyEquipment,
+                StockMovement,
+            )
+            from app.services.inventory_service import transfer_stock
             from app.models.procurement import Vendor
             from app.models.construction import ConstructionPhase
             from app.models.sales import Reservation, ReservationStatus
@@ -577,37 +615,152 @@ async def seed_database() -> None:
                     )
                 )
 
-            wh = (await db.execute(select(Warehouse).where(Warehouse.company_id == company.id).limit(1))).scalar_one_or_none()
-            if not wh:
-                wh = Warehouse(
-                    company_id=company.id,
-                    name_ar="المخزن الرئيسي",
-                    name_en="Main Warehouse",
-                    code="WH-001",
-                    location="New Cairo Site",
+            central_wh = (
+                await db.execute(
+                    select(Warehouse).where(
+                        Warehouse.company_id == company.id,
+                        Warehouse.code == "WH-CENTRAL",
+                    )
                 )
-                db.add(wh)
+            ).scalar_one_or_none()
+            if not central_wh:
+                legacy = (
+                    await db.execute(
+                        select(Warehouse).where(Warehouse.company_id == company.id).limit(1)
+                    )
+                ).scalar_one_or_none()
+                if legacy and legacy.code == "WH-001":
+                    legacy.code = "WH-CENTRAL"
+                    legacy.name_en = "Central Depot"
+                    legacy.name_ar = "المستودع المركزي"
+                    legacy.location = "New Cairo HQ"
+                    legacy.warehouse_type = "central"
+                    central_wh = legacy
+                else:
+                    central_wh = Warehouse(
+                        company_id=company.id,
+                        name_ar="المستودع المركزي",
+                        name_en="Central Depot",
+                        code="WH-CENTRAL",
+                        location="New Cairo HQ",
+                        warehouse_type="central",
+                    )
+                    db.add(central_wh)
+                    await db.flush()
+            else:
+                central_wh.warehouse_type = "central"
+
+            site_wh = (
+                await db.execute(
+                    select(Warehouse).where(
+                        Warehouse.company_id == company.id,
+                        Warehouse.code == "WH-SITE-001",
+                    )
+                )
+            ).scalar_one_or_none()
+            if not site_wh:
+                site_wh = Warehouse(
+                    company_id=company.id,
+                    name_ar="مخزن موقع فراتيلانزا",
+                    name_en="Fratelanza Site Store",
+                    code="WH-SITE-001",
+                    location="Fratelanza Residence Site",
+                    warehouse_type="site",
+                    project_id=project.id,
+                )
+                db.add(site_wh)
                 await db.flush()
+
+            if not (
+                await db.execute(
+                    select(InventoryItem).where(InventoryItem.warehouse_id == central_wh.id).limit(1)
+                )
+            ).scalar_one_or_none():
                 db.add(
                     InventoryItem(
-                        warehouse_id=wh.id,
+                        warehouse_id=central_wh.id,
                         sku="CEM-001",
+                        barcode="8901234567890",
                         name_ar="أسمنت",
                         name_en="Cement",
+                        item_type="raw_material",
+                        category="cement",
                         quantity=Decimal("500"),
                         min_stock_level=Decimal("100"),
                         unit="bags",
+                        unit_cost=Decimal("85"),
                     )
                 )
                 db.add(
                     InventoryItem(
-                        warehouse_id=wh.id,
+                        warehouse_id=central_wh.id,
                         sku="STL-001",
+                        barcode="8901234567891",
                         name_ar="حديد تسليح",
                         name_en="Steel Rebar",
+                        item_type="raw_material",
+                        category="steel",
                         quantity=Decimal("50"),
                         min_stock_level=Decimal("80"),
                         unit="tons",
+                        unit_cost=Decimal("32000"),
+                    )
+                )
+                await db.flush()
+
+            cement = (
+                await db.execute(
+                    select(InventoryItem).where(
+                        InventoryItem.warehouse_id == central_wh.id,
+                        InventoryItem.sku == "CEM-001",
+                    )
+                )
+            ).scalar_one_or_none()
+            if cement and not (
+                await db.execute(
+                    select(StockMovement).where(StockMovement.item_id == cement.id).limit(1)
+                )
+            ).scalar_one_or_none():
+                await transfer_stock(
+                    db,
+                    company_id=company.id,
+                    item_id=cement.id,
+                    from_warehouse_id=central_wh.id,
+                    to_warehouse_id=site_wh.id,
+                    quantity=Decimal("120"),
+                    reference="TRF-DEMO-001",
+                    notes="Demo transfer to construction site",
+                    created_by_id=None,
+                )
+
+            if not (
+                await db.execute(
+                    select(HeavyEquipment).where(HeavyEquipment.company_id == company.id).limit(1)
+                )
+            ).scalar_one_or_none():
+                db.add(
+                    HeavyEquipment(
+                        company_id=company.id,
+                        asset_code="EQ-EXC-001",
+                        name_ar="حفار كاتربيلر",
+                        name_en="Caterpillar Excavator",
+                        equipment_type="excavator",
+                        serial_number="CAT-320-2024",
+                        status="available",
+                        current_warehouse_id=central_wh.id,
+                    )
+                )
+                db.add(
+                    HeavyEquipment(
+                        company_id=company.id,
+                        asset_code="EQ-CRN-001",
+                        name_ar="رافعة برجية",
+                        name_en="Tower Crane",
+                        equipment_type="crane",
+                        serial_number="TC-55-2023",
+                        status="in_use",
+                        current_warehouse_id=site_wh.id,
+                        project_id=project.id,
                     )
                 )
 
