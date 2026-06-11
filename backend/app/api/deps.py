@@ -40,6 +40,7 @@ async def get_current_user(
         company = company_result.scalar_one_or_none()
         if company:
             await PlatformBillingService.ensure_company_accessible(db, company)
+            await db.commit()
     return user
 
 

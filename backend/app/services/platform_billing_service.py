@@ -59,6 +59,13 @@ class PlatformBillingService:
         company.status = CompanyStatus.TRIAL
 
     @staticmethod
+    def trial_days_remaining(sub: CompanySubscription) -> int | None:
+        if sub.payment_status != SubscriptionPaymentStatus.TRIAL.value or not sub.end_date:
+            return None
+        remaining = (date.fromisoformat(sub.end_date) - date.today()).days
+        return max(0, remaining)
+
+    @staticmethod
     def sync_trial_expiry(sub: CompanySubscription, company: Company) -> bool:
         if sub.payment_status != SubscriptionPaymentStatus.TRIAL.value:
             return False
@@ -67,8 +74,28 @@ class PlatformBillingService:
         if date.today() > date.fromisoformat(sub.end_date):
             company.status = CompanyStatus.EXPIRED
             sub.is_active = False
+            sub.payment_status = SubscriptionPaymentStatus.EXPIRED.value
             return True
         return False
+
+    @staticmethod
+    async def expire_all_due_trials(db: AsyncSession) -> int:
+        """Close companies whose 14-day (or configured) trial has ended."""
+        from sqlalchemy.orm import selectinload
+
+        result = await db.execute(
+            select(Company)
+            .options(selectinload(Company.subscription))
+            .where(Company.is_deleted == False, Company.status == CompanyStatus.TRIAL)
+        )
+        expired_count = 0
+        for company in result.scalars().all():
+            sub = company.subscription
+            if sub and PlatformBillingService.sync_trial_expiry(sub, company):
+                expired_count += 1
+        if expired_count:
+            await db.flush()
+        return expired_count
 
     @staticmethod
     def _refresh_payment_status(sub: CompanySubscription, company: Company | None = None) -> None:
@@ -133,7 +160,7 @@ class PlatformBillingService:
         if company.status == CompanyStatus.EXPIRED:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Trial expired. Contact support@fratelanza.com to subscribe.",
+                detail="trial_expired",
             )
 
     @staticmethod

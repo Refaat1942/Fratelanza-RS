@@ -3,6 +3,7 @@ import { AnimatedPage } from '@/components/ui/AnimatedPage'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { QuickActions } from './QuickActions'
+import { TrialBanner } from './TrialBanner'
 
 export function DashboardLayout() {
   return (
@@ -10,6 +11,7 @@ export function DashboardLayout() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
+        <TrialBanner />
         <QuickActions />
         <main className="main-canvas">
           <AnimatedPage>

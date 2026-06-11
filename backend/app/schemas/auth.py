@@ -40,6 +40,9 @@ class UserResponse(BaseModel):
     next_billing_date: Optional[str] = None
     payment_status: Optional[str] = None
     amount_due: Optional[float] = None
+    company_status: Optional[str] = None
+    trial_end_date: Optional[str] = None
+    trial_days_remaining: Optional[int] = None
     branch_id: Optional[int] = None
     preferred_language: str = "ar"
     is_2fa_enabled: bool = False

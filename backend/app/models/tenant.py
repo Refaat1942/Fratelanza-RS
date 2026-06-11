@@ -32,6 +32,7 @@ class SubscriptionPaymentStatus(str, enum.Enum):
     PAID = "paid"
     PENDING = "pending"
     OVERDUE = "overdue"
+    EXPIRED = "expired"
 
 
 class Company(Base, TimestampMixin, SoftDeleteMixin):

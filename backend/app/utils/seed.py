@@ -1042,4 +1042,7 @@ async def seed_database() -> None:
                     db, company.id, demo_project.id
                 )
 
+        from app.services.platform_billing_service import PlatformBillingService
+
+        await PlatformBillingService.expire_all_due_trials(db)
         await db.commit()

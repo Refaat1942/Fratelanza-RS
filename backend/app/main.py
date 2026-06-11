@@ -9,7 +9,8 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.middleware.module_guard import ModuleGuardMiddleware
 from app.middleware.security import AuthRateLimitMiddleware, SecurityHeadersMiddleware
-from app.core.database import Base, engine
+from app.core.database import AsyncSessionLocal, Base, engine
+from app.services.platform_billing_service import PlatformBillingService
 from app.utils.seed import seed_database
 
 
@@ -18,6 +19,9 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await seed_database()
+    async with AsyncSessionLocal() as db:
+        await PlatformBillingService.expire_all_due_trials(db)
+        await db.commit()
     yield
     await engine.dispose()
 

@@ -44,8 +44,13 @@ def _user_with_company(
                 "next_billing_date": billing.next_billing_date,
                 "payment_status": billing.payment_status,
                 "amount_due": float(billing.amount_due) if billing.amount_due is not None else None,
+                "trial_end_date": billing.end_date,
             }
         )
+    if subscription:
+        update["trial_days_remaining"] = PlatformBillingService.trial_days_remaining(subscription)
+    if company:
+        update["company_status"] = company.status.value
     return resp.model_copy(update=update)
 
 

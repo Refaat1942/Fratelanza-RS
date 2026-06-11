@@ -139,6 +139,7 @@ export function CompanyBillingModal({ open, onClose, company, onSaved }: Company
           <label className="mb-1 block text-sm font-medium">{t('payment_status')}</label>
           <select className="input-field" value={form.payment_status} onChange={(e) => setForm({ ...form, payment_status: e.target.value })}>
             <option value="trial">{t('trial')}</option>
+            <option value="expired">{t('expired')}</option>
             <option value="paid">{t('paid')}</option>
             <option value="pending">{t('pending')}</option>
             <option value="overdue">{t('overdue')}</option>

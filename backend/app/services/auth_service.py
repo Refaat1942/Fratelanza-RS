@@ -64,6 +64,7 @@ class AuthService:
             company = company_result.scalar_one_or_none()
             if company:
                 await PlatformBillingService.ensure_company_accessible(db, company)
+                await db.commit()
         if user.is_2fa_enabled:
             if not data.totp_code or not user.totp_secret:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="2FA code required")
@@ -100,6 +101,7 @@ class AuthService:
             company = company_result.scalar_one_or_none()
             if company:
                 await PlatformBillingService.ensure_company_accessible(db, company)
+                await db.commit()
         access = create_access_token(
             user.id,
             {
@@ -113,6 +115,41 @@ class AuthService:
     @staticmethod
     def to_user_response(user: User) -> UserResponse:
         return UserResponse.model_validate(user)
+
+    @staticmethod
+    async def to_user_response_enriched(db: AsyncSession, user: User) -> UserResponse:
+        from app.services.company_service import CompanyService
+
+        if user.is_super_admin or not user.company_id:
+            return AuthService.to_user_response(user)
+        company = await CompanyService.get_company(db, user.company_id)
+        sub = company.subscription
+        if sub:
+            PlatformBillingService.sync_trial_expiry(sub, company)
+            await db.flush()
+        resp = UserResponse.model_validate(user)
+        billing = PlatformBillingService.subscription_to_summary(sub, company)
+        update: dict = {
+            "company_name_ar": company.name_ar,
+            "company_name_en": company.name_en,
+            "company_code": company.code,
+            "company_status": company.status.value,
+        }
+        if billing:
+            update.update(
+                {
+                    "plan_name_ar": billing.plan_name_ar,
+                    "plan_name_en": billing.plan_name_en,
+                    "payment_terms_days": billing.payment_terms_days,
+                    "next_billing_date": billing.next_billing_date,
+                    "payment_status": billing.payment_status,
+                    "amount_due": float(billing.amount_due) if billing.amount_due is not None else None,
+                    "trial_end_date": billing.end_date,
+                }
+            )
+        if sub:
+            update["trial_days_remaining"] = PlatformBillingService.trial_days_remaining(sub)
+        return resp.model_copy(update=update)
 
     @staticmethod
     async def create_user(

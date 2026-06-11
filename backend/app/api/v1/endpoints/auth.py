@@ -33,8 +33,11 @@ async def refresh_token(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: Annotated[User, Depends(get_current_user)]):
-    return AuthService.to_user_response(current_user)
+async def get_me(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    return await AuthService.to_user_response_enriched(db, current_user)
 
 
 @router.post("/change-password")

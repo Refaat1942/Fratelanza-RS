@@ -41,7 +41,8 @@ export function PortalLoginPage() {
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string } }; message?: string }
       const detail = ax.response?.data?.detail
-      setError(typeof detail === 'string' ? detail : t('invalid_credentials'))
+      const msg = typeof detail === 'string' ? detail : t('invalid_credentials')
+      setError(msg === 'trial_expired' ? t('trial_expired_login') : msg)
     } finally {
       setLoading(false)
     }

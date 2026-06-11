@@ -16,7 +16,7 @@ import type { CompanyWithBilling, Paginated } from '@/types'
 
 function PaymentStatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
   const cls: Record<string, string> = {
-    paid: 'status-paid', pending: 'status-pending', overdue: 'status-overdue', trial: 'status-pending',
+    paid: 'status-paid', pending: 'status-pending', overdue: 'status-overdue', trial: 'status-pending', expired: 'status-overdue',
   }
   return <span className={cls[status] || 'status-badge bg-slate-50 text-slate-600 ring-slate-500/20'}>{t(status)}</span>
 }
