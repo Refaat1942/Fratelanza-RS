@@ -18,6 +18,8 @@ import {
   TicketFormModal,
 } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
+import { InstallmentCalculator } from '@/components/collections/InstallmentCalculator'
+import { cn } from '@/lib/utils'
 import api from '@/lib/api'
 
 function EntityLink({ to, label }: { to: string; label: string }) {
@@ -137,12 +139,39 @@ export function ContractsPage() {
 export function CollectionsPage() {
   const { t } = useTranslation()
   const { formatEGP } = useFormatNumber()
+  const [tab, setTab] = useState<'installments' | 'calculator'>('installments')
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [installment, setInstallment] = useState<Record<string, unknown> | null>(null)
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('installments', '/collections/installments')
 
   return (
     <div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setTab('installments')}
+          className={cn(
+            'rounded-lg px-4 py-2 text-sm font-medium',
+            tab === 'installments' ? 'bg-primary-700 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200',
+          )}
+        >
+          {t('installments')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('calculator')}
+          className={cn(
+            'rounded-lg px-4 py-2 text-sm font-medium',
+            tab === 'calculator' ? 'bg-primary-700 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200',
+          )}
+        >
+          {t('installment_calculator')}
+        </button>
+      </div>
+
+      {tab === 'calculator' && <InstallmentCalculator />}
+
+      {tab === 'installments' && (<>
       <DataTable
         title={t('collections')}
         subtitle={t('collections_help')}
@@ -173,6 +202,7 @@ export function CollectionsPage() {
         )}
       />
       <PaymentFormModal open={paymentOpen} onClose={() => { setPaymentOpen(false); setInstallment(null); refetch() }} installment={installment} />
+      </>)}
     </div>
   )
 }

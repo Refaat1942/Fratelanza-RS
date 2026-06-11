@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timedelta
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -18,21 +17,10 @@ from app.models.sales import (
     ReservationStatus,
 )
 from app.schemas.project import ContractCreate
+from app.services.installment_calculator_service import build_schedule, money
 
 
 class ContractService:
-    @staticmethod
-    def _generate_installment_dates(start_date: str, count: int, plan_type: PaymentPlanType) -> list[str]:
-        base = datetime.strptime(start_date, "%Y-%m-%d")
-        delta_map = {
-            PaymentPlanType.MONTHLY: 30,
-            PaymentPlanType.QUARTERLY: 90,
-            PaymentPlanType.SEMI_ANNUAL: 180,
-            PaymentPlanType.ANNUAL: 365,
-            PaymentPlanType.CUSTOM: 30,
-        }
-        days = delta_map.get(plan_type, 30)
-        return [(base + timedelta(days=days * i)).strftime("%Y-%m-%d") for i in range(count)]
 
     @staticmethod
     async def create_contract(
@@ -72,8 +60,13 @@ class ContractService:
         db.add(contract)
         await db.flush()
 
-        remaining = data.total_price - down_payment
-        installment_amount = remaining / installments_count if installments_count else remaining
+        schedule = build_schedule(
+            total_price=data.total_price,
+            down_payment=down_payment,
+            plan_type=plan_type.value,
+            number_of_installments=installments_count,
+            start_date=data.contract_date,
+        )
         plan = PaymentPlan(
             contract_id=contract.id,
             plan_type=plan_type,
@@ -85,16 +78,17 @@ class ContractService:
         db.add(plan)
         await db.flush()
 
-        dates = ContractService._generate_installment_dates(data.contract_date, installments_count, plan_type)
-        for i, due_date in enumerate(dates, start=1):
+        for row in schedule["installments"]:
+            due = money(Decimal(str(row["due_amount"])))
             db.add(
                 Installment(
                     payment_plan_id=plan.id,
-                    installment_number=i,
-                    due_date=due_date,
-                    due_amount=installment_amount,
+                    installment_number=row["installment_number"],
+                    due_date=row["due_date"],
+                    due_amount=due,
                     paid_amount=Decimal("0"),
-                    remaining_balance=installment_amount,
+                    remaining_balance=due,
+                    is_manual=bool(row.get("is_manual", False)),
                     status=InstallmentStatus.UPCOMING,
                 )
             )

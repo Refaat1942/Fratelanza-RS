@@ -110,6 +110,7 @@ class Installment(Base, TimestampMixin):
     due_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     paid_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     remaining_balance: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    is_manual: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[InstallmentStatus] = mapped_column(
         Enum(InstallmentStatus), default=InstallmentStatus.UPCOMING
     )

@@ -238,6 +238,9 @@ async def seed_database() -> None:
                 "social_insurance NUMERIC(12,2), net_salary NUMERIC(12,2), status VARCHAR(50), "
                 "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
             ))
+            await db.execute(text(
+                "ALTER TABLE installments ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE"
+            ))
         except Exception:
             pass
         await ensure_default_subscription_plans(db)
