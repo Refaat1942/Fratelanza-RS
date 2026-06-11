@@ -78,6 +78,8 @@ class Contract(Base, TimestampMixin, SoftDeleteMixin):
     version: Mapped[int] = mapped_column(Integer, default=1)
     is_signed: Mapped[bool] = mapped_column(Boolean, default=False)
     signed_at: Mapped[Optional[str]] = mapped_column(String(30))
+    pdf_file_path: Mapped[Optional[str]] = mapped_column(String(500))
+    pdf_generated_at: Mapped[Optional[str]] = mapped_column(String(30))
     approved_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
 
     payment_plan: Mapped[Optional["PaymentPlan"]] = relationship(

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, CheckCircle, FileText, CreditCard, Sliders } from 'lucide-react'
+import { Plus, CheckCircle, FileText, CreditCard, Sliders, FileDown, PenLine } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { useListData } from '@/hooks/useListData'
@@ -97,12 +97,37 @@ export function ReservationsPage() {
 export function ContractsPage() {
   const { t } = useTranslation()
   const { formatEGP } = useFormatNumber()
+  const qc = useQueryClient()
   const modal = useCrudModal()
   const deleteContract = useDeleteEntity('/contracts', ['contracts'])
   const { items, isLoading, refetch } = useListData<Record<string, unknown>>('contracts', '/contracts')
 
+  const downloadPdf = async (contractId: number, contractNumber: string) => {
+    const { data } = await api.get(`/contracts/${contractId}/pdf`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${contractNumber}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const signContract = useMutation({
+    mutationFn: (contractId: number) => api.post(`/contracts/${contractId}/sign`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+      refetch()
+    },
+  })
+
   return (
     <div>
+      <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <p className="font-medium text-slate-900">{t('contract_pdf_title')}</p>
+        <p className="mt-1">{t('contract_pdf_help')}</p>
+      </div>
       <DataTable
         title={t('contracts')}
         loading={isLoading}
@@ -117,6 +142,7 @@ export function ContractsPage() {
           { key: 'unit_code', label: t('units'), render: (row) => <EntityLink to="/projects" label={String(row.unit_code ?? row.unit_id)} /> },
           { key: 'total_price', label: t('total_sales'), render: (row) => formatEGP(row.total_price as number) },
           { key: 'status', label: t('status') },
+          { key: 'is_signed', label: t('signed'), render: (row) => row.is_signed ? '✓' : '—' },
           { key: 'contract_date', label: 'Date' },
         ]}
         rowActions={(row) => (
@@ -124,9 +150,29 @@ export function ContractsPage() {
             onEdit={() => modal.openEdit(row)}
             onDelete={() => confirmDelete(t) && deleteContract.mutate(row.id as number, { onSuccess: () => { refetch() } })}
             extra={
-              <Button variant="ghost" className="!px-2 !py-1.5" title={t('collections')} onClick={() => { window.location.href = '/collections' }}>
-                <CreditCard className="h-4 w-4 text-primary-600" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  className="!px-2 !py-1.5"
+                  title={t('download_contract_pdf')}
+                  onClick={() => downloadPdf(row.id as number, String(row.contract_number))}
+                >
+                  <FileDown className="h-4 w-4 text-primary-600" />
+                </Button>
+                {!row.is_signed && (
+                  <Button
+                    variant="ghost"
+                    className="!px-2 !py-1.5"
+                    title={t('mark_signed')}
+                    onClick={() => window.confirm(t('confirm_mark_signed')) && signContract.mutate(row.id as number)}
+                  >
+                    <PenLine className="h-4 w-4 text-emerald-600" />
+                  </Button>
+                )}
+                <Button variant="ghost" className="!px-2 !py-1.5" title={t('collections')} onClick={() => { window.location.href = '/collections' }}>
+                  <CreditCard className="h-4 w-4 text-primary-600" />
+                </Button>
+              </>
             }
           />
         )}

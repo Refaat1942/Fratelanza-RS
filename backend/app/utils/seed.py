@@ -241,6 +241,12 @@ async def seed_database() -> None:
             await db.execute(text(
                 "ALTER TABLE installments ADD COLUMN IF NOT EXISTS is_manual BOOLEAN DEFAULT FALSE"
             ))
+            await db.execute(text(
+                "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS pdf_file_path VARCHAR(500)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS pdf_generated_at VARCHAR(30)"
+            ))
         except Exception:
             pass
         await ensure_default_subscription_plans(db)
