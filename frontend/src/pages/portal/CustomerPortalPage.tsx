@@ -145,12 +145,15 @@ export function CustomerPortalPage() {
     enabled: tab === 'progress',
   })
 
-  const tabs: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+  const allTabs: { key: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { key: 'overview', label: t('overview'), icon: LayoutDashboard },
     { key: 'installments', label: t('portal_installments'), icon: CalendarClock },
     { key: 'payments', label: t('portal_receipts'), icon: Receipt },
     { key: 'progress', label: t('portal_construction'), icon: HardHat },
-  ].filter((item) => visibleTabs.includes(item.key))
+  ]
+  const tabs = allTabs.filter((item): item is (typeof allTabs)[number] =>
+    visibleTabs.includes(item.key),
+  )
 
   if (!loaded || (dashLoading && tab === 'overview')) return <LoadingState />
 
