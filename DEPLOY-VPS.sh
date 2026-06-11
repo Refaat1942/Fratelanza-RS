@@ -2,8 +2,14 @@
 # =============================================================================
 # FRATELANZA REAL ESTATE — VPS PRODUCTION DEPLOY (run on server only)
 # =============================================================================
-# Do NOT run:  docker compose up -d --build   (that is DEV — breaks on port 5432)
-# Run this:    cd /opt/fratelanza && bash DEPLOY-VPS.sh
+#
+# VERIFIED WORKING COMMANDS (Hostinger VPS srv1443693):
+#
+#   cd /opt/fratelanza
+#   git fetch origin && git reset --hard origin/main
+#   bash DEPLOY-VPS.sh
+#
+# Do NOT run:  docker compose up -d --build   (DEV compose — port 5432 conflict)
 # =============================================================================
 set -euo pipefail
 

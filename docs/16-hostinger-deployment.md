@@ -50,22 +50,48 @@ In Hostinger Panel → VPS → **Security**:
 1. Add inbound rule: **TCP port 9000** (FRATELANZA)
 2. Keep existing rules for other projects unchanged
 
-## Step 3: Deploy on VPS
+## Step 3: Deploy on VPS (verified working)
 
 ```bash
 ssh root@187.124.15.14
+cd /opt/fratelanza
+git fetch origin && git reset --hard origin/main
+bash DEPLOY-VPS.sh
+```
 
-# One-command deploy
-curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-RS/cursor/hostinger-deploy-all-phases-8cb9/scripts/deploy-hostinger.sh | bash
+**First-time install:**
 
-# Or manual:
+```bash
+ssh root@187.124.15.14
 git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
 cd /opt/fratelanza
-git checkout cursor/hostinger-deploy-all-phases-8cb9
 cp .env.production.example .env
 nano .env   # Set strong passwords!
-chmod +x scripts/deploy-hostinger.sh
-./scripts/deploy-hostinger.sh
+bash DEPLOY-VPS.sh
+```
+
+**What `DEPLOY-VPS.sh` does:**
+
+1. Syncs code to `origin/main` (`git reset --hard`)
+2. Stops accidental dev compose (does **not** stop Hub)
+3. Rebuilds production `nginx` + `backend` (`docker-compose.prod.yml`)
+4. Starts stack on port **9000** only
+
+**Verify:**
+
+```bash
+curl -s http://127.0.0.1:9000/health
+# {"status":"healthy","git_commit":"...","release_features":[...]}
+
+docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep fratelanza_
+# fratelanza_nginx   0.0.0.0:9000->9000/tcp
+```
+
+**Do NOT use on VPS:**
+
+```bash
+docker compose up -d --build          # WRONG — dev file, port 5432 conflict
+docker compose down --remove-orphans  # WRONG — can affect Hub
 ```
 
 ## Step 4: Configure .env

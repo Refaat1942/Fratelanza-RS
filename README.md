@@ -42,24 +42,41 @@ docker compose up -d --build
 
 ## Production Deploy (Hostinger VPS — Port 9000)
 
+**Verified working commands** (does not stop Hub or other VPS projects):
+
 ```bash
 ssh root@187.124.15.14
+cd /opt/fratelanza
+git fetch origin && git reset --hard origin/main
+bash DEPLOY-VPS.sh
+```
+
+First time only:
+
+```bash
 git clone https://github.com/Refaat1942/Fratelanza-RS.git /opt/fratelanza
 cd /opt/fratelanza
-cp .env.production.example .env && nano .env
-chmod +x scripts/deploy-hostinger.sh
-./scripts/deploy-hostinger.sh
-
-# Connect domain (optional):
-./scripts/setup-domain-proxy.sh erp.yourdomain.com
+cp .env.production.example .env && nano .env   # set passwords
+bash DEPLOY-VPS.sh
 ```
+
+Verify after deploy:
+
+```bash
+curl -s http://127.0.0.1:9000/health    # must show git_commit
+docker ps | grep fratelanza_nginx       # must show port 9000
+```
+
+Then hard-refresh browser: `Ctrl+Shift+R` on https://rs.fratelanza.com
+
+> **Do not run** `docker compose up -d --build` on the VPS — that is the **dev** compose file and fails on port 5432. Production uses `docker-compose.prod.yml` via `DEPLOY-VPS.sh`.
 
 See [docs/16-hostinger-deployment.md](docs/16-hostinger-deployment.md) for full guide.
 
-### Manual Start
+### Local development only
 
 ```bash
-# With Docker
+# With Docker (local machine, not VPS)
 docker compose up -d --build
 
 # Or locally:
