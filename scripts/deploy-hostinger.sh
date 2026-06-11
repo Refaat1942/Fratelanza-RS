@@ -58,9 +58,10 @@ fi
 
 # Build and start
 export APP_PORT
-docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-docker compose -f docker-compose.prod.yml build --no-cache
-docker compose -f docker-compose.prod.yml up -d
+export GIT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+docker compose -p fratelanza -f docker-compose.prod.yml down 2>/dev/null || true
+docker compose -p fratelanza -f docker-compose.prod.yml build --no-cache nginx backend
+docker compose -p fratelanza -f docker-compose.prod.yml up -d
 
 echo "Waiting for services..."
 sleep 15

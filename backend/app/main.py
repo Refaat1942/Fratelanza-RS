@@ -66,4 +66,17 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "environment": settings.APP_ENV}
+    return {
+        "status": "healthy",
+        "environment": settings.APP_ENV,
+        "git_commit": os.getenv("GIT_COMMIT", "unknown"),
+        "release_features": [
+            "installment_calculator",
+            "customer_portal",
+            "portal_settings",
+            "dynamic_pricing",
+            "master_plan",
+            "ai_reporting",
+            "trial_14_days",
+        ],
+    }

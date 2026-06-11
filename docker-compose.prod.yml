@@ -55,6 +55,7 @@ services:
     environment:
       APP_ENV: production
       DEBUG: "false"
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
     volumes:
       - fratelanza_uploads:/app/uploads
       - fratelanza_backups:/app/backups
