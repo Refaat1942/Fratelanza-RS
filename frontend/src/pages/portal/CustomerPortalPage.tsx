@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,8 +18,16 @@ import { DataTable } from '@/components/ui/DataTable'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { usePortalFeaturesStore } from '@/stores/portalFeaturesStore'
 
 type Tab = 'overview' | 'installments' | 'payments' | 'progress'
+
+const TAB_FEATURES: Record<Tab, string> = {
+  overview: 'dashboard',
+  installments: 'installments',
+  payments: 'receipts',
+  progress: 'progress',
+}
 
 interface DashboardData {
   customer: {
@@ -95,8 +103,24 @@ interface ProgressUpdate {
 export function CustomerPortalPage() {
   const { t, i18n } = useTranslation()
   const { formatEGP, localizeDigits } = useFormatNumber()
+  const { isEnabled, loaded } = usePortalFeaturesStore()
   const [tab, setTab] = useState<Tab>('overview')
   const isAr = i18n.language === 'ar'
+
+  const visibleTabs = useMemo(
+    () =>
+      (['overview', 'installments', 'payments', 'progress'] as Tab[]).filter((key) =>
+        isEnabled(TAB_FEATURES[key]),
+      ),
+    [isEnabled],
+  )
+
+  useEffect(() => {
+    if (!loaded) return
+    if (visibleTabs.length > 0 && !visibleTabs.includes(tab)) {
+      setTab(visibleTabs[0])
+    }
+  }, [loaded, visibleTabs, tab])
 
   const { data: dashboard, isLoading: dashLoading } = useQuery({
     queryKey: ['portal-dashboard'],
@@ -126,9 +150,15 @@ export function CustomerPortalPage() {
     { key: 'installments', label: t('portal_installments'), icon: CalendarClock },
     { key: 'payments', label: t('portal_receipts'), icon: Receipt },
     { key: 'progress', label: t('portal_construction'), icon: HardHat },
-  ]
+  ].filter((item) => visibleTabs.includes(item.key))
 
-  if (dashLoading && tab === 'overview') return <LoadingState />
+  if (!loaded || (dashLoading && tab === 'overview')) return <LoadingState />
+
+  if (visibleTabs.length === 0) {
+    return (
+      <EmptyState title={t('portal_disabled')} description={t('portal_settings_help')} />
+    )
+  }
 
   const upcoming = installments.filter((i) =>
     ['upcoming', 'due', 'overdue', 'partial'].includes(i.status),
@@ -183,20 +213,25 @@ export function CustomerPortalPage() {
               icon={CalendarClock}
               color="bg-amber-50 text-amber-700"
             />
-            <StatCard
-              title={t('portal_upcoming_count')}
-              value={localizeDigits(String(dashboard.summary.upcoming_installments))}
-              icon={FileText}
-            />
-            <StatCard
-              title={t('contracts')}
-              value={localizeDigits(String(dashboard.summary.contracts_count))}
-              icon={LayoutDashboard}
-              color="bg-violet-50 text-violet-700"
-            />
+            {isEnabled('installments') && (
+              <StatCard
+                title={t('portal_upcoming_count')}
+                value={localizeDigits(String(dashboard.summary.upcoming_installments))}
+                icon={FileText}
+              />
+            )}
+            {isEnabled('contracts') && (
+              <StatCard
+                title={t('contracts')}
+                value={localizeDigits(String(dashboard.summary.contracts_count))}
+                icon={LayoutDashboard}
+                color="bg-violet-50 text-violet-700"
+              />
+            )}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
+            {isEnabled('contracts') && (
             <Card>
               <CardHeader title={t('contracts')} />
               {dashboard.contracts.length === 0 ? (
@@ -224,7 +259,9 @@ export function CustomerPortalPage() {
                 </ul>
               )}
             </Card>
+            )}
 
+            {isEnabled('phases') && (
             <Card>
               <CardHeader title={t('portal_construction_phases')} />
               {dashboard.construction_phases.length === 0 ? (
@@ -256,9 +293,10 @@ export function CustomerPortalPage() {
                 </ul>
               )}
             </Card>
+            )}
           </div>
 
-          {upcoming.length > 0 && (
+          {isEnabled('installments') && upcoming.length > 0 && (
             <div className="mt-6">
               <DataTable
                 title={t('portal_next_installments')}

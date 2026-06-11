@@ -32,6 +32,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   property: Home,
   customer_service: Headphones,
   users: Users,
+  customer_portal: Building2,
   reports: BarChart3,
   hr: Users,
   branding: Palette,

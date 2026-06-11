@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Building2, LogOut } from 'lucide-react'
@@ -5,14 +6,23 @@ import { AnimatedPage } from '@/components/ui/AnimatedPage'
 import { Button } from '@/components/ui/Button'
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher'
 import { useAuthStore } from '@/stores/authStore'
+import { usePortalFeaturesStore } from '@/stores/portalFeaturesStore'
 
 export function PortalLayout() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const fetchFeatures = usePortalFeaturesStore((s) => s.fetchFeatures)
+  const clearFeatures = usePortalFeaturesStore((s) => s.clear)
+
+  useEffect(() => {
+    fetchFeatures()
+    return () => clearFeatures()
+  }, [fetchFeatures, clearFeatures])
 
   const handleLogout = () => {
+    clearFeatures()
     logout()
     navigate('/portal/login')
   }

@@ -63,6 +63,13 @@ export function CompanyFeatureSettingsPage() {
         </div>
       )}
       <p className="mt-6 text-sm text-slate-600">{t('per_user_features_hint')}</p>
+      {enabledSet.has('customer_portal') && (
+        <p className="mt-4 text-sm text-slate-600">
+          <a href="/portal-settings" className="font-medium text-primary-700 hover:underline">
+            {t('portal_settings')} →
+          </a>
+        </p>
+      )}
     </div>
   )
 }

@@ -32,6 +32,7 @@ PLATFORM_MODULES: list[PlatformModule] = [
     {"key": "property", "name_en": "Property Management", "name_ar": "إدارة الممتلكات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/property"], "route": "/property", "core": False},
     {"key": "customer_service", "name_en": "Customer Service", "name_ar": "خدمة العملاء", "category_en": "Support", "category_ar": "الدعم", "api_prefixes": ["/tickets"], "route": "/customer-service", "core": False},
     {"key": "users", "name_en": "Team Users", "name_ar": "مستخدمي الفريق", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/users"], "route": "/users", "core": False},
+    {"key": "customer_portal", "name_en": "Buyer Portal", "name_ar": "بوابة المشتري", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/customer-portal"], "route": "/portal-settings", "core": False},
     {"key": "reports", "name_en": "Reports", "name_ar": "التقارير", "category_en": "Analytics", "category_ar": "التحليلات", "api_prefixes": ["/reports", "/exports"], "route": "/reports", "core": False},
     {"key": "branding", "name_en": "Branding", "name_ar": "الهوية البصرية", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/companies/me/branding", "/companies/me/logo"], "route": "/branding", "core": False},
     {"key": "ai_assistant", "name_en": "AI Assistant", "name_ar": "المساعد الذكي", "category_en": "Analytics", "category_ar": "التحليلات", "api_prefixes": ["/ai"], "route": "/ai-assistant", "core": False},
@@ -42,13 +43,13 @@ ALL_MODULE_KEYS: list[str] = [m["key"] for m in PLATFORM_MODULES]
 PLAN_MODULE_DEFAULTS: dict[str, list[str]] = {
     "basic": [
         "dashboard", "customers", "leads", "follow_ups", "projects",
-        "reservations", "contracts", "collections", "users", "branding", "reports",
+        "reservations", "contracts", "collections", "users", "customer_portal", "branding", "reports",
     ],
     "professional": [
         "dashboard", "customers", "leads", "follow_ups", "projects",
         "reservations", "contracts", "collections", "brokers", "finance", "hr",
         "construction", "procurement", "warehouse", "property", "customer_service",
-        "users", "reports", "branding",
+        "users", "customer_portal", "reports", "branding",
     ],
     "enterprise": ALL_MODULE_KEYS,
     "full": ALL_MODULE_KEYS,

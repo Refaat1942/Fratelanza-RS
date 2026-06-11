@@ -90,3 +90,7 @@ class BranchResponse(BranchCreate):
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+
+class PortalFeaturesUpdate(BaseModel):
+    enabled_features: list[str] = Field(min_length=1)

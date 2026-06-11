@@ -153,6 +153,9 @@ async def seed_database() -> None:
                 "ALTER TABLE companies ADD COLUMN IF NOT EXISTS enabled_modules TEXT"
             ))
             await db.execute(text(
+                "ALTER TABLE companies ADD COLUMN IF NOT EXISTS customer_portal_features TEXT"
+            ))
+            await db.execute(text(
                 "ALTER TABLE company_subscriptions ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly'"
             ))
             await db.execute(text(

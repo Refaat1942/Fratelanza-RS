@@ -56,6 +56,7 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
     theme: Mapped[str] = mapped_column(String(50), default="default")
     currency: Mapped[str] = mapped_column(String(10), default="EGP")
     enabled_modules: Mapped[Optional[str]] = mapped_column(Text)
+    customer_portal_features: Mapped[Optional[str]] = mapped_column(Text)
 
     branches: Mapped[list["Branch"]] = relationship(back_populates="company", lazy="selectin")
     subscription: Mapped[Optional["CompanySubscription"]] = relationship(
