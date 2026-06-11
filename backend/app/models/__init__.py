@@ -9,7 +9,12 @@ from app.models.sales import Reservation, Contract, PaymentPlan, Installment, Pa
 from app.models.brokers import Broker, BrokerCommission
 from app.models.finance import ChartOfAccount, JournalEntry, JournalLine, BankAccount
 from app.models.hr import Employee, Attendance, LeaveRequest, PayrollRun, Payslip
-from app.models.construction import ConstructionPhase, ConstructionTask, ConstructionMilestone
+from app.models.construction import (
+    ConstructionPhase,
+    ConstructionTask,
+    ConstructionMilestone,
+    ProjectProgressUpdate,
+)
 from app.models.procurement import Vendor, PurchaseOrder, RFQ
 from app.models.warehouse import Warehouse, InventoryItem, StockMovement
 from app.models.property import MaintenanceRequest, HandoverRecord
@@ -59,6 +64,7 @@ __all__ = [
     "ConstructionPhase",
     "ConstructionTask",
     "ConstructionMilestone",
+    "ProjectProgressUpdate",
     "Vendor",
     "PurchaseOrder",
     "RFQ",

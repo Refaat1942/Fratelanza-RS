@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Building2, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
@@ -34,7 +34,11 @@ export function LoginPage() {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
       })
       setAuth(tokens.access_token, tokens.refresh_token, user)
-      navigate(user.is_super_admin ? '/super-admin' : '/dashboard')
+      if (user.system_role === 'customer' && !user.is_super_admin) {
+        navigate('/portal')
+      } else {
+        navigate(user.is_super_admin ? '/super-admin' : '/dashboard')
+      }
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string }; status?: number }; message?: string }
       const detail = ax.response?.data?.detail
@@ -111,6 +115,12 @@ export function LoginPage() {
                 {loading ? t('signing_in') : t('login')}
               </Button>
             </form>
+            <p className="mt-6 text-center text-sm text-slate-500">
+              {t('portal_buyer_link')}{' '}
+              <Link to="/portal/login" className="font-medium text-primary-700 hover:underline">
+                {t('portal_sign_in')}
+              </Link>
+            </p>
           </div>
         </div>
       </div>

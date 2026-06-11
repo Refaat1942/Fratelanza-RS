@@ -5,6 +5,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { ModuleRoute } from '@/components/auth/ModuleRoute'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
+import { PortalLayout } from '@/components/layout/PortalLayout'
+import { PortalLoginPage } from '@/pages/portal/PortalLoginPage'
+import { CustomerPortalPage } from '@/pages/portal/CustomerPortalPage'
 import { SuperAdminDashboard } from '@/pages/super-admin/SuperAdminDashboard'
 import { CompaniesPage } from '@/pages/super-admin/CompaniesPage'
 import { SuperAdminUsersPage } from '@/pages/super-admin/SuperAdminUsersPage'
@@ -30,11 +33,24 @@ import {
   AuditLogsPage,
 } from '@/pages/company/ModulePages'
 
+function isCustomerUser(user: { system_role: string; is_super_admin: boolean }) {
+  return user.system_role === 'customer' && !user.is_super_admin
+}
+
 function ProtectedRoute({ children, superAdminOnly = false }: { children: React.ReactNode; superAdminOnly?: boolean }) {
   const user = useAuthStore((s) => s.user)
   const accessToken = useAuthStore((s) => s.accessToken)
   if (!accessToken || !user) return <Navigate to="/login" replace />
+  if (isCustomerUser(user)) return <Navigate to="/portal" replace />
   if (superAdminOnly && !user.is_super_admin) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
+
+function PortalRoute({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((s) => s.user)
+  const accessToken = useAuthStore((s) => s.accessToken)
+  if (!accessToken || !user) return <Navigate to="/portal/login" replace />
+  if (!isCustomerUser(user) && !user.is_super_admin) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -42,7 +58,39 @@ function AppRoutes() {
   const user = useAuthStore((s) => s.user)
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to={user.is_super_admin ? '/super-admin' : '/dashboard'} /> : <LoginPage />} />
+      <Route
+        path="/login"
+        element={
+          user ? (
+            <Navigate
+              to={
+                user.is_super_admin ? '/super-admin' : isCustomerUser(user) ? '/portal' : '/dashboard'
+              }
+              replace
+            />
+          ) : (
+            <LoginPage />
+          )
+        }
+      />
+      <Route
+        path="/portal/login"
+        element={
+          user ? (
+            <Navigate
+              to={
+                user.is_super_admin ? '/super-admin' : isCustomerUser(user) ? '/portal' : '/dashboard'
+              }
+              replace
+            />
+          ) : (
+            <PortalLoginPage />
+          )
+        }
+      />
+      <Route element={<PortalRoute><PortalLayout /></PortalRoute>}>
+        <Route path="/portal" element={<CustomerPortalPage />} />
+      </Route>
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/super-admin" element={<ProtectedRoute superAdminOnly><SuperAdminDashboard /></ProtectedRoute>} />
         <Route path="/super-admin/companies" element={<ProtectedRoute superAdminOnly><CompaniesPage /></ProtectedRoute>} />

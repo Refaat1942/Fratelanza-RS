@@ -52,3 +52,23 @@ class ConstructionMilestone(Base, TimestampMixin):
     completed_date: Mapped[Optional[str]] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(50), default="pending")
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+
+class ProjectProgressUpdate(Base, TimestampMixin):
+    """Photos/videos shared with unit buyers via the customer portal."""
+
+    __tablename__ = "project_progress_updates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
+    title_ar: Mapped[str] = mapped_column(String(255), nullable=False)
+    title_en: Mapped[str] = mapped_column(String(255), nullable=False)
+    description_ar: Mapped[Optional[str]] = mapped_column(Text)
+    description_en: Mapped[Optional[str]] = mapped_column(Text)
+    media_type: Mapped[str] = mapped_column(String(20), default="image")
+    media_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    thumbnail_url: Mapped[Optional[str]] = mapped_column(String(500))
+    progress_percent: Mapped[Optional[int]] = mapped_column(Integer)
+    published_at: Mapped[str] = mapped_column(String(20), nullable=False)
+    is_published: Mapped[bool] = mapped_column(default=True)

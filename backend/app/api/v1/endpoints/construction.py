@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_company_user
 from app.core.database import get_db
-from app.models.construction import ConstructionMilestone, ConstructionPhase, ConstructionTask
+from app.models.construction import (
+    ConstructionMilestone,
+    ConstructionPhase,
+    ConstructionTask,
+    ProjectProgressUpdate,
+)
 from app.models.real_estate import Project
 from app.models.users import User
 from app.services.dynamic_pricing_service import DynamicPricingService
@@ -163,3 +168,63 @@ async def list_milestones(
         }
         for m in milestones
     ]
+
+
+class ProgressUpdateCreate(BaseModel):
+    project_id: int
+    title_ar: str
+    title_en: str
+    description_ar: Optional[str] = None
+    description_en: Optional[str] = None
+    media_type: str = "image"
+    media_url: str
+    thumbnail_url: Optional[str] = None
+    progress_percent: Optional[int] = None
+    published_at: str
+
+
+@router.get("/progress-updates")
+async def list_progress_updates(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+    project_id: Optional[int] = None,
+):
+    query = (
+        select(ProjectProgressUpdate, Project)
+        .join(Project, ProjectProgressUpdate.project_id == Project.id)
+        .order_by(ProjectProgressUpdate.published_at.desc())
+    )
+    if not current_user.is_super_admin and current_user.company_id:
+        query = query.where(ProjectProgressUpdate.company_id == current_user.company_id)
+    if project_id:
+        query = query.where(ProjectProgressUpdate.project_id == project_id)
+    result = await db.execute(query)
+    return [
+        {
+            "id": u.id,
+            "project_id": u.project_id,
+            "project_name": p.name_en,
+            "title_en": u.title_en,
+            "title_ar": u.title_ar,
+            "media_type": u.media_type,
+            "media_url": u.media_url,
+            "progress_percent": u.progress_percent,
+            "published_at": u.published_at,
+            "is_published": u.is_published,
+        }
+        for u, p in result.all()
+    ]
+
+
+@router.post("/progress-updates")
+async def create_progress_update(
+    data: ProgressUpdateCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    update = ProjectProgressUpdate(company_id=current_user.company_id, **data.model_dump())
+    db.add(update)
+    await db.flush()
+    return {"id": update.id, "success": True}

@@ -251,6 +251,25 @@ async def seed_database() -> None:
                 "CREATE INDEX IF NOT EXISTS ix_pricing_rules_company_id ON pricing_rules (company_id)"
             ))
             await db.execute(text(
+                "CREATE TABLE IF NOT EXISTS project_progress_updates ("
+                "id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL REFERENCES companies(id), "
+                "project_id INTEGER NOT NULL REFERENCES projects(id), "
+                "title_ar VARCHAR(255) NOT NULL, title_en VARCHAR(255) NOT NULL, "
+                "description_ar TEXT, description_en TEXT, "
+                "media_type VARCHAR(20) DEFAULT 'image', media_url VARCHAR(500) NOT NULL, "
+                "thumbnail_url VARCHAR(500), progress_percent INTEGER, "
+                "published_at VARCHAR(20) NOT NULL, is_published BOOLEAN DEFAULT TRUE, "
+                "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
+            ))
+            await db.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_project_progress_updates_company_id "
+                "ON project_progress_updates (company_id)"
+            ))
+            await db.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_project_progress_updates_project_id "
+                "ON project_progress_updates (project_id)"
+            ))
+            await db.execute(text(
                 "CREATE TABLE IF NOT EXISTS payslips ("
                 "id SERIAL PRIMARY KEY, payroll_run_id INTEGER NOT NULL, employee_id INTEGER NOT NULL, "
                 "basic_salary NUMERIC(12,2), allowances NUMERIC(12,2), deductions NUMERIC(12,2), "
@@ -876,6 +895,80 @@ async def seed_database() -> None:
                     await db.flush()
                     db.add(JournalLine(journal_entry_id=entry.id, account_id=cash.id, debit=Decimal("250000"), credit=Decimal("0")))
                     db.add(JournalLine(journal_entry_id=entry.id, account_id=revenue.id, debit=Decimal("0"), credit=Decimal("250000")))
+
+            from app.models.construction import ProjectProgressUpdate
+
+            customer_user_email = "buyer@demo.fratelanza.com"
+            buyer = (
+                await db.execute(select(User).where(User.email == customer_user_email))
+            ).scalar_one_or_none()
+            if not buyer and customer:
+                buyer = User(
+                    username="demo_buyer",
+                    email=customer_user_email,
+                    password_hash=get_password_hash("Demo123456"),
+                    full_name_ar=customer.full_name_ar,
+                    full_name_en=customer.full_name_en,
+                    system_role=SystemRole.CUSTOMER,
+                    company_id=company.id,
+                    status=UserStatus.ACTIVE,
+                )
+                db.add(buyer)
+                await db.flush()
+                customer.user_id = buyer.id
+            elif buyer and customer and not customer.user_id:
+                customer.user_id = buyer.id
+                buyer.system_role = SystemRole.CUSTOMER
+                buyer.status = UserStatus.ACTIVE
+
+            if not (
+                await db.execute(
+                    select(ProjectProgressUpdate).where(ProjectProgressUpdate.company_id == company.id).limit(1)
+                )
+            ).scalar_one_or_none():
+                db.add(
+                    ProjectProgressUpdate(
+                        company_id=company.id,
+                        project_id=project.id,
+                        title_ar="اكتمال الهيكل الخرساني",
+                        title_en="Concrete Structure Progress",
+                        description_ar="صور من موقع البناء — مرحلة الهيكل الخرساني",
+                        description_en="Site photos — concrete structure phase",
+                        media_type="image",
+                        media_url="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800",
+                        progress_percent=65,
+                        published_at=date.today().isoformat(),
+                    )
+                )
+                db.add(
+                    ProjectProgressUpdate(
+                        company_id=company.id,
+                        project_id=project.id,
+                        title_ar="أعمال التشطيبات",
+                        title_en="Finishing Works Update",
+                        description_en="Interior finishing started on Building A",
+                        description_ar="بدء أعمال التشطيب الداخلي للمبنى أ",
+                        media_type="image",
+                        media_url="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800",
+                        progress_percent=20,
+                        published_at=(date.today() - timedelta(days=14)).isoformat(),
+                    )
+                )
+                db.add(
+                    ProjectProgressUpdate(
+                        company_id=company.id,
+                        project_id=project.id,
+                        title_ar="جولة في الموقع",
+                        title_en="Site Walkthrough Video",
+                        description_en="Monthly construction progress video",
+                        description_ar="فيديو شهري لتقدم البناء",
+                        media_type="video",
+                        media_url="https://www.w3schools.com/html/mov_bbb.mp4",
+                        thumbnail_url="https://images.unsplash.com/photo-1486406146927-c627a92ad1ab?w=800",
+                        progress_percent=50,
+                        published_at=(date.today() - timedelta(days=7)).isoformat(),
+                    )
+                )
 
         if company:
             company.currency = "EGP"
