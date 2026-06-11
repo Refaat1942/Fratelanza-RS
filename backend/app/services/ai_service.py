@@ -33,8 +33,26 @@ class AIService:
     @staticmethod
     def chat_response(message: str, context: Optional[dict] = None) -> str:
         context = context or {}
-        if "مبيعات" in message or "sales" in message.lower():
-            return "يمكنك مراجعة لوحة المبيعات للحصول على تفاصيل الأداء الشهري."
-        if "تحصيل" in message or "collection" in message.lower():
-            return "راجع لوحة التحصيلات لمعرفة الأقساط المستحقة والمتأخرة."
-        return "مرحباً! أنا مساعد فراتيلانزا. كيف يمكنني مساعدتك اليوم؟"
+        sales = context.get("total_sales", 0)
+        collections = context.get("total_collections", 0)
+        available = context.get("available_units", 0)
+        leads = context.get("total_leads", 0)
+        msg = message.lower()
+        if "مبيعات" in message or "sales" in msg:
+            return (
+                f"إجمالي المبيعات المسجلة: {float(sales):,.0f} جنيه. "
+                f"الوحدات المتاحة: {available}. افتح التقارير → سجل المبيعات للتفاصيل."
+            )
+        if "تحصيل" in message or "collection" in msg:
+            return (
+                f"إجمالي التحصيلات: {float(collections):,.0f} جنيه. "
+                "راجع تقرير الأقساط المتأخرة لمتابعة المخاطر."
+            )
+        if "lead" in msg or "عميل" in message or "محتمل" in message:
+            return f"لديك {leads} عميلاً محتملاً في المسار. استخدم تقرير Leads Pipeline للتحليل."
+        if "اتجاه" in message or "trend" in msg or "سوق" in message:
+            return "اطلب «اتجاهات السوق» من مساعد التقارير الذكي لملخص آلي من بيانات CRM."
+        return (
+            "مرحباً! أنا مساعد التقارير في فراتيلانزا. اسأل عن المبيعات، التحصيلات، أو العملاء المحتملين — "
+            f"أو استخدم ملخص الأداء (مبيعات: {float(sales):,.0f} جنيه، تحصيلات: {float(collections):,.0f} جنيه)."
+        )

@@ -530,4 +530,18 @@
   "master_plan_select_project_help": "اختر مشروعاً لعرض المخطط العام.",
   "master_plan_no_units": "لا توجد وحدات في هذا المشروع",
   "master_plan_no_units_help": "أضف مبانٍ وأدواراً ووحدات لملء المخطط."
+=======
+  "ai_reporting_title": "مساعد التقارير الذكي",
+  "ai_reporting_subtitle": "تحليل جداول المبيعات وإنشاء ملخصات أداء سريعة عبر OpenAI أو Gemini.",
+  "ai_performance_summary": "ملخص الأداء",
+  "ai_market_trends": "اتجاهات السوق",
+  "ai_analyze_report": "تحليل {{name}}",
+  "ai_report_analysis": "تحليل التقرير",
+  "ai_provider": "محرك الذكاء الاصطناعي",
+  "ai_provider_local": "محلي (قواعد)",
+  "ai_assistant_subtitle": "اسأل عن المبيعات والتحصيلات والعملاء المحتملين — الإجابات من بيانات شركتك الحية.",
+  "ai_assistant_empty": "اسأل عن أداء المبيعات أو مخاطر التحصيل أو اتجاهات السوق. جرّب «ما إجمالي المبيعات؟» أو اضغط ملخص الأداء.",
+  "ai_input_placeholder": "اسأل عن المبيعات أو التحصيلات أو الـ leads…",
+  "ai_error": "تعذر الاتصال بخدمة الذكاء الاصطناعي. حاول مرة أخرى."
+>>>>>>> cursor/ai-reporting-assistant-ea33
 }

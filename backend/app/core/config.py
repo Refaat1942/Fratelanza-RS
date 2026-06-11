@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     SUPER_ADMIN_EMAIL: str = "admin@fratelanza.com"
     SUPER_ADMIN_PASSWORD: str = "Admin@123456"
 
+    # AI / LLM (OpenAI or Google Gemini)
+    AI_PROVIDER: str = "auto"  # auto | openai | gemini | local
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    AI_MAX_TABLE_ROWS: int = 20
+
     @property
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
