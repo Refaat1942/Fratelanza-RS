@@ -229,6 +229,15 @@ async def seed_database() -> None:
                 "ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS hosting_fee_monthly NUMERIC(12,2) DEFAULT 0"
             ))
             await db.execute(text(
+                "ALTER TABLE construction_tasks ADD COLUMN IF NOT EXISTS planned_start VARCHAR(20)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE construction_tasks ADD COLUMN IF NOT EXISTS planned_end VARCHAR(20)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE construction_tasks ADD COLUMN IF NOT EXISTS depends_on_task_id INTEGER"
+            ))
+            await db.execute(text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username) WHERE username IS NOT NULL"
             ))
             await db.execute(text(
@@ -561,7 +570,7 @@ async def seed_database() -> None:
             from app.models.brokers import Broker
             from app.models.warehouse import Warehouse, InventoryItem
             from app.models.procurement import Vendor
-            from app.models.construction import ConstructionPhase
+            from app.models.construction import ConstructionPhase, ConstructionTask
             from app.models.sales import Reservation, ReservationStatus
 
             if not (await db.execute(select(Broker).where(Broker.company_id == company.id).limit(1))).scalar_one_or_none():
@@ -624,29 +633,83 @@ async def seed_database() -> None:
                     )
                 )
 
-            if not (await db.execute(select(ConstructionPhase).where(ConstructionPhase.project_id == project.id).limit(1))).scalar_one_or_none():
+            phase1 = (await db.execute(
+                select(ConstructionPhase).where(
+                    ConstructionPhase.project_id == project.id,
+                    ConstructionPhase.name_en == "Concrete Structure",
+                )
+            )).scalar_one_or_none()
+            if not phase1:
+                phase1 = ConstructionPhase(
+                    project_id=project.id,
+                    name_ar="الهيكل الخرساني",
+                    name_en="Concrete Structure",
+                    planned_start="2025-01-01",
+                    planned_end="2025-06-30",
+                    progress_percent=65,
+                    planned_cost=Decimal("5000000"),
+                    actual_cost=Decimal("3200000"),
+                )
+                db.add(phase1)
+                await db.flush()
+
+            phase2 = (await db.execute(
+                select(ConstructionPhase).where(
+                    ConstructionPhase.project_id == project.id,
+                    ConstructionPhase.name_en == "Finishing",
+                )
+            )).scalar_one_or_none()
+            if not phase2:
+                phase2 = ConstructionPhase(
+                    project_id=project.id,
+                    name_ar="التشطيبات",
+                    name_en="Finishing",
+                    planned_start="2025-07-01",
+                    planned_end="2025-12-31",
+                    progress_percent=20,
+                    planned_cost=Decimal("3000000"),
+                    actual_cost=Decimal("400000"),
+                )
+                db.add(phase2)
+                await db.flush()
+
+            if phase1 and not (await db.execute(select(ConstructionTask).where(ConstructionTask.phase_id == phase1.id).limit(1))).scalar_one_or_none():
+                t1 = ConstructionTask(
+                    phase_id=phase1.id,
+                    name_ar="صب الأساسات",
+                    name_en="Foundation Pouring",
+                    contractor="Modern Build Co.",
+                    planned_start="2025-01-15",
+                    planned_end="2025-02-28",
+                    progress_percent=100,
+                    status="completed",
+                )
+                db.add(t1)
+                await db.flush()
                 db.add(
-                    ConstructionPhase(
-                        project_id=project.id,
-                        name_ar="الهيكل الخرساني",
-                        name_en="Concrete Structure",
-                        planned_start="2025-01-01",
-                        planned_end="2025-06-30",
-                        progress_percent=65,
-                        planned_cost=Decimal("5000000"),
-                        actual_cost=Decimal("3200000"),
+                    ConstructionTask(
+                        phase_id=phase1.id,
+                        name_ar="الهيكل العلوي",
+                        name_en="Superstructure",
+                        contractor="Modern Build Co.",
+                        planned_start="2025-03-01",
+                        planned_end="2025-06-15",
+                        depends_on_task_id=t1.id,
+                        progress_percent=55,
+                        status="in_progress",
                     )
                 )
+            if phase2 and not (await db.execute(select(ConstructionTask).where(ConstructionTask.phase_id == phase2.id).limit(1))).scalar_one_or_none():
                 db.add(
-                    ConstructionPhase(
-                        project_id=project.id,
-                        name_ar="التشطيبات",
-                        name_en="Finishing",
-                        planned_start="2025-07-01",
-                        planned_end="2025-12-31",
-                        progress_percent=20,
-                        planned_cost=Decimal("3000000"),
-                        actual_cost=Decimal("400000"),
+                    ConstructionTask(
+                        phase_id=phase2.id,
+                        name_ar="أعمال الدهانات",
+                        name_en="Painting Works",
+                        contractor="Elite Finishing",
+                        planned_start="2025-08-01",
+                        planned_end="2025-10-31",
+                        progress_percent=15,
+                        status="in_progress",
                     )
                 )
 

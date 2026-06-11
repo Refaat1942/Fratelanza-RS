@@ -25,10 +25,11 @@ import { WarehousePage } from '@/pages/company/WarehousePage'
 import { PropertyPage } from '@/pages/company/PropertyPage'
 import {
   ReservationsPage, ContractsPage, CollectionsPage,
-  BrokersPage, ConstructionPage, ProcurementPage,
+  BrokersPage, ProcurementPage,
   CustomerServicePage, CompanyUsersPage,
   AuditLogsPage,
 } from '@/pages/company/ModulePages'
+import { ConstructionPage } from '@/pages/company/ConstructionPage'
 
 function ProtectedRoute({ children, superAdminOnly = false }: { children: React.ReactNode; superAdminOnly?: boolean }) {
   const user = useAuthStore((s) => s.user)

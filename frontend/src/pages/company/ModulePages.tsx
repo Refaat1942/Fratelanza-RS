@@ -14,7 +14,7 @@ import { UserFeaturesModal } from '@/components/forms/UserFeaturesModal'
 import {
   ReservationFormModal, ContractFormModal,
   PaymentFormModal, BrokerFormModal,
-  VendorFormModal, ConstructionPhaseFormModal,
+  VendorFormModal,
   TicketFormModal,
 } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
@@ -208,42 +208,6 @@ export function BrokersPage() {
         )}
       />
       <BrokerFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
-    </div>
-  )
-}
-
-export function ConstructionPage() {
-  const { t } = useTranslation()
-  const { formatEGP } = useFormatNumber()
-  const modal = useCrudModal()
-  const deletePhase = useDeleteEntity('/construction/phases', ['phases'])
-  const { items, isLoading, refetch } = useListData<Record<string, unknown>>('phases', '/construction/phases')
-
-  return (
-    <div>
-      <DataTable
-        title={t('construction')}
-        loading={isLoading}
-        exportFilename="construction"
-        data={items}
-        actions={<Button onClick={modal.openCreate}><Plus className="me-2 h-4 w-4" />{t('add_phase')}</Button>}
-        emptyActionLabel={t('add_phase')}
-        onEmptyAction={modal.openCreate}
-        columns={[
-          { key: 'project_name', label: t('projects'), render: (row) => <EntityLink to="/projects" label={String(row.project_name)} /> },
-          { key: 'name_ar', label: t('construction') },
-          { key: 'progress_percent', label: 'Progress %' },
-          { key: 'planned_cost', label: 'Planned', render: (row) => formatEGP(row.planned_cost as number) },
-          { key: 'actual_cost', label: 'Actual', render: (row) => formatEGP(row.actual_cost as number) },
-        ]}
-        rowActions={(row) => (
-          <RowActions
-            onEdit={() => modal.openEdit(row)}
-            onDelete={() => confirmDelete(t) && deletePhase.mutate(row.id as number, { onSuccess: () => { refetch() } })}
-          />
-        )}
-      />
-      <ConstructionPhaseFormModal open={modal.open} onClose={() => { modal.close(); refetch() }} editRow={modal.editRow} />
     </div>
   )
 }
