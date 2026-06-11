@@ -24,7 +24,7 @@ PLATFORM_MODULES: list[PlatformModule] = [
     {"key": "contracts", "name_en": "Contracts", "name_ar": "العقود", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/contracts"], "route": "/contracts", "core": False},
     {"key": "collections", "name_en": "Collections", "name_ar": "التحصيل", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/collections"], "route": "/collections", "core": False},
     {"key": "brokers", "name_en": "Brokers", "name_ar": "الوسطاء", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/brokers", "/broker-portal"], "route": "/brokers", "core": False},
-    {"key": "finance", "name_en": "Finance", "name_ar": "المالية", "category_en": "Finance", "category_ar": "المالية", "api_prefixes": ["/finance"], "route": "/finance", "core": False},
+    {"key": "finance", "name_en": "Finance", "name_ar": "المالية", "category_en": "Finance", "category_ar": "المالية", "api_prefixes": ["/finance", "/treasury"], "route": "/finance", "core": False},
     {"key": "hr", "name_en": "HR & Payroll", "name_ar": "الموارد البشرية", "category_en": "HR", "category_ar": "الموارد البشرية", "api_prefixes": ["/hr"], "route": "/hr", "core": False},
     {"key": "construction", "name_en": "Construction", "name_ar": "المقاولات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/construction"], "route": "/construction", "core": False},
     {"key": "procurement", "name_en": "Procurement", "name_ar": "المشتريات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/procurement"], "route": "/procurement", "core": False},
