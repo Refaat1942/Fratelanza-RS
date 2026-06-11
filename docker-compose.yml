@@ -1,5 +1,9 @@
 version: "3.9"
 
+# ⚠️  LOCAL DEVELOPMENT ONLY — do NOT use on Hostinger VPS (port 5432 conflict).
+# VPS production:  docker compose -p fratelanza -f docker-compose.prod.yml up -d --build
+# Or run:         bash DEPLOY-VPS.sh
+
 services:
   postgres:
     image: postgres:16-alpine
