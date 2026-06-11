@@ -11,6 +11,7 @@ from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate, UnitCreate, UnitResponse
 from app.services.dynamic_pricing_service import DynamicPricingService
+from app.services.master_plan_service import MasterPlanService
 from app.services.unit_pricing_helpers import unit_to_response
 
 router = APIRouter()
@@ -53,6 +54,27 @@ async def create_project(
     db.add(project)
     await db.flush()
     return ProjectResponse.model_validate(project)
+
+
+@router.get("/{project_id}/master-plan")
+async def get_master_plan(
+    project_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    project = (
+        await db.execute(
+            select(Project).where(Project.id == project_id, Project.is_deleted == False)
+        )
+    ).scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    if not current_user.is_super_admin and project.company_id != current_user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    plan = await MasterPlanService.get_master_plan(db, project_id)
+    if not plan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return plan
 
 
 @router.get("/{project_id}/units", response_model=PaginatedResponse[UnitResponse])

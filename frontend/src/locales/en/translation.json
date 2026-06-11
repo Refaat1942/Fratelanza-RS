@@ -512,5 +512,22 @@
   "pricing_threshold": "Threshold (%)",
   "pricing_adjustment_pct": "Price increase (%)",
   "pricing_select_project": "Select a project",
-  "pricing_select_project_help": "Add a project first to configure dynamic pricing rules."
+  "pricing_select_project_help": "Add a project first to configure dynamic pricing rules.",
+  "master_plan": "Master Plan",
+  "master_plan_help": "Interactive floor grid and site map. Unit colors reflect live status — click a unit for details.",
+  "master_plan_grid_view": "Floor grid",
+  "master_plan_map_view": "Site map",
+  "master_plan_refresh": "Refresh",
+  "master_plan_legend": "Status legend",
+  "master_plan_floor": "Floor",
+  "master_plan_available": "Available",
+  "master_plan_reserved": "Reserved",
+  "master_plan_sold": "Sold",
+  "master_plan_contracted": "Contracted",
+  "master_plan_delivered": "Delivered",
+  "master_plan_blocked": "Blocked",
+  "master_plan_select_project": "Select a project",
+  "master_plan_select_project_help": "Choose a project to view its master plan.",
+  "master_plan_no_units": "No units in this project",
+  "master_plan_no_units_help": "Add buildings, floors, and units to populate the master plan."
 }

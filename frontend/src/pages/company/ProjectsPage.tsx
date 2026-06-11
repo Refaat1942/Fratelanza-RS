@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, LayoutGrid, List, Plus, Home, TrendingUp } from 'lucide-react'
+import { Building2, LayoutGrid, List, Plus, Home, Map, TrendingUp } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -11,12 +11,13 @@ import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
 import { DynamicPricingPanel } from '@/components/real-estate/DynamicPricingPanel'
+import { MasterPlanDashboard } from '@/components/real-estate/MasterPlanDashboard'
 import { ProjectFormModal, UnitFormModal, ReservationFormModal } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type Tab = 'overview' | 'board' | 'projects' | 'units' | 'pricing'
+type Tab = 'overview' | 'masterplan' | 'board' | 'projects' | 'units' | 'pricing'
 
 function useCrudModal() {
   const [open, setOpen] = useState(false)
@@ -31,9 +32,10 @@ function useCrudModal() {
 }
 
 export function ProjectsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { formatInteger } = useFormatNumber()
   const [tab, setTab] = useState<Tab>('overview')
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const modal = useCrudModal()
   const [unitOpen, setUnitOpen] = useState(false)
   const [reserveUnitId, setReserveUnitId] = useState<number | undefined>()
@@ -60,10 +62,17 @@ export function ProjectsPage() {
     (units as Record<string, unknown>[]).map((u) => ({ ...u, status })),
   )
 
-  const defaultProject = projects[0] as Record<string, unknown> | undefined
+  const projectOptions = projects.map((p) => ({
+    id: p.id as number,
+    name_en: p.name_en as string | undefined,
+    name_ar: p.name_ar as string | undefined,
+  }))
+  const activeProjectId = selectedProjectId ?? (projectOptions[0]?.id ?? null)
+  const activeProject = projects.find((p) => p.id === activeProjectId)
 
   const tabs: { key: Tab; label: string; icon: typeof Building2 }[] = [
     { key: 'overview', label: t('overview'), icon: Building2 },
+    { key: 'masterplan', label: t('master_plan'), icon: Map },
     { key: 'board', label: t('units_board'), icon: LayoutGrid },
     { key: 'projects', label: t('projects_list'), icon: List },
     { key: 'units', label: t('units'), icon: Home },
@@ -117,6 +126,15 @@ export function ProjectsPage() {
         </>
       )}
 
+      {tab === 'masterplan' && (
+        <MasterPlanDashboard
+          projectId={activeProjectId}
+          projects={projectOptions}
+          onProjectChange={setSelectedProjectId}
+          onReserveUnit={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }}
+        />
+      )}
+
       {tab === 'board' && (
         <UnitsBoard onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }} />
       )}
@@ -149,10 +167,10 @@ export function ProjectsPage() {
 
       {tab === 'pricing' && (
         <DynamicPricingPanel
-          projectId={(defaultProject?.id as number) ?? null}
+          projectId={activeProjectId}
           projectName={
-            defaultProject
-              ? String(defaultProject.name_en ?? defaultProject.name_ar ?? '')
+            activeProject
+              ? String(i18n.language === 'ar' ? activeProject.name_ar : activeProject.name_en ?? activeProject.name_ar ?? '')
               : undefined
           }
         />
