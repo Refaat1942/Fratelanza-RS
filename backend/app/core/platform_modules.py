@@ -29,6 +29,7 @@ PLATFORM_MODULES: list[PlatformModule] = [
     {"key": "construction", "name_en": "Construction", "name_ar": "المقاولات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/construction"], "route": "/construction", "core": False},
     {"key": "procurement", "name_en": "Procurement", "name_ar": "المشتريات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/procurement"], "route": "/procurement", "core": False},
     {"key": "warehouse", "name_en": "Warehouse", "name_ar": "المستودع", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/warehouse"], "route": "/warehouse", "core": False},
+    {"key": "documents", "name_en": "Documents", "name_ar": "إدارة المستندات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/documents"], "route": "/documents", "core": False},
     {"key": "property", "name_en": "Property Management", "name_ar": "إدارة الممتلكات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/property"], "route": "/property", "core": False},
     {"key": "customer_service", "name_en": "Customer Service", "name_ar": "خدمة العملاء", "category_en": "Support", "category_ar": "الدعم", "api_prefixes": ["/tickets"], "route": "/customer-service", "core": False},
     {"key": "users", "name_en": "Team Users", "name_ar": "مستخدمي الفريق", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/users"], "route": "/users", "core": False},
@@ -47,7 +48,7 @@ PLAN_MODULE_DEFAULTS: dict[str, list[str]] = {
     "professional": [
         "dashboard", "customers", "leads", "follow_ups", "projects",
         "reservations", "contracts", "collections", "brokers", "finance", "hr",
-        "construction", "procurement", "warehouse", "property", "customer_service",
+        "construction", "procurement", "warehouse", "documents", "property", "customer_service",
         "users", "reports", "branding",
     ],
     "enterprise": ALL_MODULE_KEYS,

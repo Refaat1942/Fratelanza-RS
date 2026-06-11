@@ -22,6 +22,7 @@ import { BrandingPage } from '@/pages/company/BrandingPage'
 import { CompanyFeatureSettingsPage } from '@/pages/company/CompanyFeatureSettingsPage'
 import { ProjectsPage } from '@/pages/company/ProjectsPage'
 import { WarehousePage } from '@/pages/company/WarehousePage'
+import { DocumentsPage } from '@/pages/company/DocumentsPage'
 import { PropertyPage } from '@/pages/company/PropertyPage'
 import {
   ReservationsPage, ContractsPage, CollectionsPage,
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/construction" element={<ModuleRoute moduleKey="construction"><ConstructionPage /></ModuleRoute>} />
         <Route path="/procurement" element={<ModuleRoute moduleKey="procurement"><ProcurementPage /></ModuleRoute>} />
         <Route path="/warehouse" element={<ModuleRoute moduleKey="warehouse"><WarehousePage /></ModuleRoute>} />
+        <Route path="/documents" element={<ModuleRoute moduleKey="documents"><DocumentsPage /></ModuleRoute>} />
         <Route path="/property" element={<ModuleRoute moduleKey="property"><PropertyPage /></ModuleRoute>} />
         <Route path="/customer-service" element={<ModuleRoute moduleKey="customer_service"><CustomerServicePage /></ModuleRoute>} />
         <Route path="/users" element={<ModuleRoute moduleKey="users"><CompanyUsersPage /></ModuleRoute>} />
