@@ -14,6 +14,7 @@ from app.models.customers import ActivityType, Customer, CustomerActivity
 from app.models.users import User
 from app.schemas.customer import CustomerCreate
 from app.services.ai_service import AIService
+from app.services.lead_assignment_service import LeadAssignmentService
 
 CUSTOMER_FIELDS = [
     "full_name_ar",
@@ -508,6 +509,9 @@ class CustomerImportService:
                     source = LeadSource(data.get("source") or default_source)
                 except ValueError:
                     source = LeadSource.WALK_IN
+                assignee_id = await LeadAssignmentService.resolve_assignee(
+                    db, company_id, None, fallback_user_id=user.id
+                )
                 lead = Lead(
                     company_id=company_id,
                     customer_id=customer.id,
@@ -516,7 +520,7 @@ class CustomerImportService:
                     email=customer.email,
                     source=source,
                     stage=LeadStage.NEW,
-                    assigned_to_id=user.id,
+                    assigned_to_id=assignee_id,
                     notes=customer.notes,
                 )
                 score, ai_score, qual = AIService.score_lead(lead)

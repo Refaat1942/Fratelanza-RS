@@ -170,6 +170,11 @@ async def onboard_client(
             source = LeadSource(data.source)
         except ValueError:
             source = LeadSource.WALK_IN
+        from app.services.lead_assignment_service import LeadAssignmentService
+
+        assignee_id = await LeadAssignmentService.resolve_assignee(
+            db, current_user.company_id, None, fallback_user_id=current_user.id
+        )
         lead = Lead(
             company_id=current_user.company_id,
             customer_id=customer.id,
@@ -178,7 +183,7 @@ async def onboard_client(
             email=data.email,
             source=source,
             stage=LeadStage.NEW,
-            assigned_to_id=current_user.id,
+            assigned_to_id=assignee_id,
             notes=data.notes,
         )
         score, ai_score, qual = AIService.score_lead(lead)

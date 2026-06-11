@@ -370,6 +370,35 @@ async def seed_database() -> None:
             if company and not demo_admin.company_id:
                 demo_admin.company_id = company.id
 
+        # Demo sales agents for lead auto-assignment
+        demo_agents: list[User] = []
+        if company and company.id:
+            for username, email, name_ar, name_en in [
+                ("sales_agent_1", "agent1@demo.fratelanza.com", "محمود حسن", "Mahmoud Hassan"),
+                ("sales_agent_2", "agent2@demo.fratelanza.com", "نورا أحمد", "Noura Ahmed"),
+            ]:
+                agent_result = await db.execute(select(User).where(User.email == email))
+                agent = agent_result.scalar_one_or_none()
+                if not agent:
+                    agent = User(
+                        username=username,
+                        email=email,
+                        password_hash=get_password_hash(demo_password),
+                        full_name_ar=name_ar,
+                        full_name_en=name_en,
+                        system_role=SystemRole.SALES_AGENT,
+                        company_id=company.id,
+                        status=UserStatus.ACTIVE,
+                    )
+                    db.add(agent)
+                else:
+                    agent.status = UserStatus.ACTIVE
+                    agent.is_deleted = False
+                    agent.company_id = company.id
+                    agent.system_role = SystemRole.SALES_AGENT
+                demo_agents.append(agent)
+            await db.flush()
+
         # Demo data (only if no project yet)
         if company and company.id:
             from app.models.customers import Customer
@@ -443,6 +472,7 @@ async def seed_database() -> None:
                         source=LeadSource.FACEBOOK,
                         stage=LeadStage.INTERESTED,
                         project_id=project.id,
+                        assigned_to_id=demo_agents[0].id if demo_agents else None,
                         score=45,
                     )
                 )
