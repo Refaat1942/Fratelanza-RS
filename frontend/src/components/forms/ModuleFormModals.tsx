@@ -579,7 +579,7 @@ export function VendorFormModal({ open, onClose, editRow }: ModalProps) {
   )
 }
 
-export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProps) {
+export function ConstructionPhaseFormModal({ open, onClose, editRow, defaultProjectId }: ModalProps & { defaultProjectId?: string }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const { data: projects = [] } = useProjectsLookup()
@@ -596,10 +596,13 @@ export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProp
         planned_end: String(editRow.planned_end ?? ''),
         progress_percent: String(editRow.progress_percent ?? '0'),
       })
-    } else if (projects.length) {
-      setForm((f) => ({ ...f, project_id: String(projects[0].id) }))
+    } else {
+      setForm({
+        project_id: defaultProjectId || (projects[0] ? String(projects[0].id) : ''),
+        name_ar: '', name_en: '', planned_start: '', planned_end: '', progress_percent: '0',
+      })
     }
-  }, [editRow, open, projects])
+  }, [editRow, open, projects, defaultProjectId])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -612,12 +615,14 @@ export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProp
         planned_start: form.planned_start || undefined,
         planned_end: form.planned_end || undefined,
       }
+      const progress = Number(form.progress_percent)
       if (editRow?.id) {
-        await api.put(`/construction/phases/${editRow.id}`, { ...payload, progress_percent: Number(form.progress_percent) })
+        await api.put(`/construction/phases/${editRow.id}`, { ...payload, progress_percent: progress })
       } else {
-        await api.post('/construction/phases', payload)
+        await api.post('/construction/phases', { ...payload, progress_percent: progress })
       }
       qc.invalidateQueries({ queryKey: ['phases'] })
+      qc.invalidateQueries({ queryKey: ['construction-schedule'] })
       onClose()
     } finally {
       setLoading(false)
@@ -631,7 +636,107 @@ export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProp
           options={projects.map((p) => ({ value: String(p.id), label: String(p.name_ar) }))} />
         <Input label={t('name_ar')} value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required />
         <Input label={t('name_en')} value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} required />
-        <Input label="Progress %" value={form.progress_percent} onChange={(e) => setForm({ ...form, progress_percent: e.target.value })} />
+        <Input label={t('planned_start')} type="date" value={form.planned_start} onChange={(e) => setForm({ ...form, planned_start: e.target.value })} />
+        <Input label={t('planned_end')} type="date" value={form.planned_end} onChange={(e) => setForm({ ...form, planned_end: e.target.value })} />
+        <Input label={t('progress_percent')} type="number" min={0} max={100} value={form.progress_percent} onChange={(e) => setForm({ ...form, progress_percent: e.target.value })} />
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" loading={loading}>{t('save')}</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+export function ConstructionTaskFormModal({ open, onClose, editRow, projectId }: ModalProps & { projectId?: string }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const [loading, setLoading] = useState(false)
+  const [phases, setPhases] = useState<Record<string, unknown>[]>([])
+  const [siblingTasks, setSiblingTasks] = useState<Record<string, unknown>[]>([])
+  const [form, setForm] = useState({
+    phase_id: '', name_ar: '', name_en: '', contractor: '', planned_start: '', planned_end: '',
+    depends_on_task_id: '', status: 'pending', progress_percent: '0',
+  })
+
+  useEffect(() => {
+    if (!open) return
+    const load = async () => {
+      const { data } = await api.get('/construction/phases', { params: projectId ? { project_id: projectId } : {} })
+      setPhases(data)
+      if (editRow) {
+        setForm({
+          phase_id: String(editRow.phase_id ?? ''),
+          name_ar: String(editRow.name_ar ?? ''),
+          name_en: String(editRow.name_en ?? ''),
+          contractor: String(editRow.contractor ?? ''),
+          planned_start: String(editRow.planned_start ?? ''),
+          planned_end: String(editRow.planned_end ?? ''),
+          depends_on_task_id: editRow.depends_on_task_id ? String(editRow.depends_on_task_id) : '',
+          status: String(editRow.status ?? 'pending'),
+          progress_percent: String(editRow.progress_percent ?? '0'),
+        })
+      } else if (data.length) {
+        setForm((f) => ({ ...f, phase_id: String(data[0].id) }))
+      }
+    }
+    load().catch(() => setPhases([]))
+  }, [open, editRow, projectId])
+
+  useEffect(() => {
+    if (!form.phase_id) { setSiblingTasks([]); return }
+    api.get('/construction/tasks', { params: { phase_id: form.phase_id } })
+      .then(({ data }) => setSiblingTasks(data.filter((t: Record<string, unknown>) => t.id !== editRow?.id)))
+      .catch(() => setSiblingTasks([]))
+  }, [form.phase_id, editRow?.id])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const payload = {
+        phase_id: Number(form.phase_id),
+        name_ar: form.name_ar,
+        name_en: form.name_en,
+        contractor: form.contractor || undefined,
+        planned_start: form.planned_start || undefined,
+        planned_end: form.planned_end || undefined,
+        depends_on_task_id: form.depends_on_task_id ? Number(form.depends_on_task_id) : undefined,
+        status: form.status,
+        progress_percent: Number(form.progress_percent),
+      }
+      if (editRow?.id) {
+        await api.put(`/construction/tasks/${editRow.id}`, payload)
+      } else {
+        await api.post('/construction/tasks', payload)
+      }
+      qc.invalidateQueries({ queryKey: ['construction-tasks'] })
+      qc.invalidateQueries({ queryKey: ['phases'] })
+      qc.invalidateQueries({ queryKey: ['construction-schedule'] })
+      onClose()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={editRow ? t('edit_task') : t('add_task')}>
+      <form onSubmit={submit} className="space-y-4">
+        <SelectField label={t('phase')} value={form.phase_id} onChange={(v) => setForm({ ...form, phase_id: v })} required
+          options={phases.map((p) => ({ value: String(p.id), label: String(p.name_ar) }))} />
+        <Input label={t('name_ar')} value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} required />
+        <Input label={t('name_en')} value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} required />
+        <Input label={t('contractor')} value={form.contractor} onChange={(e) => setForm({ ...form, contractor: e.target.value })} />
+        <Input label={t('planned_start')} type="date" value={form.planned_start} onChange={(e) => setForm({ ...form, planned_start: e.target.value })} />
+        <Input label={t('planned_end')} type="date" value={form.planned_end} onChange={(e) => setForm({ ...form, planned_end: e.target.value })} />
+        <SelectField label={t('depends_on_task')} value={form.depends_on_task_id} onChange={(v) => setForm({ ...form, depends_on_task_id: v })}
+          options={siblingTasks.map((t) => ({ value: String(t.id), label: String(t.name_ar) }))} />
+        <SelectField label={t('status')} value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={[
+          { value: 'pending', label: t('status_pending') },
+          { value: 'in_progress', label: t('status_in_progress') },
+          { value: 'completed', label: t('status_completed') },
+        ]} />
+        <Input label={t('progress_percent')} type="number" min={0} max={100} value={form.progress_percent} onChange={(e) => setForm({ ...form, progress_percent: e.target.value })} />
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>
