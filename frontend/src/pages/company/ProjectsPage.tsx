@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Building2, LayoutGrid, List, Plus, Home } from 'lucide-react'
+import { Building2, LayoutGrid, List, Plus, Home, Map } from 'lucide-react'
 import { DataTable } from '@/components/ui/DataTable'
 import { RowActions } from '@/components/ui/RowActions'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -10,12 +10,13 @@ import { useModuleList } from '@/hooks/useModuleList'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
 import { Button } from '@/components/ui/Button'
 import { UnitsBoard } from '@/components/real-estate/UnitsBoard'
+import { MasterPlanDashboard } from '@/components/real-estate/MasterPlanDashboard'
 import { ProjectFormModal, UnitFormModal, ReservationFormModal } from '@/components/forms/ModuleFormModals'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-type Tab = 'overview' | 'board' | 'projects' | 'units'
+type Tab = 'overview' | 'masterplan' | 'board' | 'projects' | 'units'
 
 function useCrudModal() {
   const [open, setOpen] = useState(false)
@@ -33,6 +34,7 @@ export function ProjectsPage() {
   const { t } = useTranslation()
   const { formatInteger } = useFormatNumber()
   const [tab, setTab] = useState<Tab>('overview')
+  const [masterPlanProjectId, setMasterPlanProjectId] = useState<number | null>(null)
   const modal = useCrudModal()
   const [unitOpen, setUnitOpen] = useState(false)
   const [reserveUnitId, setReserveUnitId] = useState<number | undefined>()
@@ -59,8 +61,16 @@ export function ProjectsPage() {
     (units as Record<string, unknown>[]).map((u) => ({ ...u, status })),
   )
 
+  const projectOptions = projects.map((p) => ({
+    id: p.id as number,
+    name_en: p.name_en as string | undefined,
+    name_ar: p.name_ar as string | undefined,
+  }))
+  const activeMasterPlanId = masterPlanProjectId ?? (projectOptions[0]?.id ?? null)
+
   const tabs: { key: Tab; label: string; icon: typeof Building2 }[] = [
     { key: 'overview', label: t('overview'), icon: Building2 },
+    { key: 'masterplan', label: t('master_plan'), icon: Map },
     { key: 'board', label: t('units_board'), icon: LayoutGrid },
     { key: 'projects', label: t('projects_list'), icon: List },
     { key: 'units', label: t('units'), icon: Home },
@@ -111,6 +121,15 @@ export function ProjectsPage() {
           </div>
           <UnitsBoard onUnitClick={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }} />
         </>
+      )}
+
+      {tab === 'masterplan' && (
+        <MasterPlanDashboard
+          projectId={activeMasterPlanId}
+          projects={projectOptions}
+          onProjectChange={setMasterPlanProjectId}
+          onReserveUnit={(unitId) => { setReserveUnitId(unitId); setReservationOpen(true) }}
+        />
       )}
 
       {tab === 'board' && (

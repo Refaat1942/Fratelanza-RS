@@ -458,5 +458,22 @@
   "price_one_time": "السعر لمرة واحدة (جنيه)",
   "hosting_fee_monthly": "رسوم الاستضافة الشهرية (جنيه)",
   "one_time_payment": "دفعة واحدة",
-  "hosting_fee_label": "استضافة سيرفر"
+  "hosting_fee_label": "استضافة سيرفر",
+  "master_plan": "المخطط العام",
+  "master_plan_help": "شبكة تفاعلية للأدوار وخريطة مبسطة. ألوان الوحدات تعكس الحالة الحية — انقر للتفاصيل.",
+  "master_plan_grid_view": "شبكة الأدوار",
+  "master_plan_map_view": "خريطة الموقع",
+  "master_plan_refresh": "تحديث",
+  "master_plan_legend": "دليل الحالات",
+  "master_plan_floor": "الدور",
+  "master_plan_available": "متاح",
+  "master_plan_reserved": "محجوز",
+  "master_plan_sold": "مباع",
+  "master_plan_contracted": "متعاقد",
+  "master_plan_delivered": "تم التسليم",
+  "master_plan_blocked": "موقوف",
+  "master_plan_select_project": "اختر مشروعاً",
+  "master_plan_select_project_help": "اختر مشروعاً لعرض المخطط العام.",
+  "master_plan_no_units": "لا توجد وحدات في هذا المشروع",
+  "master_plan_no_units_help": "أضف مبانٍ وأدواراً ووحدات لملء المخطط."
 }
