@@ -34,10 +34,17 @@ class LeadUpdate(BaseModel):
     next_follow_up: Optional[str] = None
 
 
+class LeadAssignRequest(BaseModel):
+    assigned_to_id: Optional[int] = None
+    auto: bool = False
+
+
 class LeadResponse(LeadCreate):
     id: int
     company_id: int
     score: int
     ai_score: Optional[Decimal] = None
+    ai_qualification: Optional[str] = None
+    assigned_to_name: Optional[str] = None
 
     model_config = {"from_attributes": True}

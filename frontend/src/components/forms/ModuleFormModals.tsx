@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { useCustomersLookup, useFloorsLookup, useProjectsLookup, useUnitsLookup, useWarehousesLookup } from '@/hooks/useLookupData'
+import { useCustomersLookup, useFloorsLookup, useProjectsLookup, useSalesAgentsLookup, useUnitsLookup, useWarehousesLookup } from '@/hooks/useLookupData'
 import api from '@/lib/api'
 
 interface ModalProps {
@@ -642,12 +642,13 @@ export function ConstructionPhaseFormModal({ open, onClose, editRow }: ModalProp
 }
 
 export function LeadFormModal({ open, onClose, editRow }: ModalProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const qc = useQueryClient()
   const { data: projects = [] } = useProjectsLookup()
+  const { data: salesAgents = [] } = useSalesAgentsLookup()
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    full_name: '', mobile: '', email: '', source: 'website', stage: 'new', project_id: '', notes: '',
+    full_name: '', mobile: '', email: '', source: 'website', stage: 'new', project_id: '', notes: '', assigned_to_id: '',
   })
 
   useEffect(() => {
@@ -660,17 +661,21 @@ export function LeadFormModal({ open, onClose, editRow }: ModalProps) {
         stage: String(editRow.stage ?? 'new'),
         project_id: editRow.project_id ? String(editRow.project_id) : '',
         notes: String(editRow.notes ?? ''),
+        assigned_to_id: editRow.assigned_to_id ? String(editRow.assigned_to_id) : '',
       })
     } else {
-      setForm({ full_name: '', mobile: '', email: '', source: 'website', stage: 'new', project_id: '', notes: '' })
+      setForm({ full_name: '', mobile: '', email: '', source: 'website', stage: 'new', project_id: '', notes: '', assigned_to_id: '' })
     }
   }, [editRow, open])
+
+  const agentLabel = (a: { full_name_en: string; full_name_ar: string }) =>
+    i18n.language === 'ar' ? a.full_name_ar : a.full_name_en
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         full_name: form.full_name,
         mobile: form.mobile,
         email: form.email || undefined,
@@ -678,6 +683,9 @@ export function LeadFormModal({ open, onClose, editRow }: ModalProps) {
         stage: form.stage,
         project_id: form.project_id ? Number(form.project_id) : undefined,
         notes: form.notes || undefined,
+      }
+      if (form.assigned_to_id) {
+        payload.assigned_to_id = Number(form.assigned_to_id)
       }
       if (editRow?.id) {
         await api.put(`/leads/${editRow.id}`, payload)
@@ -702,12 +710,27 @@ export function LeadFormModal({ open, onClose, editRow }: ModalProps) {
           { value: 'website', label: 'Website' },
           { value: 'facebook', label: 'Facebook' },
           { value: 'instagram', label: 'Instagram' },
+          { value: 'tiktok', label: 'TikTok' },
+          { value: 'google_ads', label: 'Google Ads' },
           { value: 'referral', label: 'Referral' },
           { value: 'broker', label: 'Broker' },
+          { value: 'call_center', label: 'Call Center' },
           { value: 'walk_in', label: 'Walk In' },
         ]} />
         <SelectField label={t('projects')} value={form.project_id} onChange={(v) => setForm({ ...form, project_id: v })}
           options={projects.map((p) => ({ value: String(p.id), label: String(p.name_ar) }))} />
+        <SelectField
+          label={t('assigned_sales_agent')}
+          value={form.assigned_to_id}
+          onChange={(v) => setForm({ ...form, assigned_to_id: v })}
+          options={[
+            { value: '', label: t('auto_assign_sales_agent') },
+            ...salesAgents.map((a) => ({ value: String(a.id), label: agentLabel(a) })),
+          ]}
+        />
+        {!editRow && (
+          <p className="text-xs text-slate-500">{t('auto_assign_sales_agent_help')}</p>
+        )}
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>
           <Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button>

@@ -47,6 +47,23 @@ export function useFloorsLookup(projectId?: number) {
   })
 }
 
+export interface SalesAgent {
+  id: number
+  full_name_en: string
+  full_name_ar: string
+  system_role: string
+}
+
+export function useSalesAgentsLookup() {
+  return useQuery({
+    queryKey: ['sales-agents-lookup'],
+    queryFn: async () => {
+      const { data } = await api.get<SalesAgent[]>('/leads/sales-agents')
+      return data
+    },
+  })
+}
+
 export function useWarehousesLookup() {
   return useQuery({
     queryKey: ['warehouses-lookup'],

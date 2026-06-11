@@ -33,7 +33,7 @@ export function LeadsPage() {
   })
 
   const openCreate = () => { setEditLead(null); setOpen(true) }
-  const openEdit = (lead: { id: number; full_name: string; mobile: string; source?: string; stage?: string; email?: string; project_id?: number; notes?: string }) => {
+  const openEdit = (lead: Partial<Lead> & { id: number; full_name: string; mobile: string }) => {
     setEditLead(lead as Lead)
     setOpen(true)
   }
@@ -80,6 +80,7 @@ export function LeadsPage() {
                   <th className="pb-3 text-start">Mobile</th>
                   <th className="pb-3 text-start">Source</th>
                   <th className="pb-3 text-start">{t('status')}</th>
+                  <th className="pb-3 text-start">{t('assigned_sales_agent')}</th>
                   <th className="pb-3 text-start">Score</th>
                   <th className="pb-3 text-start">{t('actions')}</th>
                 </tr>
@@ -96,6 +97,7 @@ export function LeadsPage() {
                         {lead.stage}
                       </span>
                     </td>
+                    <td className="py-3 text-slate-600">{lead.assigned_to_name ?? '—'}</td>
                     <td className="py-3">{formatInteger(lead.score)}</td>
                     <td className="py-3">
                       <RowActions

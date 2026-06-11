@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Phone, Calendar, Pencil, Trash2, ChevronLeft, ChevronRight, Target } from 'lucide-react'
+import { Phone, Calendar, Pencil, Trash2, ChevronLeft, ChevronRight, Target, UserRound } from 'lucide-react'
 import { ReminderFormModal } from '@/components/forms/ReminderFormModal'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { confirmDelete, useDeleteEntity } from '@/hooks/useDeleteEntity'
@@ -27,6 +27,8 @@ interface LeadCard {
   source: string
   score: number
   ai_qualification?: string
+  assigned_to_id?: number
+  assigned_to_name?: string
   next_follow_up?: string
 }
 
@@ -135,6 +137,12 @@ export function LeadKanban({ onEdit }: LeadKanbanProps) {
                       </p>
                     )}
                     <p className="mt-2 text-xs capitalize text-slate-400">{lead.source.replace('_', ' ')}</p>
+                    {lead.assigned_to_name && (
+                      <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-600">
+                        <UserRound className="h-3 w-3 shrink-0" />
+                        {lead.assigned_to_name}
+                      </p>
+                    )}
 
                     <div className="mt-3 flex items-center gap-1 border-t border-slate-100 pt-2">
                       <button

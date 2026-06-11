@@ -82,4 +82,10 @@ export interface Lead {
   source: string
   stage: string
   score: number
+  email?: string
+  project_id?: number
+  notes?: string
+  assigned_to_id?: number
+  assigned_to_name?: string
+  ai_qualification?: string
 }
