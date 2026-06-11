@@ -42,17 +42,18 @@ docker compose up -d --build
 
 ## Production Deploy (Hostinger VPS — Port 9000)
 
-**One command** (stops old Hub, deploys Real Estate on port 9000, fixes `rs.fratelanza.com`):
+**One command** (shows ports/docker, deploys Real Estate on port 9000 only — does **not** stop Hub or other projects):
 
 ```bash
 ssh root@187.124.15.14
-curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-RS/main/scripts/deploy.sh | bash
+cd /opt/fratelanza && bash scripts/deploy.sh
 ```
 
-Or if the repo is already at `/opt/fratelanza`:
+Inspect only (no deploy):
 
 ```bash
-cd /opt/fratelanza && bash scripts/deploy.sh
+cd /opt/fratelanza && INSPECT_ONLY=1 bash scripts/deploy.sh
+# or: bash scripts/vps-status.sh
 ```
 
 First time only: edit `/opt/fratelanza/.env` after deploy (passwords from `.env.production.example`).

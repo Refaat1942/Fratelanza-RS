@@ -55,23 +55,25 @@ In Hostinger Panel → VPS → **Security**:
 ```bash
 ssh root@187.124.15.14
 
-# ONE command — clone/update, kill old Hub, deploy Real Estate :9000, fix rs.fratelanza.com
-curl -fsSL https://raw.githubusercontent.com/Refaat1942/Fratelanza-RS/main/scripts/deploy.sh | bash
-```
-
-Or:
-
 ```bash
 cd /opt/fratelanza && bash scripts/deploy.sh
 ```
 
+Inspect ports/docker only (no deploy, no stops):
+
+```bash
+cd /opt/fratelanza && INSPECT_ONLY=1 bash scripts/deploy.sh
+```
+
 What `scripts/deploy.sh` does:
 
-1. Pulls latest `main`
-2. Removes legacy **Fratelanza Hub** containers (`fratelanza-app-1`, etc.)
-3. `docker compose -p fratelanza -f docker-compose.prod.yml up -d --build --remove-orphans`
-4. Verifies port **9000** serves **Real Estate** (not Hub)
-5. Runs `fix-rs-domain.sh` for `rs.fratelanza.com` + `rs-control.fratelanza.com`
+1. Prints **all listening ports** and **docker containers**
+2. Shows **what uses port 9000** and the `/login` page title
+3. Pulls latest `main`
+4. Restarts **only** `docker compose -p fratelanza -f docker-compose.prod.yml` (does **not** stop Hub or other projects)
+5. Prints status again after deploy
+
+Optional: `FIX_DOMAINS=1 bash scripts/deploy.sh` to run `fix-rs-domain.sh`
 
 ## Step 4: Configure .env
 
@@ -119,8 +121,8 @@ docker compose -f docker-compose.prod.yml logs -f
 # Restart
 docker compose -f docker-compose.prod.yml restart
 
-# Update
-git pull && docker compose -f docker-compose.prod.yml up -d --build
+# Update / redeploy (everything)
+bash scripts/deploy.sh
 
 # Backup database
 docker exec fratelanza_postgres pg_dump -U fratelanza fratelanza_db > backup.sql
