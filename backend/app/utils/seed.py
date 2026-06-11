@@ -238,6 +238,12 @@ async def seed_database() -> None:
                 "social_insurance NUMERIC(12,2), net_salary NUMERIC(12,2), status VARCHAR(50), "
                 "created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())"
             ))
+            await db.execute(text(
+                "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS pdf_file_path VARCHAR(500)"
+            ))
+            await db.execute(text(
+                "ALTER TABLE contracts ADD COLUMN IF NOT EXISTS pdf_generated_at VARCHAR(30)"
+            ))
         except Exception:
             pass
         await ensure_default_subscription_plans(db)
