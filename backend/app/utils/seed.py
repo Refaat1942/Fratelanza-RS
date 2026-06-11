@@ -558,6 +558,123 @@ async def seed_database() -> None:
                     )
                 )
 
+            from app.models.finance import (
+                CashTransaction,
+                CashTransactionType,
+                Cheque,
+                ChequeDirection,
+                ChequeStatus,
+                ProgressCertificate,
+                ProgressCertificateStatus,
+                SubcontractAgreement,
+                Subcontractor,
+            )
+            from datetime import date, timedelta
+
+            if not (await db.execute(select(CashTransaction).where(CashTransaction.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    CashTransaction(
+                        company_id=company.id,
+                        transaction_date=date.today().isoformat(),
+                        transaction_type=CashTransactionType.INCOME,
+                        category="other_income",
+                        description="Site office rental income",
+                        amount=Decimal("50000"),
+                        payment_method="bank_transfer",
+                    )
+                )
+                db.add(
+                    CashTransaction(
+                        company_id=company.id,
+                        transaction_date=date.today().isoformat(),
+                        transaction_type=CashTransactionType.EXPENSE,
+                        category="operating_expense",
+                        description="Marketing campaign — Facebook ads",
+                        amount=Decimal("15000"),
+                        payment_method="cash",
+                    )
+                )
+
+            if not (await db.execute(select(Cheque).where(Cheque.company_id == company.id).limit(1))).scalar_one_or_none():
+                db.add(
+                    Cheque(
+                        company_id=company.id,
+                        direction=ChequeDirection.RECEIVED,
+                        cheque_number="CHQ-1001",
+                        bank_name="National Bank of Egypt",
+                        drawer_name="Ahmed Mohamed",
+                        amount=Decimal("200000"),
+                        issue_date=date.today().isoformat(),
+                        due_date=(date.today() + timedelta(days=10)).isoformat(),
+                        status=ChequeStatus.PENDING,
+                    )
+                )
+
+            sub = (await db.execute(select(Subcontractor).where(Subcontractor.company_id == company.id, Subcontractor.code == "SUB-001"))).scalar_one_or_none()
+            if not sub:
+                sub = Subcontractor(
+                    company_id=company.id,
+                    code="SUB-001",
+                    name_ar="شركة البناء الحديث",
+                    name_en="Modern Build Co.",
+                    contact_person="Eng. Karim",
+                    mobile="+201022233344",
+                )
+                db.add(sub)
+                await db.flush()
+
+            agreement = (
+                await db.execute(
+                    select(SubcontractAgreement).where(
+                        SubcontractAgreement.company_id == company.id,
+                        SubcontractAgreement.contract_number == "SC-2026-001",
+                    )
+                )
+            ).scalar_one_or_none()
+            if not agreement and project:
+                agreement = SubcontractAgreement(
+                    company_id=company.id,
+                    subcontractor_id=sub.id,
+                    project_id=project.id,
+                    contract_number="SC-2026-001",
+                    description="Finishing works — Building A",
+                    contract_value=Decimal("3000000"),
+                    retention_percent=Decimal("10"),
+                    advance_payment=Decimal("300000"),
+                    start_date="2026-01-01",
+                    end_date="2026-12-31",
+                )
+                db.add(agreement)
+                await db.flush()
+
+            if agreement and not (
+                await db.execute(
+                    select(ProgressCertificate).where(
+                        ProgressCertificate.company_id == company.id,
+                        ProgressCertificate.certificate_number == "PC-001",
+                    )
+                )
+            ).scalar_one_or_none():
+                from app.services.treasury_service import TreasuryService
+
+                calc = await TreasuryService.calculate_for_agreement(db, agreement, 25)
+                db.add(
+                    ProgressCertificate(
+                        company_id=company.id,
+                        agreement_id=agreement.id,
+                        certificate_number="PC-001",
+                        period_from="2026-01-01",
+                        period_to="2026-03-31",
+                        progress_percent=25,
+                        cumulative_value=calc["cumulative_value"],
+                        current_gross=calc["current_gross"],
+                        retention_amount=calc["retention_amount"],
+                        advance_deduction=calc["advance_deduction"],
+                        net_payable=calc["net_payable"],
+                        status=ProgressCertificateStatus.APPROVED,
+                    )
+                )
+
             from app.models.brokers import Broker
             from app.models.warehouse import Warehouse, InventoryItem
             from app.models.procurement import Vendor

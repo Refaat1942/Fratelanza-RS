@@ -10,8 +10,9 @@ import { downloadReport } from '@/lib/download'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Landmark, TrendingUp, Wallet, FileText, ArrowRight } from 'lucide-react'
+import { CashFlowPanel, ChequesPanel, ProgressBillingsPanel } from '@/components/finance/TreasuryPanels'
 
-type FinanceTab = 'overview' | 'trial_balance' | 'profit_loss' | 'cash' | 'journal' | 'accounts'
+type FinanceTab = 'overview' | 'cash_flow' | 'cheques' | 'progress_billings' | 'trial_balance' | 'profit_loss' | 'cash' | 'journal' | 'accounts'
 
 export function FinancePage() {
   const { t, i18n } = useTranslation()
@@ -28,6 +29,9 @@ export function FinancePage() {
 
   const reportKey: Record<FinanceTab, string | null> = {
     overview: null,
+    cash_flow: null,
+    cheques: null,
+    progress_billings: null,
     trial_balance: 'finance_trial_balance',
     profit_loss: 'finance_profit_loss',
     cash: 'finance_cash_position',
@@ -104,6 +108,9 @@ export function FinancePage() {
       <div className="mb-4 flex flex-wrap gap-2">
         {[
           { key: 'overview' as const, label: t('overview') },
+          { key: 'cash_flow' as const, label: t('cash_flow') },
+          { key: 'cheques' as const, label: t('cheques') },
+          { key: 'progress_billings' as const, label: t('progress_billings') },
           { key: 'trial_balance' as const, label: t('trial_balance') },
           { key: 'profit_loss' as const, label: t('profit_loss') },
           { key: 'cash' as const, label: t('cash_position') },
@@ -116,6 +123,10 @@ export function FinancePage() {
           )}>{label}</button>
         ))}
       </div>
+
+      {tab === 'cash_flow' && <CashFlowPanel />}
+      {tab === 'cheques' && <ChequesPanel />}
+      {tab === 'progress_billings' && <ProgressBillingsPanel />}
 
       {tab === 'overview' && (
         <SortableTable

@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
+import app.models  # noqa: F401 — register ORM tables before create_all
+
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.middleware.module_guard import ModuleGuardMiddleware

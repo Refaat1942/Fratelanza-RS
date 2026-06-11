@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     search,
     super_admin,
     tickets,
+    treasury,
     users,
     warehouse,
 )
@@ -51,6 +52,7 @@ api_router.include_router(procurement.router, prefix="/procurement", tags=["Proc
 api_router.include_router(warehouse.router, prefix="/warehouse", tags=["Warehouse"])
 api_router.include_router(property.router, prefix="/property", tags=["Property Management"])
 api_router.include_router(finance.router, prefix="/finance", tags=["Finance"])
+api_router.include_router(treasury.router, prefix="/treasury", tags=["Treasury"])
 api_router.include_router(hr.router, prefix="/hr", tags=["HR"])
 api_router.include_router(tickets.router, prefix="/tickets", tags=["Customer Service"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard & BI"])

@@ -6,7 +6,17 @@ from app.models.crm import Lead, LeadActivity, CustomerReminder
 from app.models.real_estate import Project, Building, Floor, Unit
 from app.models.sales import Reservation, Contract, PaymentPlan, Installment, Payment
 from app.models.brokers import Broker, BrokerCommission
-from app.models.finance import ChartOfAccount, JournalEntry, JournalLine, BankAccount
+from app.models.finance import (
+    BankAccount,
+    CashTransaction,
+    ChartOfAccount,
+    Cheque,
+    JournalEntry,
+    JournalLine,
+    ProgressCertificate,
+    SubcontractAgreement,
+    Subcontractor,
+)
 from app.models.hr import Employee, Attendance, LeaveRequest, PayrollRun, Payslip
 from app.models.construction import ConstructionPhase, ConstructionTask, ConstructionMilestone
 from app.models.procurement import Vendor, PurchaseOrder, RFQ
@@ -48,6 +58,11 @@ __all__ = [
     "JournalEntry",
     "JournalLine",
     "BankAccount",
+    "CashTransaction",
+    "Cheque",
+    "Subcontractor",
+    "SubcontractAgreement",
+    "ProgressCertificate",
     "Employee",
     "Attendance",
     "LeaveRequest",
