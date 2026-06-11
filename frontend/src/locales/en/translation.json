@@ -458,5 +458,17 @@
   "price_one_time": "One-time price (EGP)",
   "hosting_fee_monthly": "Monthly hosting fee (EGP)",
   "one_time_payment": "one-time",
-  "hosting_fee_label": "server hosting"
+  "hosting_fee_label": "server hosting",
+  "ai_reporting_title": "AI Reporting Assistant",
+  "ai_reporting_subtitle": "Analyze sales tables and generate quick performance summaries powered by OpenAI or Gemini.",
+  "ai_performance_summary": "Performance summary",
+  "ai_market_trends": "Market trends",
+  "ai_analyze_report": "Analyze {{name}}",
+  "ai_report_analysis": "Report analysis",
+  "ai_provider": "AI engine",
+  "ai_provider_local": "Local (rule-based)",
+  "ai_assistant_subtitle": "Ask about sales, collections, leads, and trends — answers use your live company data.",
+  "ai_assistant_empty": "Ask about sales performance, collections risk, or market trends. Try «What are our total sales?» or click Performance summary.",
+  "ai_input_placeholder": "Ask about sales, collections, or leads…",
+  "ai_error": "Could not reach the AI service. Please try again."
 }

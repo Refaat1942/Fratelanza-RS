@@ -458,5 +458,17 @@
   "price_one_time": "السعر لمرة واحدة (جنيه)",
   "hosting_fee_monthly": "رسوم الاستضافة الشهرية (جنيه)",
   "one_time_payment": "دفعة واحدة",
-  "hosting_fee_label": "استضافة سيرفر"
+  "hosting_fee_label": "استضافة سيرفر",
+  "ai_reporting_title": "مساعد التقارير الذكي",
+  "ai_reporting_subtitle": "تحليل جداول المبيعات وإنشاء ملخصات أداء سريعة عبر OpenAI أو Gemini.",
+  "ai_performance_summary": "ملخص الأداء",
+  "ai_market_trends": "اتجاهات السوق",
+  "ai_analyze_report": "تحليل {{name}}",
+  "ai_report_analysis": "تحليل التقرير",
+  "ai_provider": "محرك الذكاء الاصطناعي",
+  "ai_provider_local": "محلي (قواعد)",
+  "ai_assistant_subtitle": "اسأل عن المبيعات والتحصيلات والعملاء المحتملين — الإجابات من بيانات شركتك الحية.",
+  "ai_assistant_empty": "اسأل عن أداء المبيعات أو مخاطر التحصيل أو اتجاهات السوق. جرّب «ما إجمالي المبيعات؟» أو اضغط ملخص الأداء.",
+  "ai_input_placeholder": "اسأل عن المبيعات أو التحصيلات أو الـ leads…",
+  "ai_error": "تعذر الاتصال بخدمة الذكاء الاصطناعي. حاول مرة أخرى."
 }

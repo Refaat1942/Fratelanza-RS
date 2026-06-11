@@ -5,6 +5,7 @@ import {
   BarChart3, Building2, FileSpreadsheet, HandCoins, Headphones, Target, Users, Wallet,
 } from 'lucide-react'
 import { SortableTable } from '@/components/ui/SortableTable'
+import { AIReportingPanel } from '@/components/reports/AIReportingPanel'
 import { downloadReport } from '@/lib/download'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -97,6 +98,8 @@ export function ReportsPage() {
         <h1 className="text-2xl font-bold text-slate-900">{t('reports')}</h1>
         <p className="mt-1 text-sm text-slate-500">{t('reports_subtitle')}</p>
       </div>
+
+      <AIReportingPanel activeReportKey={activeKey} activeReportName={reportName} />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {categories.map((cat) => (
