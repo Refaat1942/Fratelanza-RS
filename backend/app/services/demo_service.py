@@ -214,7 +214,7 @@ class DemoService:
             currency=data.get("currency") or "EGP", default_language="ar", status=CompanyStatus.ACTIVE,
             is_demo=True, timezone=data.get("timezone") or "Africa/Cairo", logo_url=data.get("logo_url"),
             enabled_modules=json.dumps([m for m in ALL_MODULE_KEYS if m in set(modules) | {"dashboard"}]),
-            email=f"{code.lower()}@demo.invalid",
+            email=f"{code.lower()}@demo.fratelanza.com",
         )
         db.add(company)
         await db.flush()
@@ -247,7 +247,7 @@ class DemoService:
         username = f"{company.code.lower().replace('-', '')}.{system_role.value}.{suffix}"
         password = secrets.token_urlsafe(9)
         user = User(
-            company_id=company.id, username=username, email=f"{username}@demo.invalid",
+            company_id=company.id, username=username, email=f"{username}@demo.fratelanza.com",
             password_hash=get_password_hash(password), full_name_ar=full_name or f"مستخدم تجريبي ({system_role.value})",
             full_name_en=full_name or f"Demo {system_role.value}", system_role=system_role, status=UserStatus.ACTIVE,
             is_super_admin=False,
@@ -330,7 +330,7 @@ class DemoSeeder:
         owners = []
         for i, (name, mobile, freq, rate) in enumerate(self.OWNERS, start=1):
             o = PropertyOwner(
-                company_id=self.cid, code=f"OWN-{i:03d}", full_name=name, mobile=mobile, email=f"owner{i}@demo.invalid",
+                company_id=self.cid, code=f"OWN-{i:03d}", full_name=name, mobile=mobile, email=f"owner{i}@demo.fratelanza.com",
                 national_id=f"2{self.rng.randint(10**12, 10**13 - 1)}", bank_name="بنك تجريبي",
                 bank_account=f"DEMO{self.rng.randint(10**9, 10**10 - 1)}", settlement_frequency=freq, commission_rate=rate,
                 settlement_day=5,
@@ -506,7 +506,7 @@ class DemoSeeder:
         employees = []
         for i, (name, dept, salary) in enumerate((("أحمد الشريف", "التحصيل", 9000), ("سارة حمدي", "المحاسبة", 12000),
                                                   ("عمرو ناجي", "إدارة الأملاك", 11000))):
-            emp = Employee(company_id=self.cid, employee_code=f"EMP-{i + 1:03d}", full_name_ar=name, full_name_en=name,
+            emp = Employee(company_id=self.cid, employee_code=f"PM-EMP-{i + 1:03d}", full_name_ar=name, full_name_en=name,
                            department=dept, position=dept, salary=Decimal(str(salary)), hire_date="2023-01-01")
             self.db.add(emp)
             employees.append(emp)

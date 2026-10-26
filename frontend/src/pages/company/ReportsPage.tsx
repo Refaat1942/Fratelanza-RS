@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import i18n from '@/i18n'
+import { Tabs } from '@/components/ui/FormFields'
+import { ReReportsPanel } from '@/components/reports/ReReportsPanel'
+import { useAuthStore } from '@/stores/authStore'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -40,6 +44,22 @@ const CATEGORY_ICONS: Record<string, typeof BarChart3> = {
 }
 
 export function ReportsPage() {
+  const isSuperAdmin = useAuthStore((s) => !!s.user?.is_super_admin)
+  const [view, setView] = useState(new URLSearchParams(window.location.search).get('tab') === 're' ? 're' : 'erp')
+  return (
+    <div>
+      {!isSuperAdmin && (
+        <Tabs active={view} onChange={setView} tabs={[
+          { key: 'erp', label: i18n.t('re.reports.erp') },
+          { key: 're', label: i18n.t('re.reports.property') },
+        ]} />
+      )}
+      {view === 're' && !isSuperAdmin ? <ReReportsPanel /> : <ErpReports />}
+    </div>
+  )
+}
+
+function ErpReports() {
   const { t, i18n } = useTranslation()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [category, setCategory] = useState<string>('all')

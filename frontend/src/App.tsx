@@ -27,6 +27,12 @@ import { CompanyPortalSettingsPage } from '@/pages/company/CompanyPortalSettings
 import { ProjectsPage } from '@/pages/company/ProjectsPage'
 import { WarehousePage } from '@/pages/company/WarehousePage'
 import { PropertyPage } from '@/pages/company/PropertyPage'
+import { RentalsPage } from '@/pages/company/RentalsPage'
+import { OwnersPage } from '@/pages/company/OwnersPage'
+import { PropertyExpensesPage, AdminExpensesPage } from '@/pages/company/ExpensesPages'
+import { PropertyRequestsPage } from '@/pages/company/PropertyRequestsPage'
+import { RolesPage } from '@/pages/company/RolesPage'
+import { DemosPage } from '@/pages/super-admin/DemosPage'
 import {
   ReservationsPage, ContractsPage, CollectionsPage,
   BrokersPage, ConstructionPage, ProcurementPage,
@@ -97,6 +103,7 @@ function AppRoutes() {
         <Route path="/super-admin/companies" element={<ProtectedRoute superAdminOnly><CompaniesPage /></ProtectedRoute>} />
         <Route path="/super-admin/users" element={<ProtectedRoute superAdminOnly><SuperAdminUsersPage /></ProtectedRoute>} />
         <Route path="/super-admin/subscriptions" element={<ProtectedRoute superAdminOnly><SubscriptionPlansPage /></ProtectedRoute>} />
+        <Route path="/super-admin/demos" element={<ProtectedRoute superAdminOnly><DemosPage /></ProtectedRoute>} />
         <Route path="/super-admin/audit-logs" element={<ProtectedRoute superAdminOnly><AuditLogsPage /></ProtectedRoute>} />
         <Route path="/super-admin/settings" element={<ProtectedRoute superAdminOnly><SuperAdminSettingsPage /></ProtectedRoute>} />
         <Route path="/super-admin/reports" element={<ProtectedRoute superAdminOnly><ReportsPage /></ProtectedRoute>} />
@@ -116,6 +123,12 @@ function AppRoutes() {
         <Route path="/procurement" element={<ModuleRoute moduleKey="procurement"><ProcurementPage /></ModuleRoute>} />
         <Route path="/warehouse" element={<ModuleRoute moduleKey="warehouse"><WarehousePage /></ModuleRoute>} />
         <Route path="/property" element={<ModuleRoute moduleKey="property"><PropertyPage /></ModuleRoute>} />
+        <Route path="/property-requests" element={<ModuleRoute moduleKey="real_estate_requests"><PropertyRequestsPage /></ModuleRoute>} />
+        <Route path="/rentals" element={<ModuleRoute moduleKey="rentals"><RentalsPage /></ModuleRoute>} />
+        <Route path="/owners" element={<ModuleRoute moduleKey="owners"><OwnersPage /></ModuleRoute>} />
+        <Route path="/property-expenses" element={<ModuleRoute moduleKey="property_expenses"><PropertyExpensesPage /></ModuleRoute>} />
+        <Route path="/admin-expenses" element={<ModuleRoute moduleKey="admin_expenses"><AdminExpensesPage /></ModuleRoute>} />
+        <Route path="/roles" element={<ModuleRoute moduleKey="users"><RolesPage /></ModuleRoute>} />
         <Route path="/customer-service" element={<ModuleRoute moduleKey="customer_service"><CustomerServicePage /></ModuleRoute>} />
         <Route path="/users" element={<ModuleRoute moduleKey="users"><CompanyUsersPage /></ModuleRoute>} />
         <Route path="/feature-settings" element={<ModuleRoute moduleKey="users"><CompanyFeatureSettingsPage /></ModuleRoute>} />

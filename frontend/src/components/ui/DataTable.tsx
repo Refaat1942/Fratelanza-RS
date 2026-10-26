@@ -123,7 +123,26 @@ export function DataTable({ title, columns, data, loading, actions, rowActions, 
             onAction={onEmptyAction}
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg">
+          <>
+          {/* Mobile: stacked cards instead of a wide table */}
+          <ul className="space-y-3 md:hidden">
+            {filtered.map((row, i) => (
+              <li key={String(row.id ?? i)} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <dl className="space-y-1.5">
+                  {columns.map((col) => (
+                    <div key={col.key} className="flex items-start justify-between gap-3 text-sm">
+                      <dt className="shrink-0 text-slate-500">{col.label}</dt>
+                      <dd className="text-end font-medium text-slate-900">
+                        {col.render ? col.render(row) : col.key === 'status' ? <StatusCell value={row[col.key]} /> : String(row[col.key] ?? '-')}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {rowActions && <div className="mt-3 flex flex-wrap justify-end gap-1 border-t border-slate-100 pt-3">{rowActions(row)}</div>}
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto rounded-lg md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="table-head-gradient border-b border-slate-200">
@@ -172,6 +191,7 @@ export function DataTable({ title, columns, data, loading, actions, rowActions, 
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>
