@@ -6,7 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user
+from app.api.deps import get_access, get_company_user, log_audit
+from app.core.tenant import apply_data_scope
+from app.services.access_service import AccessContext
 from app.core.database import get_db
 from app.models.customers import Customer
 from app.models.crm import Lead
@@ -50,8 +52,12 @@ async def export_module(
     module_key: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
 ):
+    from app.api.v1.endpoints.reports import assert_report_access
+
+    assert_report_access(module_key, access)
     company_id = None if current_user.is_super_admin else current_user.company_id
     rows, _ = await ReportsService.run(db, module_key, company_id, current_user.is_super_admin)
     if not rows:
@@ -65,11 +71,13 @@ async def export_module(
 async def export_customers(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     format: str = Query("csv", pattern="^(csv|xlsx)$"),
 ):
     query = select(Customer).where(Customer.is_deleted == False)
     if not current_user.is_super_admin and current_user.company_id:
         query = query.where(Customer.company_id == current_user.company_id)
+    query = apply_data_scope(query, Customer.assigned_to_id, access, current_user)
     result = await db.execute(query)
     rows = [
         {"id": c.id, "name_ar": c.full_name_ar, "name_en": c.full_name_en, "mobile": c.mobile, "email": c.email or ""}
@@ -90,11 +98,13 @@ async def export_customers(
 async def export_leads(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     format: str = Query("csv", pattern="^(csv|xlsx)$"),
 ):
     query = select(Lead).where(Lead.is_deleted == False)
     if not current_user.is_super_admin and current_user.company_id:
         query = query.where(Lead.company_id == current_user.company_id)
+    query = apply_data_scope(query, Lead.assigned_to_id, access, current_user)
     result = await db.execute(query)
     rows = [
         {"id": l.id, "name": l.full_name, "mobile": l.mobile, "source": l.source.value, "stage": l.stage.value, "score": l.score}

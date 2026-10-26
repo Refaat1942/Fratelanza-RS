@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user
+from app.api.deps import get_access, get_company_user
+from app.core.tenant import apply_data_scope
+from app.services.access_service import AccessContext
 from app.core.database import get_db
 from app.models.brokers import Broker
 from app.models.crm import Lead
@@ -20,6 +22,7 @@ router = APIRouter()
 async def global_search(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     q: str = Query(min_length=2),
     limit: int = Query(10, ge=1, le=50),
 ):
@@ -36,6 +39,7 @@ async def global_search(
     )
     if not current_user.is_super_admin and company_id:
         customers_q = customers_q.where(Customer.company_id == company_id)
+        customers_q = apply_data_scope(customers_q, Customer.assigned_to_id, access, current_user)
     customers = (await db.execute(customers_q.limit(limit))).scalars().all()
 
     leads_q = select(Lead).where(
@@ -44,6 +48,7 @@ async def global_search(
     )
     if not current_user.is_super_admin and company_id:
         leads_q = leads_q.where(Lead.company_id == company_id)
+        leads_q = apply_data_scope(leads_q, Lead.assigned_to_id, access, current_user)
     leads = (await db.execute(leads_q.limit(limit))).scalars().all()
 
     contracts_q = select(Contract).where(
@@ -100,6 +105,19 @@ async def global_search(
         reservations_q = reservations_q.where(Reservation.company_id == company_id)
     reservations = (await db.execute(reservations_q.limit(limit))).scalars().all()
 
+    # Only return result groups for modules the caller can view (search is not a side door)
+    if not access.can("customers"):
+        customers = []
+    if not access.can("leads"):
+        leads = []
+    if not access.can("contracts"):
+        contracts = []
+    if not access.can("projects"):
+        units, projects = [], []
+    if not access.can("brokers"):
+        brokers = []
+    if not access.can("reservations"):
+        reservations = []
     return {
         "customers": [
             {"id": c.id, "name": c.full_name_en, "mobile": c.mobile, "type": "customer", "route": "/customers"}

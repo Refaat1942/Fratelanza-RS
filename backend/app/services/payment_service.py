@@ -20,10 +20,28 @@ class PaymentService:
         received_by_id: int | None = None,
         reference_number: str | None = None,
     ) -> Payment:
-        result = await db.execute(select(Installment).where(Installment.id == installment_id))
-        installment = result.scalar_one_or_none()
-        if not installment:
+        from app.models.sales import Contract, PaymentPlan
+
+        if amount <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount must be positive")
+        row = (
+            await db.execute(
+                select(Installment, Contract)
+                .join(PaymentPlan, Installment.payment_plan_id == PaymentPlan.id)
+                .join(Contract, PaymentPlan.contract_id == Contract.id)
+                .where(
+                    Installment.id == installment_id,
+                    Contract.company_id == company_id,
+                    Contract.is_deleted == False,  # noqa: E712
+                )
+                .with_for_update(of=Installment)
+            )
+        ).first()
+        if not row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Installment not found")
+        installment, contract = row
+        # The payer is always the contract's customer — a client-supplied customer id cannot redirect it
+        customer_id = contract.customer_id
 
         installment.paid_amount += amount
         installment.remaining_balance = max(installment.due_amount - installment.paid_amount, Decimal("0"))

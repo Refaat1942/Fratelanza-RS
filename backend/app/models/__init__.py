@@ -20,6 +20,21 @@ from app.models.warehouse import Warehouse, InventoryItem, StockMovement
 from app.models.property import MaintenanceRequest, HandoverRecord
 from app.models.customer_service import Ticket, TicketComment
 from app.models.system import AuditLog, Notification, Document, SystemSetting
+from app.models.rentals import (
+    PropertyOwner,
+    RentalContract,
+    RentReceivable,
+    RentPayment,
+    RentAdjustment,
+    OwnerSettlement,
+    OwnerSettlementPayment,
+    PropertyExpense,
+    AdminExpense,
+    PayrollPayment,
+    PropertyRequest,
+    DemoEnvironment,
+    OutboundMessage,
+)
 
 __all__ = [
     "TimestampMixin",
@@ -79,4 +94,17 @@ __all__ = [
     "Notification",
     "Document",
     "SystemSetting",
+    "PropertyOwner",
+    "RentalContract",
+    "RentReceivable",
+    "RentPayment",
+    "RentAdjustment",
+    "OwnerSettlement",
+    "OwnerSettlementPayment",
+    "PropertyExpense",
+    "AdminExpense",
+    "PayrollPayment",
+    "PropertyRequest",
+    "DemoEnvironment",
+    "OutboundMessage",
 ]

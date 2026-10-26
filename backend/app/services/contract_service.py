@@ -32,16 +32,20 @@ class ContractService:
         down_payment: Decimal = Decimal("0"),
         installments_count: int = 8,
     ) -> Contract:
-        unit_result = await db.execute(select(Unit).where(Unit.id == data.unit_id, Unit.is_deleted == False))
+        from app.core.tenant import ensure_refs, get_owned
+        from app.models.customers import Customer
+
+        await ensure_refs(db, company_id, [(Customer, data.customer_id, "Customer")])
+        unit_result = await db.execute(
+            select(Unit).where(Unit.id == data.unit_id, Unit.is_deleted == False, Unit.company_id == company_id)
+        )
         unit = unit_result.scalar_one_or_none()
         if not unit:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
 
         if data.reservation_id:
-            res = await db.execute(select(Reservation).where(Reservation.id == data.reservation_id))
-            reservation = res.scalar_one_or_none()
-            if reservation:
-                reservation.status = ReservationStatus.CONVERTED
+            reservation = await get_owned(db, Reservation, data.reservation_id, company_id, entity_name="Reservation")
+            reservation.status = ReservationStatus.CONVERTED
 
         contract = Contract(
             company_id=company_id,

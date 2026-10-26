@@ -92,6 +92,8 @@ class Unit(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "units"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Denormalised from floor → building → project so every unit query can be tenant-filtered directly
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), nullable=False, index=True)
     floor_id: Mapped[int] = mapped_column(ForeignKey("floors.id"), nullable=False, index=True)
     unit_code: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     unit_number: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -109,5 +111,19 @@ class Unit(Base, TimestampMixin, SoftDeleteMixin):
     images: Mapped[Optional[str]] = mapped_column(Text)
     attachments: Mapped[Optional[str]] = mapped_column(Text)
     is_locked: Mapped[bool] = mapped_column(default=False)
+
+    # Property-management attributes (rental / brokerage)
+    owner_id: Mapped[Optional[int]] = mapped_column(ForeignKey("property_owners.id"), index=True)
+    furnishing_status: Mapped[Optional[str]] = mapped_column(String(30))  # unfurnished | semi | furnished
+    finishing: Mapped[Optional[str]] = mapped_column(String(30))  # core_shell | semi | full | super_lux
+    rental_category: Mapped[Optional[str]] = mapped_column(String(30))  # new_law | old_law | commercial | furnished_short
+    construction_year: Mapped[Optional[int]] = mapped_column(Integer)
+    electricity_meter: Mapped[Optional[str]] = mapped_column(String(100))
+    water_meter: Mapped[Optional[str]] = mapped_column(String(100))
+    gas_meter: Mapped[Optional[str]] = mapped_column(String(100))
+    listing_purpose: Mapped[Optional[str]] = mapped_column(String(20))  # sale | rent | both | none
+    occupancy_status: Mapped[str] = mapped_column(String(20), default="vacant", server_default="vacant")
+    acquisition_info: Mapped[Optional[str]] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
     floor: Mapped["Floor"] = relationship(back_populates="units")

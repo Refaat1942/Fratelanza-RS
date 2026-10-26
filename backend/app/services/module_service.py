@@ -129,7 +129,8 @@ class ModuleService:
                 return None
         for mod in PLATFORM_MODULES:
             for prefix in mod["api_prefixes"]:
-                if path.startswith(prefix):
+                # Match on a path-segment boundary so "/property" never captures "/property-expenses"
+                if path == prefix or path.startswith(prefix + "/"):
                     return mod["key"]
         return None
 

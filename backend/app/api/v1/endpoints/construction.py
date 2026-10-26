@@ -20,6 +20,25 @@ from app.services.dynamic_pricing_service import DynamicPricingService
 router = APIRouter()
 
 
+async def _owned_project(db: AsyncSession, project_id: int, user: User) -> Project:
+    project = (
+        await db.execute(select(Project).where(Project.id == project_id, Project.is_deleted == False))  # noqa: E712
+    ).scalar_one_or_none()
+    if not project or (not user.is_super_admin and project.company_id != user.company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    return project
+
+
+async def _owned_phase(db: AsyncSession, phase_id: int, user: User) -> ConstructionPhase:
+    phase = (await db.execute(select(ConstructionPhase).where(ConstructionPhase.id == phase_id))).scalar_one_or_none()
+    if not phase:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+    project = (await db.execute(select(Project).where(Project.id == phase.project_id))).scalar_one_or_none()
+    if not project or (not user.is_super_admin and project.company_id != user.company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+    return phase
+
+
 class PhaseCreate(BaseModel):
     project_id: int
     name_ar: str
@@ -77,6 +96,7 @@ async def create_phase(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
+    await _owned_project(db, data.project_id, current_user)
     phase = ConstructionPhase(**data.model_dump())
     db.add(phase)
     await db.flush()
@@ -90,10 +110,7 @@ async def update_phase(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(ConstructionPhase).where(ConstructionPhase.id == phase_id))
-    phase = result.scalar_one_or_none()
-    if not phase:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+    phase = await _owned_phase(db, phase_id, current_user)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(phase, field, value)
     await db.flush()
@@ -114,10 +131,7 @@ async def delete_phase(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(ConstructionPhase).where(ConstructionPhase.id == phase_id))
-    phase = result.scalar_one_or_none()
-    if not phase:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+    phase = await _owned_phase(db, phase_id, current_user)
     await db.delete(phase)
     await db.flush()
     return {"message": "Phase deleted", "success": True}
@@ -129,7 +143,14 @@ async def list_tasks(
     current_user: Annotated[User, Depends(get_company_user)],
     phase_id: Optional[int] = None,
 ):
-    query = select(ConstructionTask).order_by(ConstructionTask.id.desc())
+    query = (
+        select(ConstructionTask)
+        .join(ConstructionPhase, ConstructionTask.phase_id == ConstructionPhase.id)
+        .join(Project, ConstructionPhase.project_id == Project.id)
+        .order_by(ConstructionTask.id.desc())
+    )
+    if not current_user.is_super_admin:
+        query = query.where(Project.company_id == current_user.company_id)
     if phase_id:
         query = query.where(ConstructionTask.phase_id == phase_id)
     result = await db.execute(query)
@@ -153,7 +174,13 @@ async def list_milestones(
     current_user: Annotated[User, Depends(get_company_user)],
     project_id: Optional[int] = None,
 ):
-    query = select(ConstructionMilestone).order_by(ConstructionMilestone.target_date)
+    query = (
+        select(ConstructionMilestone)
+        .join(Project, ConstructionMilestone.project_id == Project.id)
+        .order_by(ConstructionMilestone.target_date)
+    )
+    if not current_user.is_super_admin:
+        query = query.where(Project.company_id == current_user.company_id)
     if project_id:
         query = query.where(ConstructionMilestone.project_id == project_id)
     result = await db.execute(query)
@@ -224,6 +251,7 @@ async def create_progress_update(
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    await _owned_project(db, data.project_id, current_user)
     update = ProjectProgressUpdate(company_id=current_user.company_id, **data.model_dump())
     db.add(update)
     await db.flush()

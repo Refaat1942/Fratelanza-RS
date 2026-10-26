@@ -456,6 +456,7 @@ async def seed_database() -> None:
                 for i in range(1, 6):
                     db.add(
                         Unit(
+                            company_id=company.id,
                             floor_id=floor.id,
                             unit_code=f"A1-{i:02d}",
                             unit_number=str(i),
@@ -1041,6 +1042,40 @@ async def seed_database() -> None:
                 await DynamicPricingService.recalculate_project_prices(
                     db, company.id, demo_project.id
                 )
+
+        # Permission catalog rows used by custom roles
+        from app.api.v1.endpoints.roles import ensure_permission_rows
+
+        await ensure_permission_rows(db)
+
+        # Built-in marketing DEMO company: switch on the property-management modules and add
+        # fictional rental data once (it stays a regular tenant; customer demos use /demos).
+        if company and company.id:
+            import json as _json
+
+            from app.models.rentals import PropertyOwner
+            from app.services.demo_service import DemoSeeder
+
+            new_modules = ["real_estate_requests", "rentals", "owners", "property_expenses", "admin_expenses"]
+            if company.enabled_modules:
+                try:
+                    current = _json.loads(company.enabled_modules)
+                    if isinstance(current, list) and not set(new_modules) <= set(current):
+                        company.enabled_modules = _json.dumps(current + [m for m in new_modules if m not in current])
+                except (ValueError, TypeError):
+                    pass
+            has_owners = (
+                await db.execute(select(PropertyOwner.id).where(PropertyOwner.company_id == company.id).limit(1))
+            ).first()
+            if not has_owners:
+                await db.flush()
+                try:
+                    async with db.begin_nested():
+                        await DemoSeeder(db, company).run()
+                except Exception as exc:  # never block startup on optional sample data
+                    import logging
+
+                    logging.getLogger(__name__).warning("Rental sample data skipped: %s", exc)
 
         from app.services.platform_billing_service import PlatformBillingService
 

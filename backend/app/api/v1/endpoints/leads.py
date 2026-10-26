@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user
+from app.api.deps import get_access, get_company_user
+from app.core.tenant import apply_data_scope
+from app.services.access_service import AccessContext
 from app.core.database import get_db
 from app.models.crm import CustomerReminder, Lead, LeadStage, ReminderStatus
 from app.models.users import User
@@ -16,10 +18,29 @@ from app.services.follow_up_service import FollowUpService
 router = APIRouter()
 
 
+async def _validate_lead_refs(db: AsyncSession, company_id: int, data) -> None:
+    from app.core.tenant import ensure_refs
+    from app.models.brokers import Broker
+    from app.models.customers import Customer
+    from app.models.real_estate import Project
+
+    await ensure_refs(
+        db,
+        company_id,
+        [
+            (Customer, getattr(data, "customer_id", None), "Customer"),
+            (Project, getattr(data, "project_id", None), "Project"),
+            (User, getattr(data, "assigned_to_id", None), "User"),
+            (Broker, getattr(data, "broker_id", None), "Broker"),
+        ],
+    )
+
+
 @router.get("", response_model=PaginatedResponse[LeadResponse])
 async def list_leads(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     stage: Optional[str] = None,
@@ -29,6 +50,7 @@ async def list_leads(
     query = select(Lead).where(Lead.is_deleted == False)
     if not current_user.is_super_admin:
         query = query.where(Lead.company_id == current_user.company_id)
+    query = apply_data_scope(query, Lead.assigned_to_id, access, current_user)
     if stage:
         query = query.where(Lead.stage == stage)
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
@@ -49,10 +71,14 @@ async def create_lead(
     data: LeadCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
-    lead = Lead(company_id=current_user.company_id, **data.model_dump())
+    await _validate_lead_refs(db, current_user.company_id, data)
+    payload = data.model_dump()
+    payload["assigned_to_id"] = payload.get("assigned_to_id") or current_user.id
+    lead = Lead(company_id=current_user.company_id, **payload)
     score, ai_score, qualification = AIService.score_lead(lead)
     lead.score = score
     lead.ai_score = ai_score
@@ -68,8 +94,11 @@ async def update_lead_stage(
     stage: LeadStage,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
-    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False))
+    result = await db.execute(
+        apply_data_scope(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False), Lead.assigned_to_id, access, current_user)
+    )
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -90,10 +119,12 @@ async def update_lead_stage(
 async def leads_kanban(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     query = select(Lead).where(Lead.is_deleted == False)
     if not current_user.is_super_admin:
         query = query.where(Lead.company_id == current_user.company_id)
+    query = apply_data_scope(query, Lead.assigned_to_id, access, current_user)
     result = await db.execute(query.order_by(Lead.score.desc()))
     leads = result.scalars().all()
     lead_ids = [l.id for l in leads]
@@ -134,8 +165,11 @@ async def delete_lead(
     lead_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
-    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False))
+    result = await db.execute(
+        apply_data_scope(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False), Lead.assigned_to_id, access, current_user)
+    )
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -152,13 +186,17 @@ async def update_lead(
     data: LeadUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
-    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False))
+    result = await db.execute(
+        apply_data_scope(select(Lead).where(Lead.id == lead_id, Lead.is_deleted == False), Lead.assigned_to_id, access, current_user)
+    )
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
     if not current_user.is_super_admin and lead.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    await _validate_lead_refs(db, lead.company_id, data)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(lead, field, value)
     score, ai_score, qualification = AIService.score_lead(lead)

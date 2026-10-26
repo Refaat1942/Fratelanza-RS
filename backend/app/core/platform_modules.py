@@ -15,7 +15,7 @@ class PlatformModule(TypedDict):
 
 
 PLATFORM_MODULES: list[PlatformModule] = [
-    {"key": "dashboard", "name_en": "Dashboard", "name_ar": "لوحة التحكم", "category_en": "Core", "category_ar": "أساسي", "api_prefixes": ["/dashboard"], "route": "/dashboard", "core": True},
+    {"key": "dashboard", "name_en": "Dashboard", "name_ar": "لوحة التحكم", "category_en": "Core", "category_ar": "أساسي", "api_prefixes": ["/dashboard", "/re-dashboard"], "route": "/dashboard", "core": True},
     {"key": "customers", "name_en": "Customers", "name_ar": "العملاء", "category_en": "CRM", "category_ar": "إدارة العملاء", "api_prefixes": ["/customers"], "route": "/customers", "core": False},
     {"key": "leads", "name_en": "Leads & CRM", "name_ar": "العملاء المحتملون", "category_en": "CRM", "category_ar": "إدارة العملاء", "api_prefixes": ["/leads"], "route": "/leads", "core": False},
     {"key": "follow_ups", "name_en": "Follow-ups & Calls", "name_ar": "المتابعات والمكالمات", "category_en": "CRM", "category_ar": "إدارة العملاء", "api_prefixes": ["/reminders"], "route": "/follow-ups", "core": False},
@@ -31,9 +31,14 @@ PLATFORM_MODULES: list[PlatformModule] = [
     {"key": "warehouse", "name_en": "Warehouse", "name_ar": "المستودع", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/warehouse"], "route": "/warehouse", "core": False},
     {"key": "property", "name_en": "Property Management", "name_ar": "إدارة الممتلكات", "category_en": "Operations", "category_ar": "العمليات", "api_prefixes": ["/property"], "route": "/property", "core": False},
     {"key": "customer_service", "name_en": "Customer Service", "name_ar": "خدمة العملاء", "category_en": "Support", "category_ar": "الدعم", "api_prefixes": ["/tickets"], "route": "/customer-service", "core": False},
-    {"key": "users", "name_en": "Team Users", "name_ar": "مستخدمي الفريق", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/users"], "route": "/users", "core": False},
+    {"key": "real_estate_requests", "name_en": "Property Requests & Offers", "name_ar": "طلبات وعروض العقارات", "category_en": "Sales", "category_ar": "المبيعات", "api_prefixes": ["/re-requests"], "route": "/property-requests", "core": False},
+    {"key": "rentals", "name_en": "Rental Contracts & Rent", "name_ar": "عقود الإيجار والتحصيل", "category_en": "Property Management", "category_ar": "إدارة الأملاك", "api_prefixes": ["/rentals"], "route": "/rentals", "core": False},
+    {"key": "owners", "name_en": "Owners & Settlements", "name_ar": "الملاك والتسويات", "category_en": "Property Management", "category_ar": "إدارة الأملاك", "api_prefixes": ["/owners"], "route": "/owners", "core": False},
+    {"key": "property_expenses", "name_en": "Property Expenses", "name_ar": "مصروفات العقارات", "category_en": "Property Management", "category_ar": "إدارة الأملاك", "api_prefixes": ["/property-expenses"], "route": "/property-expenses", "core": False},
+    {"key": "admin_expenses", "name_en": "Administrative Expenses", "name_ar": "المصروفات الإدارية", "category_en": "Finance", "category_ar": "المالية", "api_prefixes": ["/admin-expenses"], "route": "/admin-expenses", "core": False},
+    {"key": "users", "name_en": "Users, Roles & Permissions", "name_ar": "المستخدمون والأدوار والصلاحيات", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/users", "/roles"], "route": "/users", "core": False},
     {"key": "customer_portal", "name_en": "Buyer Portal", "name_ar": "بوابة المشتري", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/customer-portal"], "route": "/portal-settings", "core": False},
-    {"key": "reports", "name_en": "Reports", "name_ar": "التقارير", "category_en": "Analytics", "category_ar": "التحليلات", "api_prefixes": ["/reports", "/exports"], "route": "/reports", "core": False},
+    {"key": "reports", "name_en": "Reports", "name_ar": "التقارير", "category_en": "Analytics", "category_ar": "التحليلات", "api_prefixes": ["/reports", "/exports", "/re-reports"], "route": "/reports", "core": False},
     {"key": "branding", "name_en": "Branding", "name_ar": "الهوية البصرية", "category_en": "Admin", "category_ar": "الإدارة", "api_prefixes": ["/companies/me/branding", "/companies/me/logo"], "route": "/branding", "core": False},
     {"key": "ai_assistant", "name_en": "AI Assistant", "name_ar": "المساعد الذكي", "category_en": "Analytics", "category_ar": "التحليلات", "api_prefixes": ["/ai"], "route": "/ai-assistant", "core": False},
 ]
@@ -50,6 +55,7 @@ PLAN_MODULE_DEFAULTS: dict[str, list[str]] = {
         "reservations", "contracts", "collections", "brokers", "finance", "hr",
         "construction", "procurement", "warehouse", "property", "customer_service",
         "users", "customer_portal", "reports", "branding",
+        "real_estate_requests", "rentals", "owners", "property_expenses", "admin_expenses",
     ],
     "enterprise": ALL_MODULE_KEYS,
     "full": ALL_MODULE_KEYS,

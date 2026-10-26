@@ -116,11 +116,33 @@ class DashboardService:
             KPICard(label_ar="الوحدات المتاحة", label_en="Available Units", value=str(available_count)),
             KPICard(label_ar="العملاء المحتملون", label_en="Leads", value=str(leads_count)),
         ]
-        sales_chart = [
-            ChartDataPoint(label="Jan", value=float(sales_total) * 0.1),
-            ChartDataPoint(label="Feb", value=float(sales_total) * 0.15),
-            ChartDataPoint(label="Mar", value=float(sales_total) * 0.2),
-        ]
+        # Real monthly contract value for the last 6 months (contract_date is stored as YYYY-MM-DD)
+        from datetime import date as _date
+
+        today = _date.today()
+        months = []
+        for back in range(5, -1, -1):
+            y, m = today.year, today.month - back
+            while m <= 0:
+                m += 12
+                y -= 1
+            months.append(f"{y:04d}-{m:02d}")
+        month_col = func.substr(Contract.contract_date, 1, 7)
+        monthly = dict(
+            (
+                await db.execute(
+                    select(month_col, func.coalesce(func.sum(Contract.total_price), 0))
+                    .where(
+                        Contract.company_id == company_id,
+                        Contract.is_deleted == False,  # noqa: E712
+                        Contract.status.in_([ContractStatus.ACTIVE, ContractStatus.COMPLETED]),
+                        month_col.in_(months),
+                    )
+                    .group_by(month_col)
+                )
+            ).all()
+        )
+        sales_chart = [ChartDataPoint(label=m, value=float(monthly.get(m, 0))) for m in months]
         return DashboardResponse(
             stats=stats,
             kpis=kpis,

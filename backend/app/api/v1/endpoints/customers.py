@@ -7,7 +7,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user
+from app.api.deps import get_access, get_company_user
+from app.core.tenant import apply_data_scope, in_data_scope, mask
+from app.services.access_service import AccessContext
 from app.core.database import get_db
 from app.models.customers import ActivityType, Customer, CustomerActivity
 from app.models.crm import Lead, LeadSource, LeadStage
@@ -23,6 +25,28 @@ from app.services.export_service import ExportService
 router = APIRouter()
 
 
+def present(customer: Customer, access: AccessContext) -> dict:
+    """Customer as returned by the API, with sensitive fields masked per the caller's role."""
+    data = CustomerResponse.model_validate(customer).model_dump()
+    data["national_id"] = mask(data.get("national_id"), access.sees("identity"))
+    data["passport_number"] = mask(data.get("passport_number"), access.sees("identity"))
+    if not access.sees("internal_notes") and not access.can("customers", "edit"):
+        data["notes"] = None
+    return data
+
+
+async def _team_ids(db: AsyncSession, user: User) -> set[int]:
+    if not user.branch_id:
+        return {user.id}
+    rows = await db.execute(select(User.id).where(User.branch_id == user.branch_id, User.company_id == user.company_id))
+    return set(rows.scalars().all())
+
+
+async def _assert_in_scope(db: AsyncSession, customer: Customer, access: AccessContext, user: User) -> None:
+    if not in_data_scope(customer.assigned_to_id, access, user, await _team_ids(db, user)):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+
+
 class ImportConfirmRequest(BaseModel):
     session_id: Optional[str] = None
     rows: Optional[list[dict[str, Any]]] = None
@@ -34,6 +58,7 @@ class ImportConfirmRequest(BaseModel):
 @router.get("/import/template")
 async def download_import_template(
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
 ):
     if not current_user.company_id:
@@ -54,6 +79,7 @@ async def download_import_template(
 @router.get("/import/fields")
 async def import_field_reference(
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
@@ -68,6 +94,7 @@ async def import_field_reference(
 async def preview_customer_import(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     file: UploadFile = File(...),
     column_mapping: Optional[str] = Form(None),
 ):
@@ -102,6 +129,7 @@ async def confirm_customer_import(
     data: ImportConfirmRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
@@ -136,6 +164,7 @@ async def onboard_client(
     data: ClientOnboard,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     """Odoo-style quick client registration with optional lead creation."""
     if not current_user.company_id:
@@ -188,10 +217,10 @@ async def onboard_client(
         db.add(lead)
 
     await db.flush()
-    return CustomerResponse.model_validate(customer)
+    return present(customer, access)
 
 
-async def _enrich_customers(db: AsyncSession, customers: list[Customer]) -> list[dict]:
+async def _enrich_customers(db: AsyncSession, customers: list[Customer], access: AccessContext) -> list[dict]:
     if not customers:
         return []
     ids = [c.id for c in customers]
@@ -219,7 +248,7 @@ async def _enrich_customers(db: AsyncSession, customers: list[Customer]) -> list
     for c in customers:
         lead = lead_map.get(c.id)
         rows.append({
-            **CustomerResponse.model_validate(c).model_dump(),
+            **present(c, access),
             "contracts_count": contract_map.get(c.id, 0),
             "reservations_count": reservation_map.get(c.id, 0),
             "lead_id": lead.id if lead else None,
@@ -232,6 +261,7 @@ async def _enrich_customers(db: AsyncSession, customers: list[Customer]) -> list
 async def customers_summary(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
@@ -277,6 +307,7 @@ async def customers_summary(
 async def list_customers(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: Optional[str] = None,
@@ -286,6 +317,7 @@ async def list_customers(
     query = select(Customer).where(Customer.is_deleted == False)
     if not current_user.is_super_admin:
         query = query.where(Customer.company_id == current_user.company_id)
+    query = apply_data_scope(query, Customer.assigned_to_id, access, current_user)
     if search:
         query = query.where(
             or_(
@@ -299,7 +331,7 @@ async def list_customers(
     customers = result.scalars().all()
     pages = (total + page_size - 1) // page_size
     return PaginatedResponse(
-        items=await _enrich_customers(db, list(customers)),
+        items=await _enrich_customers(db, list(customers), access),
         total=total,
         page=page,
         page_size=page_size,
@@ -312,13 +344,19 @@ async def create_customer(
     data: CustomerCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
-    customer = Customer(company_id=current_user.company_id, **data.model_dump())
+    from app.core.tenant import ensure_refs
+
+    await ensure_refs(db, current_user.company_id, [(User, data.assigned_to_id, "User")])
+    payload = data.model_dump()
+    payload["assigned_to_id"] = payload.get("assigned_to_id") or current_user.id
+    customer = Customer(company_id=current_user.company_id, **payload)
     db.add(customer)
     await db.flush()
-    return CustomerResponse.model_validate(customer)
+    return present(customer, access)
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
@@ -326,6 +364,7 @@ async def get_customer(
     customer_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
     customer = result.scalar_one_or_none()
@@ -333,7 +372,8 @@ async def get_customer(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     if not current_user.is_super_admin and customer.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    return CustomerResponse.model_validate(customer)
+    await _assert_in_scope(db, customer, access, current_user)
+    return present(customer, access)
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
@@ -342,6 +382,7 @@ async def update_customer(
     data: CustomerUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
     customer = result.scalar_one_or_none()
@@ -349,10 +390,19 @@ async def update_customer(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     if not current_user.is_super_admin and customer.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    await _assert_in_scope(db, customer, access, current_user)
+    changes = data.model_dump(exclude_unset=True)
+    if ({"national_id", "passport_number"} & set(changes)) and not access.sees("identity"):
+        # A masked value round-tripped by the UI must not overwrite the real one
+        changes.pop("national_id", None)
+        changes.pop("passport_number", None)
+    from app.core.tenant import ensure_refs
+
+    await ensure_refs(db, customer.company_id, [(User, changes.get("assigned_to_id"), "User")])
+    for field, value in changes.items():
         setattr(customer, field, value)
     await db.flush()
-    return CustomerResponse.model_validate(customer)
+    return present(customer, access)
 
 
 @router.delete("/{customer_id}")
@@ -360,6 +410,7 @@ async def delete_customer(
     customer_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
     customer = result.scalar_one_or_none()
@@ -367,6 +418,7 @@ async def delete_customer(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     if not current_user.is_super_admin and customer.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    await _assert_in_scope(db, customer, access, current_user)
     customer.soft_delete()
     await db.flush()
     return {"message": "Customer deleted", "success": True}
@@ -383,6 +435,7 @@ async def add_customer_note(
     data: CustomerNoteCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
     customer = result.scalar_one_or_none()
@@ -390,6 +443,7 @@ async def add_customer_note(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     if not current_user.is_super_admin and customer.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    await _assert_in_scope(db, customer, access, current_user)
     activity = CustomerActivity(
         customer_id=customer_id,
         activity_type=ActivityType.NOTE,
@@ -407,6 +461,7 @@ async def get_customer_profile(
     customer_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
     customer = result.scalar_one_or_none()
@@ -414,6 +469,7 @@ async def get_customer_profile(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     if not current_user.is_super_admin and customer.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    await _assert_in_scope(db, customer, access, current_user)
 
     contracts = (
         await db.execute(
@@ -438,7 +494,7 @@ async def get_customer_profile(
     ).scalars().all()
 
     return {
-        "customer": CustomerResponse.model_validate(customer).model_dump(),
+        "customer": present(customer, access),
         "lead": {"id": lead.id, "stage": lead.stage.value, "score": lead.score} if lead else None,
         "contracts": [
             {"id": c.id, "contract_number": c.contract_number, "status": c.status.value, "total_price": float(c.total_price or 0)}
@@ -466,7 +522,14 @@ async def get_customer_timeline(
     customer_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
+    customer = (
+        await db.execute(select(Customer).where(Customer.id == customer_id, Customer.is_deleted == False))
+    ).scalar_one_or_none()
+    if not customer or (not current_user.is_super_admin and customer.company_id != current_user.company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    await _assert_in_scope(db, customer, access, current_user)
     result = await db.execute(
         select(CustomerActivity)
         .where(CustomerActivity.customer_id == customer_id)

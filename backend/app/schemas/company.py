@@ -47,6 +47,24 @@ class CompanyUpdate(BaseModel):
     theme: Optional[str] = None
     currency: Optional[str] = None
     logo_url: Optional[str] = None
+    timezone: Optional[str] = None
+    date_format: Optional[str] = None
+
+
+class CompanyBrandingUpdate(BaseModel):
+    """Fields a tenant may change about itself. Status, limits and modules are platform-controlled."""
+
+    name_ar: Optional[str] = None
+    name_en: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    default_language: Optional[str] = None
+    theme: Optional[str] = None
+    currency: Optional[str] = None
+    timezone: Optional[str] = None
+    date_format: Optional[str] = None
 
 
 class CompanyModulesUpdate(BaseModel):
@@ -56,6 +74,9 @@ class CompanyModulesUpdate(BaseModel):
 class CompanyResponse(CompanyBase):
     id: int
     status: CompanyStatus
+    timezone: str = "Africa/Cairo"
+    date_format: str = "YYYY-MM-DD"
+    is_demo: bool = False
     storage_used_mb: int
     logo_url: Optional[str] = None
     enabled_modules: Optional[list[str]] = None

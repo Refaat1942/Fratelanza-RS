@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import verify_token
 from app.models.tenant import Company
 from app.models.users import SystemRole, User, UserStatus
+from app.services.access_service import AccessContext, AccessService
 from app.services.platform_billing_service import PlatformBillingService
 
 security = HTTPBearer(auto_error=False)
@@ -38,10 +39,46 @@ async def get_current_user(
             .where(Company.id == user.company_id, Company.is_deleted == False)
         )
         company = company_result.scalar_one_or_none()
-        if company:
-            await PlatformBillingService.ensure_company_accessible(db, company)
-            await db.commit()
+        if not company:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company not found")
+        await PlatformBillingService.ensure_company_accessible(db, company)
+        if company.is_demo:
+            AccessService.ensure_demo_usable(await AccessService.load_demo(db, company.id))
+        await db.commit()
     return user
+
+
+async def get_access(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AccessContext:
+    """Effective permissions of the caller (computed once per request by the access guard)."""
+    ctx = getattr(request.state, "access", None)
+    if isinstance(ctx, AccessContext) and ctx.user_id == current_user.id:
+        return ctx
+    return await AccessService.build(db, current_user)
+
+
+def require_permission(module: str, action: str = "view"):
+    """Explicit per-endpoint check (defence in depth on top of AccessGuardMiddleware)."""
+
+    async def checker(access: Annotated[AccessContext, Depends(get_access)]) -> AccessContext:
+        if not access.can(module, action):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "permission_denied", "module": module, "action": action},
+            )
+        return access
+
+    return checker
+
+
+def company_id_of(user: User) -> int:
+    """Tenant of the caller. Tenant-owned writes always use this — never a client-supplied id."""
+    if not user.company_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    return user.company_id
 
 
 async def get_super_admin(
@@ -92,11 +129,15 @@ async def log_audit(
     entity_type: Optional[str] = None,
     entity_id: Optional[int] = None,
     details: Optional[str] = None,
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
+    company_id: Optional[int] = None,
 ) -> None:
     from app.models.system import AuditLog
+    from app.services.audit_service import serialize_changes
 
     log = AuditLog(
-        company_id=user.company_id if user else None,
+        company_id=company_id if company_id is not None else (user.company_id if user else None),
         user_id=user.id if user else None,
         action=action,
         module=module,
@@ -105,5 +146,6 @@ async def log_audit(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
         details=details,
+        changes=serialize_changes(before, after),
     )
     db.add(log)

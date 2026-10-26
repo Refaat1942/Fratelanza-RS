@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin_expenses,
     ai,
     auth,
     broker_portal,
@@ -12,19 +13,26 @@ from app.api.v1.endpoints import (
     customer_portal,
     customers,
     dashboard,
+    demos,
     exports,
     finance,
     hr,
     leads,
     modules,
     notifications,
+    owners,
     pricing,
     procurement,
     projects,
     property,
+    property_expenses,
+    re_reports,
+    re_requests,
+    rentals,
     reports,
     reminders,
     reservations,
+    roles,
     search,
     super_admin,
     tickets,
@@ -62,3 +70,12 @@ api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(exports.router, prefix="/exports", tags=["Exports"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI Features"])
+api_router.include_router(roles.router, prefix="/roles", tags=["Roles & Permissions"])
+api_router.include_router(demos.router, prefix="/demos", tags=["Demo Management"])
+api_router.include_router(rentals.router, prefix="/rentals", tags=["Rental Contracts & Collections"])
+api_router.include_router(owners.router, prefix="/owners", tags=["Owners & Settlements"])
+api_router.include_router(property_expenses.router, prefix="/property-expenses", tags=["Property Expenses"])
+api_router.include_router(admin_expenses.router, prefix="/admin-expenses", tags=["Administrative Expenses"])
+api_router.include_router(re_requests.router, prefix="/re-requests", tags=["Property Requests & Matching"])
+api_router.include_router(re_reports.router, prefix="/re-reports", tags=["Property Management Reports"])
+api_router.include_router(re_reports.dashboard_router, prefix="/re-dashboard", tags=["Dashboard & BI"])

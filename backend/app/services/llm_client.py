@@ -13,6 +13,12 @@ class LLMClient:
 
     @staticmethod
     def resolve_provider() -> str:
+        # Demo tenants never send data to external AI providers
+        from app.middleware.module_guard import current_access
+
+        ctx = current_access.get()
+        if ctx is not None and ctx.is_demo:
+            return "local"
         pref = (settings.AI_PROVIDER or "auto").lower()
         if pref == "local":
             return "local"

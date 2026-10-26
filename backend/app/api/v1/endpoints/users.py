@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_admin, get_company_user, get_super_admin
+from fastapi import Request
+
+from app.api.deps import get_access, get_company_admin, get_company_user, get_super_admin, log_audit
+from app.core.permissions import ADMIN_SYSTEM_ROLES
+from app.services.access_service import AccessContext, AccessService
 from app.core.database import get_db
 from app.core.security import get_password_hash
 from app.models.tenant import Company, CompanySubscription
@@ -19,6 +23,34 @@ from app.services.company_service import CompanyService
 from app.services.module_service import ModuleService
 
 router = APIRouter()
+
+
+def _assert_assignable_role(role: SystemRole | None, current_user: User, access: AccessContext) -> None:
+    """Prevent privilege escalation through the user-management API."""
+    if role is None or current_user.is_super_admin:
+        return
+    if role == SystemRole.SUPER_ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot assign platform role")
+    # Granting any role other than the least-privileged default is a permission change
+    if role != SystemRole.SALES_AGENT and not access.can("users", "manage_permissions"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manage_permissions required to assign roles")
+
+
+async def _assert_super_admin_remains(db: AsyncSession, user: User) -> None:
+    if not user.is_super_admin:
+        return
+    others = (
+        await db.execute(
+            select(func.count(User.id)).where(
+                User.is_super_admin == True,  # noqa: E712
+                User.is_deleted == False,  # noqa: E712
+                User.status == UserStatus.ACTIVE,
+                User.id != user.id,
+            )
+        )
+    ).scalar() or 0
+    if others == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="lockout_prevented: last platform super admin")
 
 
 def _user_with_company(
@@ -100,12 +132,15 @@ async def _enrich_user(db: AsyncSession, user: User) -> UserResponse:
 @router.post("", response_model=UserResponse)
 async def create_user(
     data: UserCreate,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     company_id = data.company_id if current_user.is_super_admin else current_user.company_id
     if not company_id and not current_user.is_super_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    _assert_assignable_role(data.system_role, current_user, access)
     user = await AuthService.create_user(
         db,
         username=data.username,
@@ -119,6 +154,11 @@ async def create_user(
     if data.phone:
         user.phone = data.phone
     await db.flush()
+    await log_audit(
+        db, request, current_user, "user_created", "users", "user", user.id,
+        after={"username": user.username, "system_role": user.system_role, "company_id": company_id},
+        company_id=company_id,
+    )
     return UserResponse.model_validate(user)
 
 
@@ -161,8 +201,13 @@ async def suspend_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     if not current_user.is_super_admin and user.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if user.is_super_admin and not current_user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot suspend super admin")
+    await _assert_super_admin_remains(db, user)
     user.status = UserStatus.SUSPENDED
     await db.flush()
+    if user.company_id:
+        await AccessService.ensure_admin_remains(db, user.company_id)
     return {"message": "User suspended", "success": True}
 
 
@@ -182,6 +227,8 @@ async def delete_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     user.soft_delete()
     await db.flush()
+    if user.company_id:
+        await AccessService.ensure_admin_remains(db, user.company_id)
     return {"message": "User deleted", "success": True}
 
 
@@ -221,8 +268,10 @@ async def get_user(
 async def update_user(
     user_id: int,
     data: UserUpdate,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
     user = result.scalar_one_or_none()
@@ -232,11 +281,29 @@ async def update_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if user.is_super_admin and not current_user.is_super_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot edit super admin")
-    for field, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    if user.system_role in ADMIN_SYSTEM_ROLES and user.id != current_user.id and not access.can("users", "manage_permissions"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can edit admin accounts")
+    if "system_role" in changes:
+        _assert_assignable_role(changes["system_role"], current_user, access)
+        if user.system_role in ADMIN_SYSTEM_ROLES and changes["system_role"] not in ADMIN_SYSTEM_ROLES \
+                and not access.can("users", "manage_permissions"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can demote admins")
+    before = {"system_role": user.system_role, "company_id": user.company_id}
+    old_company_id = user.company_id
+    for field, value in changes.items():
         if field == "company_id" and not current_user.is_super_admin:
             continue
         setattr(user, field, value)
     await db.flush()
+    if "system_role" in changes or "company_id" in changes:
+        if old_company_id:
+            await AccessService.ensure_admin_remains(db, old_company_id)
+        await log_audit(
+            db, request, current_user, "user_role_changed", "users", "user", user.id,
+            before=before, after={"system_role": user.system_role, "company_id": user.company_id},
+            company_id=old_company_id,
+        )
     return await _enrich_user(db, user)
 
 
@@ -286,6 +353,7 @@ async def update_user_modules(
     plan = company.subscription.plan if company.subscription else None
     company_modules = ModuleService.parse_enabled(company, plan)
     enabled = await ModuleService.set_user_modules(db, user, data.enabled_modules, company_modules)
+    await AccessService.ensure_admin_remains(db, company.id)
     return {
         "user_id": user.id,
         "enabled": enabled,
@@ -307,6 +375,8 @@ async def reset_user_modules(
     if not current_user.is_super_admin and user.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     await ModuleService.clear_user_modules(db, user)
+    if user.company_id:
+        await AccessService.bump_version(db, user.company_id)
     return {"message": "User now inherits company modules", "success": True}
 
 
@@ -314,8 +384,10 @@ async def reset_user_modules(
 async def reset_password(
     user_id: int,
     data: AdminPasswordReset,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
     user = result.scalar_one_or_none()
@@ -325,6 +397,9 @@ async def reset_password(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if user.is_super_admin and not current_user.is_super_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot reset super admin password")
+    if user.system_role in ADMIN_SYSTEM_ROLES and not access.can("users", "manage_permissions"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can reset admin passwords")
     user.password_hash = get_password_hash(data.new_password)
     await db.flush()
+    await log_audit(db, request, current_user, "password_reset", "users", "user", user.id, company_id=user.company_id)
     return {"message": "Password reset successfully", "success": True}

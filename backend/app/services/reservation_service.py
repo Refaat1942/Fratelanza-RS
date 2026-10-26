@@ -15,10 +15,12 @@ class ReservationService:
     async def create_reservation(
         db: AsyncSession, company_id: int, data: ReservationCreate, created_by_id: int
     ) -> Reservation:
+        from app.core.tenant import ensure_refs
+        from app.models.customers import Customer
+
+        await ensure_refs(db, company_id, [(Customer, data.customer_id, "Customer")])
         unit_result = await db.execute(
-            select(Unit)
-            .join(Unit.floor)
-            .where(Unit.id == data.unit_id, Unit.is_deleted == False)
+            select(Unit).where(Unit.id == data.unit_id, Unit.is_deleted == False, Unit.company_id == company_id)
         )
         unit = unit_result.scalar_one_or_none()
         if not unit:
@@ -59,8 +61,13 @@ class ReservationService:
         return reservation
 
     @staticmethod
-    async def approve_reservation(db: AsyncSession, reservation_id: int, approved_by_id: int) -> Reservation:
-        result = await db.execute(select(Reservation).where(Reservation.id == reservation_id))
+    async def approve_reservation(
+        db: AsyncSession, reservation_id: int, approved_by_id: int, company_id: int | None = None
+    ) -> Reservation:
+        query = select(Reservation).where(Reservation.id == reservation_id, Reservation.is_deleted == False)
+        if company_id is not None:
+            query = query.where(Reservation.company_id == company_id)
+        result = await db.execute(query)
         reservation = result.scalar_one_or_none()
         if not reservation:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found")

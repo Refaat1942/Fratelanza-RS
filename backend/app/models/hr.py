@@ -59,6 +59,7 @@ class Payslip(Base, TimestampMixin):
     deductions: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
     social_insurance: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
     net_salary: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0)
+    paid_amount: Mapped[Numeric] = mapped_column(Numeric(12, 2), default=0, server_default="0")
     status: Mapped[str] = mapped_column(String(50), default="pending")
 
 

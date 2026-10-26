@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -30,6 +30,13 @@ class JournalEntry(Base, TimestampMixin):
     entry_date: Mapped[str] = mapped_column(String(20), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    # Operational record that produced this entry — unique per tenant so a record is never posted twice
+    source_type: Mapped[Optional[str]] = mapped_column(String(50))
+    source_id: Mapped[Optional[int]] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint("company_id", "source_type", "source_id", name="uq_journal_entry_source"),
+    )
 
     lines: Mapped[list["JournalLine"]] = relationship(back_populates="journal_entry", lazy="selectin")
 

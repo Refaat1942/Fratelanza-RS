@@ -6,14 +6,42 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user
+from datetime import date
+
+from fastapi import Request
+
+from app.api.deps import get_access, get_company_user, log_audit
 from app.core.database import get_db
+from app.services.access_service import AccessContext
+from app.services.payroll_service import PayrollService
 from app.models.hr import Attendance, Employee, LeaveRequest, PayrollRun, Payslip
 from app.models.users import User
 
 router = APIRouter()
 
-SOCIAL_INSURANCE_RATE = Decimal("0.11")
+
+def _salary_fields(p: Payslip, access: AccessContext) -> dict:
+    visible = access.sees("salaries")
+
+    def val(x):
+        return float(x or 0) if visible else None
+
+    return {
+        "basic_salary": val(p.basic_salary),
+        "allowances": val(p.allowances),
+        "social_insurance": val(p.social_insurance),
+        "deductions": val(p.deductions),
+        "net_salary": val(p.net_salary),
+        "paid_amount": val(p.paid_amount),
+    }
+
+
+class SalaryPaymentIn(BaseModel):
+    amount: Decimal
+    paid_on: date
+    method: str = "bank_transfer"
+    reference: Optional[str] = None
+
 
 
 class EmployeeCreate(BaseModel):
@@ -46,6 +74,7 @@ class LeaveCreate(BaseModel):
 async def list_employees(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
@@ -61,7 +90,7 @@ async def list_employees(
             "full_name_en": e.full_name_en,
             "department": e.department or "",
             "position": e.position or "",
-            "salary": float(e.salary or 0),
+            "salary": float(e.salary or 0) if access.sees("salaries") else None,
             "hire_date": e.hire_date or "",
             "is_active": e.is_active,
         }
@@ -274,6 +303,7 @@ async def approve_leave(
 async def list_all_payslips(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
@@ -291,11 +321,7 @@ async def list_all_payslips(
             "employee_code": e.employee_code,
             "employee_name": e.full_name_ar,
             "department": e.department or "",
-            "basic_salary": float(p.basic_salary),
-            "allowances": float(p.allowances),
-            "social_insurance": float(p.social_insurance),
-            "deductions": float(p.deductions),
-            "net_salary": float(p.net_salary),
+            **_salary_fields(p, access),
             "status": p.status,
         }
         for p, e, run in result.all()
@@ -306,6 +332,7 @@ async def list_all_payslips(
 async def list_payroll_runs(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
@@ -321,9 +348,9 @@ async def list_payroll_runs(
             "id": r.id,
             "period_month": r.period_month,
             "status": r.status,
-            "total_gross": float(r.total_gross or 0),
-            "total_deductions": float(r.total_deductions or 0),
-            "total_net": float(r.total_net or 0),
+            "total_gross": float(r.total_gross or 0) if access.sees("salaries") else None,
+            "total_deductions": float(r.total_deductions or 0) if access.sees("salaries") else None,
+            "total_net": float(r.total_net or 0) if access.sees("salaries") else None,
         }
         for r in runs
     ]
@@ -334,6 +361,7 @@ async def list_payslips(
     run_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
     run = (
         await db.execute(
@@ -355,11 +383,9 @@ async def list_payslips(
             "employee_code": e.employee_code,
             "employee_name": e.full_name_en,
             "department": e.department or "",
-            "basic_salary_egp": float(p.basic_salary),
-            "allowances_egp": float(p.allowances),
-            "social_insurance_egp": float(p.social_insurance),
-            "deductions_egp": float(p.deductions),
-            "net_salary_egp": float(p.net_salary),
+            **{f"{k}_egp": v for k, v in _salary_fields(p, access).items() if k != "paid_amount"},
+            "id": p.id,
+            "paid_amount": _salary_fields(p, access)["paid_amount"],
             "status": p.status,
         }
         for p, e in result.all()
@@ -374,68 +400,38 @@ async def generate_payroll(
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
-    existing = (
-        await db.execute(
-            select(PayrollRun).where(
-                PayrollRun.company_id == current_user.company_id,
-                PayrollRun.period_month == period_month,
-            )
-        )
-    ).scalar_one_or_none()
-    if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payroll already generated for this month")
-
-    employees = (
-        await db.execute(
-            select(Employee).where(
-                Employee.company_id == current_user.company_id,
-                Employee.is_active == True,
-                Employee.is_deleted == False,
-            )
-        )
-    ).scalars().all()
-
-    run = PayrollRun(
-        company_id=current_user.company_id,
-        period_month=period_month,
-        status="processed",
-        created_by_id=current_user.id,
-    )
-    db.add(run)
-    await db.flush()
-
-    total_gross = Decimal("0")
-    total_deductions = Decimal("0")
-    total_net = Decimal("0")
-
-    for emp in employees:
-        basic = Decimal(str(emp.salary or 0))
-        social = (basic * SOCIAL_INSURANCE_RATE).quantize(Decimal("0.01"))
-        deductions = social
-        net = basic - deductions
-        total_gross += basic
-        total_deductions += deductions
-        total_net += net
-        db.add(
-            Payslip(
-                payroll_run_id=run.id,
-                employee_id=emp.id,
-                basic_salary=basic,
-                allowances=Decimal("0"),
-                social_insurance=social,
-                deductions=deductions,
-                net_salary=net,
-                status="processed",
-            )
-        )
-
-    run.total_gross = total_gross
-    run.total_deductions = total_deductions
-    run.total_net = total_net
-    await db.flush()
+    run = await PayrollService.generate(db, current_user.company_id, period_month, current_user.id)
+    total_net = run.total_net
+    employees = (await db.execute(select(Payslip.id).where(Payslip.payroll_run_id == run.id))).all()
     return {
         "id": run.id,
         "period_month": period_month,
         "total_net_egp": float(total_net),
         "employee_count": len(employees),
     }
+
+
+@router.post("/payslips/{payslip_id}/payments")
+async def pay_salary(
+    payslip_id: int,
+    data: SalaryPaymentIn,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
+):
+    if not access.sees("salaries"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Salary details are restricted")
+    row = (
+        await db.execute(
+            select(Payslip, PayrollRun)
+            .join(PayrollRun, Payslip.payroll_run_id == PayrollRun.id)
+            .where(Payslip.id == payslip_id, PayrollRun.company_id == current_user.company_id)
+        )
+    ).first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payslip not found")
+    payslip, _ = row
+    payment = await PayrollService.pay(db, payslip, data.amount, data.paid_on, data.method, data.reference, current_user.id)
+    await log_audit(db, request, current_user, "salary_paid", "hr", "payslip", payslip.id, after={"amount": payment.amount})
+    return {"id": payment.id, "paid_amount": float(payslip.paid_amount), "status": payslip.status}

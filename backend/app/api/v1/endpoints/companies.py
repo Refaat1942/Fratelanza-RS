@@ -9,7 +9,13 @@ from app.api.deps import get_company_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.users import User
-from app.schemas.company import BranchCreate, BranchResponse, CompanyResponse, CompanyUpdate
+from app.schemas.company import (
+    BranchCreate,
+    BranchResponse,
+    CompanyBrandingUpdate,
+    CompanyResponse,
+    CompanyUpdate,
+)
 from app.services.company_service import CompanyService
 from app.models.tenant import Branch
 
@@ -43,13 +49,22 @@ async def get_company(
 
 @router.put("/me/branding", response_model=CompanyResponse)
 async def update_my_branding(
-    data: CompanyUpdate,
+    data: CompanyBrandingUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
-    company = await CompanyService.update_company(db, current_user.company_id, data)
+    if data.timezone:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(data.timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timezone")
+    company = await CompanyService.update_company(
+        db, current_user.company_id, CompanyUpdate(**data.model_dump(exclude_unset=True))
+    )
     return CompanyResponse.model_validate(company)
 
 
@@ -63,11 +78,15 @@ async def upload_logo(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image file required")
-    ext = file.filename.split(".")[-1] if file.filename and "." in file.filename else "png"
+    ext = (file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "png").lower()
+    if ext not in {"png", "jpg", "jpeg", "webp", "gif"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported image type")
     filename = f"logo_{current_user.company_id}_{uuid.uuid4().hex[:8]}.{ext}"
     os.makedirs(settings.STORAGE_LOCAL_PATH, exist_ok=True)
     path = os.path.join(settings.STORAGE_LOCAL_PATH, filename)
-    content = await file.read()
+    content = await file.read(5 * 1024 * 1024 + 1)
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Logo too large")
     with open(path, "wb") as f:
         f.write(content)
     logo_url = f"/uploads/{filename}"

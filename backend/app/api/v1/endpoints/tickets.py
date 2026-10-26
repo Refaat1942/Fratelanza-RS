@@ -73,6 +73,9 @@ async def create_ticket(
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    from app.core.tenant import ensure_refs
+
+    await ensure_refs(db, current_user.company_id, [(Customer, data.customer_id, "Customer")])
     ticket = Ticket(
         company_id=current_user.company_id,
         ticket_number=f"TKT-{uuid.uuid4().hex[:8].upper()}",
@@ -126,6 +129,9 @@ async def add_comment(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
+    ticket = (await db.execute(select(Ticket).where(Ticket.id == ticket_id))).scalar_one_or_none()
+    if not ticket or (not current_user.is_super_admin and ticket.company_id != current_user.company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     comment = TicketComment(ticket_id=ticket_id, user_id=current_user.id, **data.model_dump())
     db.add(comment)
     await db.flush()

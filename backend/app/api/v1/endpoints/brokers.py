@@ -141,9 +141,19 @@ async def approve_commission(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(BrokerCommission).where(BrokerCommission.id == commission_id))
+    result = await db.execute(
+        select(BrokerCommission)
+        .join(Broker, BrokerCommission.broker_id == Broker.id)
+        .where(BrokerCommission.id == commission_id)
+    )
     commission = result.scalar_one_or_none()
-    if not commission:
+    broker = (
+        (await db.execute(select(Broker).where(Broker.id == commission.broker_id))).scalar_one_or_none()
+        if commission else None
+    )
+    if not commission or not broker or (
+        not current_user.is_super_admin and broker.company_id != current_user.company_id
+    ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Commission not found")
     commission.status = CommissionStatus.APPROVED
     commission.approved_by_id = current_user.id
