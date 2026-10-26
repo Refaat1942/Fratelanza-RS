@@ -149,8 +149,8 @@ export function CompanyPortalSettingsPage() {
 
       <p className="mt-6 text-sm text-slate-500">
         {t('portal_buyer_link')}{' '}
-        <a href="/portal/login" className="font-medium text-primary-700 hover:underline" target="_blank" rel="noreferrer">
-          /portal/login
+        <a href="/login" className="font-medium text-primary-700 hover:underline" target="_blank" rel="noreferrer">
+          /login
         </a>
       </p>
     </div>

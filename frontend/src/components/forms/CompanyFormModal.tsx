@@ -26,6 +26,7 @@ export function CompanyFormModal({ open, onClose }: CompanyFormModalProps) {
     country: 'Egypt',
     plan_id: '' as string | number,
     start_trial: true,
+    admin_username: '',
     admin_email: '',
     admin_password: '',
     admin_name_ar: '',
@@ -47,6 +48,10 @@ export function CompanyFormModal({ open, onClose }: CompanyFormModalProps) {
     try {
       await api.post('/super-admin/companies', {
         ...form,
+        email: form.email || undefined,
+        admin_username: form.admin_username || undefined,
+        admin_email: form.admin_email || undefined,
+        admin_password: form.admin_password || undefined,
         plan_id: form.plan_id ? Number(form.plan_id) : undefined,
         start_trial: form.start_trial,
       })
@@ -101,7 +106,8 @@ export function CompanyFormModal({ open, onClose }: CompanyFormModalProps) {
 
         <hr className="border-slate-200" />
         <p className="text-sm font-medium text-slate-600">{t('company_admin')}</p>
-        <Input label={t('email')} value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} />
+        <Input label={t('username')} value={form.admin_username} onChange={(e) => setForm({ ...form, admin_username: e.target.value.trim() })} placeholder="Admin.Company" autoCapitalize="none" spellCheck={false} />
+        <Input label={t('re.login.email_optional')} value={form.admin_email} onChange={(e) => setForm({ ...form, admin_email: e.target.value })} />
         <Input label={t('password')} type="password" value={form.admin_password} onChange={(e) => setForm({ ...form, admin_password: e.target.value })} />
         <div className="flex gap-3 pt-2">
           <Button type="submit" loading={loading}>{t('save')}</Button>

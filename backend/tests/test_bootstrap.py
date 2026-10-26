@@ -21,7 +21,7 @@ async def test_restart_bootstrap_is_idempotent(database):
         version = (await conn.execute(text("SELECT version_num FROM alembic_version"))).scalar()
         not_null = (await conn.execute(text(
             "SELECT is_nullable FROM information_schema.columns WHERE table_name = 'units' AND column_name = 'company_id'"))).scalar()
-    assert version == "20261026_01"
+    assert version == "20261027_01"
     assert not_null == "NO"
 
 

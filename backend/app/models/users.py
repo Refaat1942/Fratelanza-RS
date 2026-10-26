@@ -41,7 +41,8 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     company_id: Mapped[Optional[int]] = mapped_column(ForeignKey("companies.id"), index=True)
     branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # Optional contact e-mail; login is by username only
+    email: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name_ar: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name_en: Mapped[str] = mapped_column(String(255), nullable=False)

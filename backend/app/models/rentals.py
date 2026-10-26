@@ -300,6 +300,10 @@ class DemoEnvironment(Base, TimestampMixin):
     last_reset_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
+    # Shareable sign-in link (/demo/<access_token>) — no username/password for the prospect.
+    # Valid only while the demo is enabled, not revoked and before expires_at.
+    access_token: Mapped[Optional[str]] = mapped_column(String(64), unique=True, index=True)
+    link_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"))
 
 
 class OutboundMessage(Base, TimestampMixin):

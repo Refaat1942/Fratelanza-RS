@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware'
 
 export interface User {
   id: number
-  email: string
+  username?: string
+  email?: string | null
   full_name_ar: string
   full_name_en: string
   system_role: string

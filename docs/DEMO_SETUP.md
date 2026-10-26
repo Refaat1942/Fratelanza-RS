@@ -4,19 +4,19 @@ A demo is an isolated tenant (`companies.is_demo = true`) seeded with fictional 
 
 ## Create a demo (UI)
 
-1. Log in as platform super admin (`https://rs-control.fratelanza.com/super-admin`, locally `http://localhost:5173/login` with `SUPER_ADMIN_EMAIL`).
+1. Log in as platform super admin (`https://rs-control.fratelanza.com/super-admin`, locally `http://localhost:5173/login`) with username `superadmin`.
 2. Sidebar → **العروض التجريبية** (`/super-admin/demos`) → **نسخة تجريبية جديدة**.
 3. Fill prospect name and demo company names (AR/EN), choose a **profile**:
    * إدارة الأملاك (Property Management) · المبيعات والوساطة (Sales & Brokerage) · الإيجارات والتحصيل (Rental & Collections) · نظام عقاري متكامل (Full ERP)
-4. Adjust **modules** (pages that exist in the demo), **permitted actions** (export, delete, refund are off by default; permission management can never be enabled) and **dashboard cards**; set the expiry date/time; choose the first user's role.
-5. **إنشاء وتعبئة البيانات** → the login and a one-time password are shown. Copy them.
-6. Give the prospect `https://rs.fratelanza.com/login` with those credentials. A purple banner marks every page as a demo.
+4. Adjust **modules** (pages that exist in the demo), **permitted actions** (export, delete, refund are off by default; permission management can never be enabled) and **dashboard cards**; enter **how many days** the demo works; choose the role the visitor gets.
+5. **إنشاء وتعبئة البيانات** → a sign-in **link** is shown (`https://rs.fratelanza.com/demo/<secret>`). Copy it.
+6. Send the link to the prospect — no username or password. It opens the demo directly and stops working automatically at the end date, when revoked, or when you issue a new link (**رابط جديد**). A purple banner marks every page as a demo.
 
 ## Create a demo (API)
 
 ```bash
 TOKEN=$(curl -s -X POST localhost:8000/api/v1/auth/login -H 'Content-Type: application/json' \
-  -d '{"username":"admin@fratelanza.com","password":"<SUPER_ADMIN_PASSWORD>"}' | jq -r .access_token)
+  -d '{"username":"superadmin","password":"<your password>"}' | jq -r .access_token)
 
 # Customer A: units, rentals, collections, owner settlements, financial reports
 curl -s -X POST localhost:8000/api/v1/demos -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
@@ -25,14 +25,14 @@ curl -s -X POST localhost:8000/api/v1/demos -H "Authorization: Bearer $TOKEN" -H
   "enabled_modules": ["dashboard","projects","rentals","owners","reports"],
   "valid_days": 14,
   "users": [{"role":"company_admin"},{"role":"collection_officer"}]
-}' | jq '.credentials'
+}' | jq -r '.link_path'      # -> /demo/<secret>; send https://rs.fratelanza.com/demo/<secret>
 
 # Customer B: properties, leads, sales requests, CRM only
 curl -s -X POST localhost:8000/api/v1/demos -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{
   "prospect_name": "Customer B", "company_name_ar": "شركة ب التجريبية", "company_name_en": "Customer B Demo",
   "profile": "sales_brokerage",
-  "enabled_modules": ["dashboard","projects","leads","customers","real_estate_requests"]
-}' | jq '.credentials'
+  "enabled_modules": ["dashboard","projects","leads","customers","real_estate_requests"], "valid_days": 7
+}' | jq -r '.link_path'
 ```
 
 Customer B gets 403 on `/rentals`, `/owners`, `/re-reports/profit_loss`, etc. — by URL in the browser and by direct API call — and 404/403 on any id belonging to another tenant (covered by `tests/test_demo.py::test_18`).
@@ -41,11 +41,13 @@ Customer B gets 403 on `/rentals`, `/owners`, `/re-reports/profit_loss`, etc. �
 
 | Task | UI (`/super-admin/demos` card) | API |
 |---|---|---|
-| Change modules, actions, cards, expiry, names | الإعدادات | `PUT /api/v1/demos/{id}` |
+| Change modules, actions, cards, names; extend by N days | الإعدادات | `PUT /api/v1/demos/{id}` (`{"valid_days": 7}`) |
+| Replace the sign-in link (old one stops) | رابط جديد | `POST /api/v1/demos/{id}/link` |
+| Open a demo (prospect) | the link | `POST /api/v1/auth/demo-link {"token": "..."}` |
 | Reset data to baseline | إعادة الضبط | `POST /api/v1/demos/{id}/reset` |
 | Revoke immediately | إيقاف | `POST /api/v1/demos/{id}/revoke` |
 | Re-enable | إعادة التفعيل | `POST /api/v1/demos/{id}/restore` |
-| Add a user with a role | مستخدم إضافي | `POST /api/v1/demos/{id}/users {"role":"accountant"}` |
+| Add another internal demo user (API only) | — | `POST /api/v1/demos/{id}/users {"role":"accountant"}` |
 | Audit events | سجل الأحداث | `GET /api/v1/demos/{id}/audit` |
 | Options (profiles, modules, actions, cards) | — | `GET /api/v1/demos/options` |
 
@@ -63,4 +65,4 @@ Inside a demo the demo's company admin can also fine-tune *roles* of demo users 
 
 ## Built-in marketing company
 
-The pre-existing `DEMO` company (`admin@demo.fratelanza.com`) remains a regular tenant. On startup it receives the new property-management modules and, once, fictional owners/leases/settlements so the new screens have data.
+The pre-existing `DEMO` company (username `demo_admin`) remains a regular tenant. On startup it receives the new property-management modules and, once, fictional owners/leases/settlements so the new screens have data.

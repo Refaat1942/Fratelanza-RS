@@ -26,9 +26,19 @@ Decide per row which tenant legitimately owns the unit, fix it, restart.
 
 Verified locally: the database created by the **original** code (17 units, existing seed data) upgraded cleanly; all units received their project's tenant; restarting twice is a no-op (`tests/test_bootstrap.py`).
 
+## Login (since revision `20261027_01`)
+
+* **One sign-in page** (`/login`) for the platform owner, company staff and buyers; `/portal/login` redirects there. After sign-in each user lands on their area (super admin → `/super-admin`, staff → `/dashboard`, buyers → `/portal`).
+* Sign-in is by **username only, case-sensitive** (`Ahmed` ≠ `ahmed`). E-mail is an optional contact field and is not accepted as a login.
+* Platform owner: username **`superadmin`**. On the first start of this version an existing installation sets the owner's username to `superadmin` and password to **`123456`** exactly once (`SUPER_ADMIN_RESET_PASSWORD`); later password changes are never overwritten. ⚠️ `123456` is weak — change it after the first login (key icon in the header).
+* Existing users keep their current usernames (shown in Users). Company admins created by the super admin get the username typed in the company form.
+* Customer demos are opened with a link — see DEMO_SETUP.md.
+
 ## Production deploy (Hostinger VPS, unchanged procedure)
 
-1. **Back up first** (on the VPS):
+`DEPLOY-VPS.sh` now backs the database up to `/root/fratelanza-backups/` before changing anything, and adopts containers that were created outside the `fratelanza` compose project (the "container name … already in use" error). If the old database lives in a different volume it copies the files into the production volume (old volume untouched) only when it is safe; otherwise it stops without deleting anything.
+
+1. **Back up first** (also done automatically by the script):
    ```bash
    cd /opt/fratelanza
    docker exec fratelanza_postgres pg_dump -U fratelanza fratelanza_db > /root/fratelanza_pre_rbac_$(date +%F).sql

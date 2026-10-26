@@ -24,7 +24,7 @@ class RefreshTokenRequest(BaseModel):
 class UserResponse(BaseModel):
     id: int
     username: str
-    email: str
+    email: Optional[str] = None
     full_name_ar: str
     full_name_en: str
     system_role: SystemRole

@@ -49,8 +49,13 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # Platform owner account (login by username, case-sensitive)
+    SUPER_ADMIN_USERNAME: str = "superadmin"
     SUPER_ADMIN_EMAIL: str = "admin@fratelanza.com"
-    SUPER_ADMIN_PASSWORD: str = "Admin@123456"
+    SUPER_ADMIN_PASSWORD: str = "123456"
+    # Applied ONCE when an existing installation switches to username login (independent of
+    # SUPER_ADMIN_PASSWORD so an old value in .env does not override it). Change it after login.
+    SUPER_ADMIN_RESET_PASSWORD: str = "123456"
 
     # AI / LLM (OpenAI or Google Gemini)
     AI_PROVIDER: str = "auto"  # auto | openai | gemini | local

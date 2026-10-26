@@ -10,7 +10,7 @@ const ROLES = ['sales_agent', 'sales_manager', 'collection_officer', 'accountant
 interface AdminUser {
   id: number
   username?: string
-  email: string
+  email?: string | null
   full_name_ar: string
   full_name_en: string
   system_role: string
@@ -42,7 +42,7 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
     if (user && open) {
       setForm({
         username: user.username ?? '',
-        email: user.email,
+        email: user.email ?? '',
         full_name_ar: user.full_name_ar,
         full_name_en: user.full_name_en,
         system_role: user.system_role,
@@ -57,8 +57,8 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
     setLoading(true)
     try {
       await api.put(`/users/${user.id}`, {
-        username: form.username.trim().toLowerCase(),
-        email: form.email,
+        username: form.username.trim(),
+        email: form.email || undefined,
         full_name_ar: form.full_name_ar,
         full_name_en: form.full_name_en,
         system_role: form.system_role,
@@ -75,8 +75,8 @@ export function UserEditModal({ open, onClose, user, onSaved }: UserEditModalPro
     <Modal open={open} onClose={onClose} title={t('edit_user')} className="max-w-lg">
       {user && (
         <form onSubmit={submit} className="space-y-4">
-          <Input label={t('username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} required placeholder="demo_admin" />
-          <Input label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          <Input label={t('username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.trim() })} required placeholder="demo_admin" autoCapitalize="none" spellCheck={false} />
+          <Input label={t('re.login.email_optional')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <Input label={t('name_ar')} value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required />
           <Input label={t('name_en')} value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} required />
           <div>

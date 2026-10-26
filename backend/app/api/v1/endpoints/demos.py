@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +53,7 @@ class DemoUpdate(BaseModel):
     allowed_actions: Optional[list[str]] = None
     dashboard_cards: Optional[list[str]] = None
     expires_at: Optional[datetime] = None
+    valid_days: Optional[int] = Field(default=None, ge=1, le=365)
     is_enabled: Optional[bool] = None
     notes: Optional[str] = None
 
@@ -82,10 +83,11 @@ async def create_demo(
     db: Annotated[AsyncSession, Depends(get_db)],
     actor: Annotated[User, Depends(get_super_admin)],
 ):
-    company, demo, credentials = await DemoService.create(db, data.model_dump(), actor)
+    company, demo, _credentials = await DemoService.create(db, data.model_dump(), actor)
     await log_audit(db, request, actor, "demo_created", "demos", "demo", demo.id, company_id=company.id,
                     after={"prospect": demo.prospect_name, "profile": demo.profile, "expires_at": demo.expires_at})
-    return {**(await DemoService.describe(db, company, demo)), "credentials": credentials}
+    # Prospects enter through the link only — demo user passwords are random and never returned.
+    return await DemoService.describe(db, company, demo)
 
 
 @router.get("/{demo_id}")
@@ -153,6 +155,25 @@ async def restore_demo(
     demo.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await log_audit(db, request, actor, "demo_restored", "demos", "demo", demo.id, company_id=company.id)
+    return await DemoService.describe(db, company, demo)
+
+
+@router.post("/{demo_id}/link")
+async def regenerate_demo_link(
+    demo_id: int, request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[User, Depends(get_super_admin)],
+):
+    """Issue a new sign-in link; the previous link stops working immediately."""
+    company, demo = await DemoService.get(db, demo_id)
+    if not demo.link_user_id:
+        users = await DemoService.users_of(db, company.id)
+        if not users:
+            raise HTTPException(status_code=400, detail="Demo has no user")
+        demo.link_user_id = users[0].id
+    DemoService.new_link(demo)
+    await db.flush()
+    await log_audit(db, request, actor, "demo_link_regenerated", "demos", "demo", demo.id, company_id=company.id)
     return await DemoService.describe(db, company, demo)
 
 

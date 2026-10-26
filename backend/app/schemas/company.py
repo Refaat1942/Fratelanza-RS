@@ -27,8 +27,9 @@ class CompanyCreate(CompanyBase):
     plan_id: Optional[int] = None
     start_trial: bool = True
     enabled_modules: Optional[list[str]] = None
+    admin_username: Optional[str] = Field(default=None, min_length=3, max_length=100, pattern=r"^[a-zA-Z0-9_.-]+$")
     admin_email: Optional[EmailStr] = None
-    admin_password: Optional[str] = None
+    admin_password: Optional[str] = Field(default=None, min_length=6)
     admin_name_ar: Optional[str] = None
     admin_name_en: Optional[str] = None
 

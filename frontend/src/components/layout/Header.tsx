@@ -46,7 +46,7 @@ export function Header() {
         <div className="ms-1 flex items-center gap-1 border-s border-slate-200 ps-2 sm:ms-2 sm:gap-3 sm:ps-4">
           <div className="hidden text-end md:block">
             <p className="text-sm font-medium text-slate-900">{displayName}</p>
-            <p className="text-xs text-slate-500">{user?.email}</p>
+            <p className="text-xs text-slate-500">{user?.username ?? user?.email}</p>
           </div>
           <button onClick={() => setPasswordOpen(true)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title={t('change_password')}>
             <KeyRound className="h-5 w-5" />
