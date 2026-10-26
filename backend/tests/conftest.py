@@ -62,7 +62,7 @@ async def login(client, username: str, password: str) -> dict:
 
 @pytest.fixture(scope="session")
 async def sa(client):
-    return await login(client, settings.SUPER_ADMIN_EMAIL, settings.SUPER_ADMIN_PASSWORD)
+    return await login(client, settings.SUPER_ADMIN_USERNAME, settings.SUPER_ADMIN_PASSWORD)
 
 
 class Tenant:
@@ -77,7 +77,7 @@ class Tenant:
         r = await self.client.post(
             "/api/v1/users",
             headers=self.admin,
-            json={"username": name, "email": f"{name}@example.com", "password": password,
+            json={"username": name, "password": password,
                   "full_name_ar": "مستخدم", "full_name_en": "User", "system_role": role},
         )
         assert r.status_code == 200, r.text
@@ -125,13 +125,13 @@ async def make_tenant(client, sa):
             plans = await client.get("/api/v1/super-admin/subscription-plans", headers=sa)
             plan_id = plans.json()[0]["id"]
         code = f"T{uuid.uuid4().hex[:6].upper()}"
-        admin_email = f"admin_{code.lower()}@example.com"
+        admin_username = f"Admin_{code}"
         r = await client.post("/api/v1/super-admin/companies", headers=sa, json={
             "name_ar": f"شركة {code}", "name_en": f"Company {code}", "code": code, "plan_id": plan_id,
-            "start_trial": False, "enabled_modules": modules or ALL_MODULES, "admin_email": admin_email,
+            "start_trial": False, "enabled_modules": modules or ALL_MODULES, "admin_username": admin_username,
             "admin_password": "Admin!2345"})
         assert r.status_code == 200, r.text
-        headers = await login(client, admin_email, "Admin!2345")
+        headers = await login(client, admin_username, "Admin!2345")
         return Tenant(client, r.json()["id"], headers, code)
 
     return factory

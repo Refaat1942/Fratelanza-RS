@@ -326,7 +326,7 @@ async def seed_database() -> None:
         super_admin = result.scalar_one_or_none()
         if not super_admin:
             super_admin = User(
-                username="superadmin",
+                username=settings.SUPER_ADMIN_USERNAME,
                 email=settings.SUPER_ADMIN_EMAIL,
                 password_hash=get_password_hash(settings.SUPER_ADMIN_PASSWORD),
                 full_name_ar="مدير النظام",
@@ -337,6 +337,25 @@ async def seed_database() -> None:
                 preferred_language="ar",
             )
             db.add(super_admin)
+        else:
+            # One-time switch to username login for the platform owner: set the configured
+            # username/password once, then never overwrite later password changes.
+            marker = (
+                await db.execute(select(SystemSetting).where(SystemSetting.key == "super_admin_username_login_v1"))
+            ).scalar_one_or_none()
+            if not marker:
+                taken = (
+                    await db.execute(
+                        select(User.id).where(User.username == settings.SUPER_ADMIN_USERNAME, User.id != super_admin.id)
+                    )
+                ).first()
+                if not taken:
+                    super_admin.username = settings.SUPER_ADMIN_USERNAME
+                    super_admin.password_hash = get_password_hash(settings.SUPER_ADMIN_RESET_PASSWORD)
+                    super_admin.status = UserStatus.ACTIVE
+                    super_admin.is_deleted = False
+                db.add(SystemSetting(key="super_admin_username_login_v1", value="applied", value_type="string",
+                                     description_en="Platform owner switched to username login"))
 
         # Backfill subscription billing columns for existing rows
         try:

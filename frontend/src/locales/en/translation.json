@@ -637,7 +637,8 @@
       "demo_expired": "This demo has expired",
       "demo_revoked": "This demo has been revoked",
       "demo_disabled": "This demo is disabled",
-      "demo_not_configured": "Demo not configured"
+      "demo_not_configured": "Demo not configured",
+      "demo_link_invalid": "This demo link is not valid"
     },
     "status": {
       "draft": "Draft",
@@ -989,7 +990,17 @@
         "demo_revoked": "Revoked",
         "demo_disabled": "Disabled",
         "demo_not_configured": "Not configured"
-      }
+      },
+      "link_contact": "Contact the Fratelanza team for a new link.",
+      "opening": "Opening your demo…",
+      "days_left": "Days left",
+      "new_link": "New link",
+      "confirm_new_link": "Create a new link? The current link stops working immediately.",
+      "valid_days": "Valid for (days)",
+      "extend_days": "Extend from today (days) — leave empty to keep",
+      "link_ready": "Demo link ready",
+      "link_help": "Send this link to the prospect — they enter directly without a username or password, and it stops working when the period ends.",
+      "link": "Sign-in link"
     },
     "reports": {
       "erp": "Sales & ERP reports",
@@ -1085,8 +1096,15 @@
       "owner_settlement_created": "Settlement created",
       "owner_settlement_approved": "Settlement approved",
       "owner_settlement_paid": "Owner paid",
-      "report_exported": "Report exported"
-    }
+      "report_exported": "Report exported",
+      "demo_link_login": "Signed in via demo link",
+      "demo_link_regenerated": "Demo link regenerated"
+    },
+    "login": {
+      "one_page_hint": "One sign-in page for staff and buyers — usernames are case-sensitive",
+      "email_optional": "E-mail (optional)"
+    },
+    "copied": "Copied"
   },
   "description": "Description"
 }

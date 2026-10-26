@@ -95,11 +95,14 @@ class CompanyService:
         elif plan:
             await ModuleService.set_company_modules(db, company, ModuleService.defaults_for_plan(plan.code))
 
-        if data.admin_email and data.admin_password:
-            admin_username = data.admin_email.split("@")[0].lower().replace(".", "_")
+        if data.admin_password and (data.admin_username or data.admin_email):
+            admin_username = data.admin_username or data.admin_email.split("@")[0].replace(".", "_")
+            clash = await db.execute(select(User.id).where(User.username == admin_username))
+            if clash.first():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin username already exists")
             admin = User(
                 username=admin_username,
-                email=data.admin_email,
+                email=data.admin_email or None,
                 password_hash=get_password_hash(data.admin_password),
                 full_name_ar=data.admin_name_ar or data.name_ar,
                 full_name_en=data.admin_name_en or data.name_en,

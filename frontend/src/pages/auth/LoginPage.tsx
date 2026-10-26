@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Building2, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
@@ -99,7 +99,10 @@ export function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoComplete="username"
-                placeholder="demo_admin"
+                placeholder="superadmin"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
               <Input
                 label={t('password')}
@@ -116,12 +119,7 @@ export function LoginPage() {
                 {loading ? t('signing_in') : t('login')}
               </Button>
             </form>
-            <p className="mt-6 text-center text-sm text-slate-500">
-              {t('portal_buyer_link')}{' '}
-              <Link to="/portal/login" className="font-medium text-primary-700 hover:underline">
-                {t('portal_sign_in')}
-              </Link>
-            </p>
+            <p className="mt-6 text-center text-xs text-slate-500">{t('re.login.one_page_hint')}</p>
           </div>
         </div>
       </div>

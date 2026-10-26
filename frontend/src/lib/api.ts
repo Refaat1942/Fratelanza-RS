@@ -21,8 +21,7 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().logout()
-      const portal = window.location.pathname.startsWith('/portal')
-      window.location.href = portal ? '/portal/login' : '/login'
+      window.location.href = '/login'
     }
     return Promise.reject(error)
   },

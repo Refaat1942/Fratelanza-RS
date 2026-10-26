@@ -7,7 +7,6 @@ from sqlalchemy import func, select
 from app.core.database import AsyncSessionLocal
 from app.models.rentals import OutboundMessage, PropertyOwner, RentalContract
 from app.services.demo_service import reset_plan
-from tests.conftest import login
 
 
 async def _create_demo(client, sa, profile="full_erp", **extra):
@@ -16,9 +15,11 @@ async def _create_demo(client, sa, profile="full_erp", **extra):
     r = await client.post("/api/v1/demos", headers=sa, json=payload)
     assert r.status_code == 200, r.text
     demo = r.json()
-    cred = demo["credentials"][0]
-    headers = await login(client, cred["username"], cred["password"])
-    return demo, headers
+    assert demo["link_path"].startswith("/demo/") and "credentials" not in demo
+    token = demo["link_path"].rsplit("/", 1)[1]
+    r = await client.post("/api/v1/auth/demo-link", json={"token": token})
+    assert r.status_code == 200, r.text
+    return demo, {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
 async def test_13_demo_user_only_accesses_assigned_demo_tenant(client, sa, make_tenant):
@@ -89,9 +90,9 @@ async def test_16_expired_or_revoked_demo_rejects_access(client, sa):
     await client.post(f"/api/v1/demos/{demo['id']}/revoke", headers=sa)
     r = await client.get("/api/v1/owners", headers=h)
     assert r.status_code == 403 and r.json()["detail"] == "demo_revoked"
-    cred = demo["credentials"][0]
-    r = await client.post("/api/v1/auth/login", json={"username": cred["username"], "password": cred["password"]})
-    assert r.status_code == 403
+    token = demo["link_path"].rsplit("/", 1)[1]
+    r = await client.post("/api/v1/auth/demo-link", json={"token": token})
+    assert r.status_code == 403 and r.json()["detail"] == "demo_revoked"
     await client.post(f"/api/v1/demos/{demo['id']}/restore", headers=sa)
     assert (await client.get("/api/v1/owners", headers=h)).status_code == 200
     past = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
@@ -99,6 +100,18 @@ async def test_16_expired_or_revoked_demo_rejects_access(client, sa):
     r = await client.get("/api/v1/owners", headers=h)
     assert r.status_code == 403 and r.json()["detail"] == "demo_expired"
     assert (await client.get("/api/v1/auth/me", headers=h)).status_code == 403
+    r = await client.post("/api/v1/auth/demo-link", json={"token": token})
+    assert r.status_code == 403 and r.json()["detail"] == "demo_expired"
+    # the end date is set in days and can be extended
+    await client.put(f"/api/v1/demos/{demo['id']}", headers=sa, json={"valid_days": 5})
+    refreshed = (await client.get(f"/api/v1/demos/{demo['id']}", headers=sa)).json()
+    assert refreshed["status"] == "active" and refreshed["days_left"] == 5
+    # a regenerated link invalidates the old one
+    new = (await client.post(f"/api/v1/demos/{demo['id']}/link", headers=sa)).json()
+    assert (await client.post("/api/v1/auth/demo-link", json={"token": token})).status_code == 404
+    new_token = new["link_path"].rsplit("/", 1)[1]
+    assert (await client.post("/api/v1/auth/demo-link", json={"token": new_token})).status_code == 200
+    assert (await client.post("/api/v1/auth/demo-link", json={"token": "x" * 32})).status_code == 404
 
 
 async def test_17_resetting_a_demo_does_not_affect_other_demos(client, sa, make_tenant):

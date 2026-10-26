@@ -34,8 +34,9 @@ class AuthService:
 
     @staticmethod
     async def login(db: AsyncSession, data: LoginRequest) -> tuple[TokenResponse, User]:
-        login = data.username.strip().lower()
-        client_key = f"user:{login}"
+        # Login is by username only and is case-sensitive ("Ahmed" ≠ "ahmed"); e-mail is not a login.
+        login = data.username.strip()
+        client_key = f"user:{login.lower()}"
         max_attempts = await AuthService._max_login_attempts(db)
         if is_login_blocked(client_key, max_attempts):
             raise HTTPException(
@@ -43,10 +44,7 @@ class AuthService:
                 detail="Too many failed login attempts. Please try again later.",
             )
         result = await db.execute(
-            select(User).where(
-                or_(User.username == login, User.email == login),
-                User.is_deleted == False,
-            )
+            select(User).where(User.username == login, User.is_deleted == False)
         )
         user = result.scalar_one_or_none()
         if not user or not verify_password(data.password, user.password_hash):
@@ -167,7 +165,7 @@ class AuthService:
     async def create_user(
         db: AsyncSession,
         username: str,
-        email: str,
+        email: str | None,
         password: str,
         full_name_ar: str,
         full_name_en: str,
@@ -175,15 +173,16 @@ class AuthService:
         company_id: int | None = None,
         is_super_admin: bool = False,
     ) -> User:
-        username_norm = username.strip().lower()
-        existing = await db.execute(
-            select(User).where(or_(User.email == email, User.username == username_norm))
-        )
-        if existing.scalar_one_or_none():
+        username_norm = username.strip()  # case-sensitive, kept exactly as typed
+        clauses = [User.username == username_norm]
+        if email:
+            clauses.append(User.email == email)
+        existing = await db.execute(select(User).where(or_(*clauses)))
+        if existing.scalars().first():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username or email already registered")
         user = User(
             username=username_norm,
-            email=email,
+            email=email or None,
             password_hash=get_password_hash(password),
             full_name_ar=full_name_ar,
             full_name_en=full_name_en,

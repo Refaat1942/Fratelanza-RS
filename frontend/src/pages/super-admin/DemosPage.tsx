@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Presentation, Plus, RotateCcw, Ban, PlayCircle, Settings2, History, UserPlus, Copy } from 'lucide-react'
+import { Presentation, Plus, RotateCcw, Ban, PlayCircle, Settings2, History, Copy, Link2, RefreshCw } from 'lucide-react'
 import api from '@/lib/api'
 import { apiErrorMessage } from '@/lib/apiError'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -16,15 +16,12 @@ type Options = { profiles: (Named & { modules: string[]; cards: string[] })[]; m
 type Demo = { id: number; company_id: number; company_code: string; company_name_ar: string; company_name_en: string; prospect_name: string; profile: string
   enabled_modules: string[]; allowed_actions: string[]; dashboard_cards: string[] | null; expires_at: string | null; is_enabled: boolean
   revoked_at: string | null; last_reset_at: string | null; status: string; notes: string | null
+  link_path: string | null; days_left: number | null
   users: { id: number; username: string; system_role: string; status: string }[] }
-type Credential = { username: string; password: string; role: string }
 
 const STATUS_TONE: Record<string, 'green' | 'red' | 'amber' | 'slate'> = { active: 'green', demo_expired: 'amber', demo_revoked: 'red', demo_disabled: 'slate' }
 
-function plusDays(days: number) {
-  const d = new Date(Date.now() + days * 86400000)
-  return d.toISOString().slice(0, 16)
-}
+const linkUrl = (path: string) => `${window.location.origin}${path}`
 
 export function DemosPage() {
   const { t, i18n } = useTranslation()
@@ -32,8 +29,9 @@ export function DemosPage() {
   const label = (x: Named) => (i18n.language === 'ar' ? x.name_ar : x.name_en)
   const options = useQuery({ queryKey: ['demo-options'], queryFn: async () => (await api.get<Options>('/demos/options')).data })
   const demos = useQuery({ queryKey: ['demos'], queryFn: async () => (await api.get<Demo[]>('/demos')).data })
-  const [editing, setEditing] = useState<Partial<Demo> & { mode: 'create' | 'edit'; role?: string } | null>(null)
-  const [credentials, setCredentials] = useState<Credential[] | null>(null)
+  const [editing, setEditing] = useState<Partial<Demo> & { mode: 'create' | 'edit'; role?: string; valid_days?: string } | null>(null)
+  const [newLink, setNewLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
   const [auditFor, setAuditFor] = useState<Demo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -47,7 +45,7 @@ export function DemosPage() {
     const profile = options.data?.profiles.find((p) => p.key === 'full_erp')
     setError(null)
     setEditing({ mode: 'create', profile: 'full_erp', prospect_name: '', company_name_ar: '', company_name_en: '', enabled_modules: profile?.modules ?? [],
-      allowed_actions: options.data?.default_actions ?? [], dashboard_cards: profile?.cards ?? [], expires_at: plusDays(14), notes: '', role: 'company_admin' })
+      allowed_actions: options.data?.default_actions ?? [], dashboard_cards: profile?.cards ?? [], valid_days: '14', notes: '', role: 'company_admin' })
   }
   const pickProfile = (key: string) => {
     const p = options.data?.profiles.find((x) => x.key === key)
@@ -67,12 +65,13 @@ export function DemosPage() {
     const body = {
       prospect_name: editing.prospect_name, company_name_ar: editing.company_name_ar, company_name_en: editing.company_name_en,
       profile: editing.profile, enabled_modules: editing.enabled_modules, allowed_actions: editing.allowed_actions,
-      dashboard_cards: editing.dashboard_cards, expires_at: editing.expires_at ? new Date(editing.expires_at).toISOString() : null, notes: editing.notes || null,
+      dashboard_cards: editing.dashboard_cards, notes: editing.notes || null,
+      ...(editing.valid_days ? { valid_days: Number(editing.valid_days) } : {}),
     }
     try {
       if (editing.mode === 'create') {
-        const { data } = await api.post<Demo & { credentials: Credential[] }>('/demos', { ...body, users: [{ role: editing.role || 'company_admin' }] })
-        setCredentials(data.credentials)
+        const { data } = await api.post<Demo>('/demos', { ...body, users: [{ role: editing.role || 'company_admin' }] })
+        if (data.link_path) setNewLink(linkUrl(data.link_path))
       } else {
         await api.put(`/demos/${editing.id}`, body)
       }
@@ -84,11 +83,10 @@ export function DemosPage() {
     if (confirmKey && !window.confirm(t(confirmKey))) return
     try { await api.post(`/demos/${demo.id}/${path}`); refresh() } catch (err) { alert(apiErrorMessage(err, t)) }
   }
-  const addUser = async (demo: Demo) => {
-    const role = window.prompt(t('re.demos.role_prompt'), 'sales_agent')
-    if (!role) return
-    try { const { data } = await api.post<Credential>(`/demos/${demo.id}/users`, { role }); setCredentials([data]); refresh() }
-    catch (err) { alert(apiErrorMessage(err, t)) }
+  const copy = async (url: string) => {
+    try { await navigator.clipboard?.writeText(url) } catch { /* clipboard unavailable */ }
+    setCopied(url)
+    window.setTimeout(() => setCopied(null), 2000)
   }
 
   return (
@@ -111,15 +109,24 @@ export function DemosPage() {
               <dt>{t('re.demos.expires')}</dt><dd>{d.expires_at ? new Date(d.expires_at).toLocaleString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB') : '—'}</dd>
               <dt>{t('re.demos.last_reset')}</dt><dd>{d.last_reset_at ? new Date(d.last_reset_at).toLocaleString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB') : '—'}</dd>
               <dt>{t('re.demos.modules')}</dt><dd>{d.enabled_modules.length}</dd>
-              <dt>{t('re.demos.users')}</dt><dd>{d.users.map((u) => u.username).join('، ')}</dd>
+              <dt>{t('re.demos.days_left')}</dt><dd>{d.days_left ?? '—'}</dd>
             </dl>
+            {d.link_path && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 p-2">
+                <Link2 className="h-4 w-4 shrink-0 text-violet-700" />
+                <code className="min-w-0 flex-1 truncate text-xs text-violet-900" dir="ltr">{linkUrl(d.link_path)}</code>
+                <Button variant="secondary" className="!px-2 !py-1 text-xs" onClick={() => copy(linkUrl(d.link_path!))}>
+                  <Copy className="me-1 h-3 w-3" />{copied === linkUrl(d.link_path) ? t('re.copied') : t('re.copy')}
+                </Button>
+              </div>
+            )}
             <div className="mt-4 flex flex-wrap gap-1.5">
-              <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => { setError(null); setEditing({ ...d, mode: 'edit', expires_at: d.expires_at ? d.expires_at.slice(0, 16) : '' }) }}><Settings2 className="me-1 h-3.5 w-3.5" />{t('re.demos.configure')}</Button>
+              <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => { setError(null); setEditing({ ...d, mode: 'edit', valid_days: '' }) }}><Settings2 className="me-1 h-3.5 w-3.5" />{t('re.demos.configure')}</Button>
               <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => act(d, 'reset', 're.demos.confirm_reset')}><RotateCcw className="me-1 h-3.5 w-3.5" />{t('re.demos.reset')}</Button>
               {d.status === 'demo_revoked' || !d.is_enabled
                 ? <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => act(d, 'restore')}><PlayCircle className="me-1 h-3.5 w-3.5" />{t('re.demos.restore')}</Button>
                 : <Button variant="secondary" className="!px-2 !py-1.5 text-xs text-red-600" onClick={() => act(d, 'revoke', 're.demos.confirm_revoke')}><Ban className="me-1 h-3.5 w-3.5" />{t('re.demos.revoke')}</Button>}
-              <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => addUser(d)}><UserPlus className="me-1 h-3.5 w-3.5" />{t('re.demos.add_user')}</Button>
+              <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => act(d, 'link', 're.demos.confirm_new_link')}><RefreshCw className="me-1 h-3.5 w-3.5" />{t('re.demos.new_link')}</Button>
               <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => setAuditFor(d)}><History className="me-1 h-3.5 w-3.5" />{t('re.demos.audit')}</Button>
             </div>
           </Card>
@@ -136,7 +143,9 @@ export function DemosPage() {
               <SelectField label={t('re.demos.profile')} value={editing.profile ?? ''} onChange={pickProfile} required options={options.data.profiles.map((p) => ({ value: p.key, label: label(p) }))} />
               <Input label={t('re.demos.company_ar')} value={editing.company_name_ar ?? ''} onChange={(e) => setEditing({ ...editing, company_name_ar: e.target.value })} required />
               <Input label={t('re.demos.company_en')} value={editing.company_name_en ?? ''} onChange={(e) => setEditing({ ...editing, company_name_en: e.target.value })} required dir="ltr" />
-              <Input type="datetime-local" label={t('re.demos.expires')} value={editing.expires_at ?? ''} onChange={(e) => setEditing({ ...editing, expires_at: e.target.value })} required />
+              <Input type="number" min="1" max="365" label={editing.mode === 'create' ? t('re.demos.valid_days') : t('re.demos.extend_days')}
+                value={editing.valid_days ?? ''} onChange={(e) => setEditing({ ...editing, valid_days: e.target.value })} required={editing.mode === 'create'}
+                placeholder={editing.mode === 'edit' && editing.expires_at ? new Date(editing.expires_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB') : '14'} />
               {editing.mode === 'create' && (
                 <SelectField label={t('re.demos.first_user_role')} value={editing.role ?? 'company_admin'} onChange={(v) => setEditing({ ...editing, role: v })}
                   options={options.data.roles.map((r) => ({ value: r, label: t(`re.system_role.${r}`, { defaultValue: r }) }))} />
@@ -170,15 +179,11 @@ export function DemosPage() {
         )}
       </Modal>
 
-      <Modal open={!!credentials} onClose={() => setCredentials(null)} title={t('re.demos.credentials')}>
+      <Modal open={!!newLink} onClose={() => setNewLink(null)} title={t('re.demos.link_ready')}>
         <div className="space-y-3">
-          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{t('re.demos.credentials_once')}</p>
-          {(credentials ?? []).map((c) => (
-            <div key={c.username} className="rounded-lg border border-slate-200 p-3 font-mono text-sm" dir="ltr">
-              <p>login: {c.username}</p><p>password: {c.password}</p><p className="text-xs text-slate-500">role: {c.role}</p>
-              <Button variant="secondary" className="mt-2 !px-2 !py-1 text-xs" onClick={() => navigator.clipboard?.writeText(`${c.username} / ${c.password}`)}><Copy className="me-1 h-3 w-3" />{t('re.copy')}</Button>
-            </div>
-          ))}
+          <p className="text-sm text-slate-600">{t('re.demos.link_help')}</p>
+          <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 font-mono text-sm break-all" dir="ltr">{newLink}</div>
+          <Button onClick={() => newLink && copy(newLink)}><Copy className="me-2 h-4 w-4" />{copied === newLink ? t('re.copied') : t('re.copy')}</Button>
         </div>
       </Modal>
 

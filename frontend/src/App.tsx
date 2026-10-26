@@ -6,7 +6,7 @@ import { ModuleRoute } from '@/components/auth/ModuleRoute'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { PortalLayout } from '@/components/layout/PortalLayout'
-import { PortalLoginPage } from '@/pages/portal/PortalLoginPage'
+import { DemoLinkPage } from '@/pages/auth/DemoLinkPage'
 import { CustomerPortalPage } from '@/pages/portal/CustomerPortalPage'
 import { SuperAdminDashboard } from '@/pages/super-admin/SuperAdminDashboard'
 import { CompaniesPage } from '@/pages/super-admin/CompaniesPage'
@@ -56,7 +56,7 @@ function ProtectedRoute({ children, superAdminOnly = false }: { children: React.
 function PortalRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
   const accessToken = useAuthStore((s) => s.accessToken)
-  if (!accessToken || !user) return <Navigate to="/portal/login" replace />
+  if (!accessToken || !user) return <Navigate to="/login" replace />
   if (!isCustomerUser(user) && !user.is_super_admin) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
@@ -80,21 +80,9 @@ function AppRoutes() {
           )
         }
       />
-      <Route
-        path="/portal/login"
-        element={
-          user ? (
-            <Navigate
-              to={
-                user.is_super_admin ? '/super-admin' : isCustomerUser(user) ? '/portal' : '/dashboard'
-              }
-              replace
-            />
-          ) : (
-            <PortalLoginPage />
-          )
-        }
-      />
+      {/* One login page for staff, platform owner and buyers; old portal link kept as a redirect */}
+      <Route path="/portal/login" element={<Navigate to="/login" replace />} />
+      <Route path="/demo/:token" element={<DemoLinkPage />} />
       <Route element={<PortalRoute><PortalLayout /></PortalRoute>}>
         <Route path="/portal" element={<CustomerPortalPage />} />
       </Route>

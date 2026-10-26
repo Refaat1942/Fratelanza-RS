@@ -7,6 +7,7 @@ production, using only fictional people. Reset deletes *only* that tenant's busi
 """
 
 import json
+import math
 import random
 import secrets
 import shutil
@@ -151,6 +152,11 @@ def _demo_dict(company: Company, demo: DemoEnvironment, users: list[User]) -> di
         "revoked_at": demo.revoked_at.isoformat() if demo.revoked_at else None,
         "last_reset_at": demo.last_reset_at.isoformat() if demo.last_reset_at else None,
         "status": reason or "active",
+        "link_path": f"/demo/{demo.access_token}" if demo.access_token else None,
+        "days_left": (
+            max(math.ceil((demo.expires_at - datetime.now(timezone.utc)).total_seconds() / 86400), 0)
+            if demo.expires_at else None
+        ),
         "notes": demo.notes,
         "users": [
             {"id": u.id, "username": u.username, "email": u.email, "full_name_ar": u.full_name_ar,
@@ -229,6 +235,9 @@ class DemoService:
         credentials = []
         for spec in data.get("users") or [{"role": "company_admin"}]:
             credentials.append(await DemoService.add_user(db, company, spec.get("role", "company_admin"), spec.get("full_name")))
+        # The prospect signs in through the link as the first demo user (random password, never shown)
+        demo.link_user_id = credentials[0]["user_id"]
+        demo.access_token = secrets.token_urlsafe(24)
         if data.get("seed", True):
             await DemoSeeder(db, company).run()
             demo.last_reset_at = datetime.now(timezone.utc)
@@ -266,6 +275,8 @@ class DemoService:
             demo.allowed_actions = json.dumps(sorted(set(data["allowed_actions"])))
         if "dashboard_cards" in data and data["dashboard_cards"] is not None:
             demo.dashboard_cards = json.dumps(data["dashboard_cards"])
+        if data.get("valid_days"):
+            demo.expires_at = datetime.now(timezone.utc) + timedelta(days=int(data["valid_days"]))
         for field in ("prospect_name", "notes", "expires_at", "is_enabled"):
             if data.get(field) is not None:
                 setattr(demo, field, data[field])
@@ -279,6 +290,12 @@ class DemoService:
         demo.updated_at = datetime.now(timezone.utc)
         await AccessService.bump_version(db, company.id)
         await db.flush()
+
+    @staticmethod
+    def new_link(demo: DemoEnvironment) -> str:
+        demo.access_token = secrets.token_urlsafe(24)
+        demo.updated_at = datetime.now(timezone.utc)
+        return demo.access_token
 
     @staticmethod
     async def reset(db: AsyncSession, company: Company, demo: DemoEnvironment) -> int:

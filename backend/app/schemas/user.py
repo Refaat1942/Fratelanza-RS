@@ -7,7 +7,7 @@ from app.models.users import SystemRole
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=100, pattern=r"^[a-zA-Z0-9_.-]+$")
-    email: EmailStr
+    email: Optional[EmailStr] = None
     password: str = Field(min_length=6)
     full_name_ar: str = Field(min_length=2)
     full_name_en: str = Field(min_length=2)

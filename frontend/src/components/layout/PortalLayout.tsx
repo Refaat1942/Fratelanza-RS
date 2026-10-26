@@ -24,7 +24,7 @@ export function PortalLayout() {
   const handleLogout = () => {
     clearFeatures()
     logout()
-    navigate('/portal/login')
+    navigate('/login')
   }
 
   const displayName =

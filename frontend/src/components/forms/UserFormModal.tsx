@@ -33,7 +33,7 @@ export function UserFormModal({ open, onClose }: UserFormModalProps) {
     e.preventDefault()
     setLoading(true)
     try {
-      await api.post('/users', { ...form, company_id: user?.company_id })
+      await api.post('/users', { ...form, email: form.email || undefined, company_id: user?.company_id })
       qc.invalidateQueries({ queryKey: ['users'] })
       onClose()
     } finally {
@@ -44,8 +44,8 @@ export function UserFormModal({ open, onClose }: UserFormModalProps) {
   return (
     <Modal open={open} onClose={onClose} title={t('add_user')}>
       <form onSubmit={submit} className="space-y-4">
-        <Input label={t('username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} required placeholder="sales_agent_1" />
-        <Input label={t('email')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+        <Input label={t('username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.trim() })} required placeholder="Ahmed.Sales" autoCapitalize="none" spellCheck={false} />
+        <Input label={t('re.login.email_optional')} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         <Input label={t('password')} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
         <Input label={t('name_ar')} value={form.full_name_ar} onChange={(e) => setForm({ ...form, full_name_ar: e.target.value })} required />
         <Input label={t('name_en')} value={form.full_name_en} onChange={(e) => setForm({ ...form, full_name_en: e.target.value })} required />

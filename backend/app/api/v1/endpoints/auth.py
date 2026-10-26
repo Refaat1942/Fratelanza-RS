@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, log_audit
@@ -37,6 +38,46 @@ async def login(
         raise
     await log_audit(db, request, user, "login", "auth")
     return tokens
+
+
+class DemoLinkRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=64)
+
+
+@router.post("/demo-link", response_model=TokenResponse)
+async def demo_link_login(
+    data: DemoLinkRequest,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Sign in to a demo with its shareable link — no username or password.
+
+    The link only works while the demo is enabled, not revoked and not past its end date."""
+    from sqlalchemy import select
+
+    from app.core.security import create_access_token, create_refresh_token
+    from app.models.rentals import DemoEnvironment
+    from app.models.users import UserStatus
+    from app.services.access_service import AccessService
+
+    demo = (await db.execute(select(DemoEnvironment).where(DemoEnvironment.access_token == data.token))).scalar_one_or_none()
+    if not demo or not demo.link_user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="demo_link_invalid")
+    reason = AccessService.demo_state(demo)
+    if reason:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason)
+    user = (
+        await db.execute(
+            select(User).where(User.id == demo.link_user_id, User.company_id == demo.company_id, User.is_deleted == False)  # noqa: E712
+        )
+    ).scalar_one_or_none()
+    if not user or user.status == UserStatus.SUSPENDED or user.is_super_admin:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="demo_link_invalid")
+    access = create_access_token(
+        user.id, {"role": user.system_role.value, "company_id": user.company_id, "is_super_admin": False}
+    )
+    await log_audit(db, request, user, "demo_link_login", "auth")
+    return TokenResponse(access_token=access, refresh_token=create_refresh_token(user.id))
 
 
 @router.post("/refresh", response_model=TokenResponse)
