@@ -1,11 +1,14 @@
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_company_user
 from app.core.database import get_db
+from app.core.tenant import ensure_refs
+from app.models.tenant import Branch
 from app.models.real_estate import Building, Floor, Project, Unit
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
@@ -50,6 +53,7 @@ async def create_project(
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    await ensure_refs(db, current_user.company_id, [(Branch, data.branch_id, "Branch")])
     project = Project(company_id=current_user.company_id, **data.model_dump())
     db.add(project)
     await db.flush()
@@ -86,11 +90,16 @@ async def list_project_units(
     page_size: int = Query(50, ge=1, le=200),
     status: Optional[str] = None,
 ):
+    project = (
+        await db.execute(select(Project).where(Project.id == project_id, Project.is_deleted == False))
+    ).scalar_one_or_none()
+    if not project or (not current_user.is_super_admin and project.company_id != current_user.company_id):
+        raise HTTPException(status_code=404, detail="Project not found")
     query = (
         select(Unit)
         .join(Floor, Unit.floor_id == Floor.id)
         .join(Building, Floor.building_id == Building.id)
-        .where(Building.project_id == project_id, Unit.is_deleted == False)
+        .where(Building.project_id == project_id, Unit.is_deleted == False, Unit.company_id == project.company_id)
     )
     if status:
         query = query.where(Unit.status == status)
@@ -117,10 +126,10 @@ async def units_status_board(
         .join(Floor, Unit.floor_id == Floor.id)
         .join(Building, Floor.building_id == Building.id)
         .join(Project, Building.project_id == Project.id)
-        .where(Unit.is_deleted == False)
+        .where(Unit.is_deleted == False, Project.is_deleted == False)
     )
-    if not current_user.is_super_admin and current_user.company_id:
-        query = query.where(Project.company_id == current_user.company_id)
+    if not current_user.is_super_admin:
+        query = query.where(Unit.company_id == current_user.company_id)
     result = await db.execute(query)
     units = result.scalars().all()
     board: dict[str, list] = {}
@@ -195,7 +204,7 @@ async def list_floors(
         .join(Building, Floor.building_id == Building.id)
         .join(Project, Building.project_id == Project.id)
     )
-    if not current_user.is_super_admin and current_user.company_id:
+    if not current_user.is_super_admin:
         query = query.where(Project.company_id == current_user.company_id)
     if project_id:
         query = query.where(Project.id == project_id)
@@ -223,15 +232,34 @@ async def create_unit(
     payload = data.model_dump()
     if payload.get("base_price") is None:
         payload["base_price"] = payload["price"]
-    unit = Unit(**payload)
+    # The unit inherits the tenant of the floor's project; a floor of another tenant is "not found".
+    floor_row = (
+        await db.execute(
+            select(Floor, Project)
+            .join(Building, Floor.building_id == Building.id)
+            .join(Project, Building.project_id == Project.id)
+            .where(Floor.id == data.floor_id, Project.is_deleted == False)
+        )
+    ).first()
+    if not floor_row or (not current_user.is_super_admin and floor_row[1].company_id != current_user.company_id):
+        raise HTTPException(status_code=404, detail="Floor not found")
+    company_id = floor_row[1].company_id
+    from app.models.rentals import PropertyOwner
+
+    await ensure_refs(db, company_id, [(PropertyOwner, data.owner_id, "Owner")])
+    duplicate = (
+        await db.execute(
+            select(Unit.id).where(
+                Unit.company_id == company_id, Unit.unit_code == data.unit_code, Unit.is_deleted == False
+            )
+        )
+    ).first()
+    if duplicate:
+        raise HTTPException(status_code=400, detail="Unit code already exists")
+    unit = Unit(company_id=company_id, **payload)
     db.add(unit)
     await db.flush()
-    if current_user.company_id:
-        project_id = await DynamicPricingService.get_project_id_for_unit(db, unit.id)
-        if project_id:
-            await DynamicPricingService.recalculate_project_prices(
-                db, current_user.company_id, project_id
-            )
+    await DynamicPricingService.recalculate_project_prices(db, company_id, floor_row[1].id)
     return unit_to_response(unit)
 
 
@@ -243,8 +271,61 @@ async def delete_unit(
 ):
     result = await db.execute(select(Unit).where(Unit.id == unit_id, Unit.is_deleted == False))
     unit = result.scalar_one_or_none()
-    if not unit:
+    if not unit or (not current_user.is_super_admin and unit.company_id != current_user.company_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
     unit.soft_delete()
     await db.flush()
     return {"message": "Unit deleted", "success": True}
+
+
+class BuildingCreate(BaseModel):
+    name_ar: str
+    name_en: str
+    code: str
+    total_floors: int = 0
+
+
+class FloorCreate(BaseModel):
+    floor_number: int
+    name_ar: Optional[str] = None
+    name_en: Optional[str] = None
+
+
+@router.post("/{project_id}/buildings")
+async def create_building(
+    project_id: int,
+    data: BuildingCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    project = (
+        await db.execute(select(Project).where(Project.id == project_id, Project.is_deleted == False))
+    ).scalar_one_or_none()
+    if not project or (not current_user.is_super_admin and project.company_id != current_user.company_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    building = Building(project_id=project.id, **data.model_dump())
+    db.add(building)
+    await db.flush()
+    return {"id": building.id, "project_id": project.id, "code": building.code}
+
+
+@router.post("/buildings/{building_id}/floors")
+async def create_floor(
+    building_id: int,
+    data: FloorCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    row = (
+        await db.execute(
+            select(Building, Project)
+            .join(Project, Building.project_id == Project.id)
+            .where(Building.id == building_id, Building.is_deleted == False, Project.is_deleted == False)
+        )
+    ).first()
+    if not row or (not current_user.is_super_admin and row[1].company_id != current_user.company_id):
+        raise HTTPException(status_code=404, detail="Building not found")
+    floor = Floor(building_id=building_id, **data.model_dump())
+    db.add(floor)
+    await db.flush()
+    return {"id": floor.id, "building_id": building_id, "floor_number": floor.floor_number}

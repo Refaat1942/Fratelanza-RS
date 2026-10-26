@@ -56,7 +56,9 @@ async def approve_reservation(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    reservation = await ReservationService.approve_reservation(db, reservation_id, current_user.id)
+    reservation = await ReservationService.approve_reservation(
+        db, reservation_id, current_user.id, None if current_user.is_super_admin else current_user.company_id
+    )
     return {"id": reservation.id, "status": reservation.status.value}
 
 
@@ -92,6 +94,9 @@ async def update_reservation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reservation not found")
     if not current_user.is_super_admin and reservation.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    from app.core.tenant import ensure_refs
+
+    await ensure_refs(db, reservation.company_id, [(Customer, data.customer_id, "Customer")])
     for field, value in data.model_dump(exclude_unset=True).items():
         if field == "status" and value:
             setattr(reservation, field, ReservationStatus(value))

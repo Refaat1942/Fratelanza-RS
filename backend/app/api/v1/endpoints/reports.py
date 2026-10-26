@@ -5,7 +5,8 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_company_user
+from app.services.access_service import AccessContext
+from app.api.deps import get_access, get_company_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.users import User
@@ -15,6 +16,30 @@ from app.services.llm_client import LLMClient
 from app.services.reports_service import ReportsService
 
 router = APIRouter()
+
+# Legacy report → the module whose data it exposes. Reports never bypass module permissions.
+REPORT_MODULES: dict[str, str] = {
+    "units_inventory": "projects", "projects_summary": "projects", "sales_register": "contracts",
+    "reservations": "reservations", "collections_installments": "collections", "collections_overdue": "collections",
+    "collections_payments": "collections", "customers": "customers", "leads_pipeline": "leads",
+    "broker_performance": "brokers", "tickets": "customer_service", "finance_trial_balance": "finance",
+    "finance_profit_loss": "finance", "finance_cash_position": "finance", "finance_journal": "finance",
+    "hr_employees": "hr", "hr_payroll": "hr", "customer_reminders": "follow_ups",
+}
+SENSITIVE_REPORTS = {"finance_trial_balance", "finance_profit_loss", "finance_cash_position", "finance_journal",
+                     "hr_employees", "hr_payroll"}
+
+
+def assert_report_access(report_key: str, access: AccessContext) -> None:
+    if access.is_super_admin:
+        return
+    module = REPORT_MODULES.get(report_key)
+    if module is None or not access.can(module, "view"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code": "permission_denied", "report": report_key})
+    if report_key in SENSITIVE_REPORTS and not access.can("reports", "view_sensitive"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code": "permission_denied", "report": report_key})
+    if report_key.startswith("hr_") and not access.sees("salaries"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code": "field_restricted", "report": report_key})
 
 
 class _SummaryRequest(BaseModel):
@@ -41,8 +66,16 @@ def _resolve_language(user: User, requested: Optional[str]) -> str:
 @router.get("/catalog")
 async def reports_catalog(
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
 ):
-    return ReportsService.catalog(is_super_admin=current_user.is_super_admin)
+    allowed = []
+    for report in ReportsService.catalog(is_super_admin=current_user.is_super_admin):
+        try:
+            assert_report_access(report["key"], access)
+            allowed.append(report)
+        except HTTPException:
+            continue
+    return allowed
 
 
 @router.get("/ai/provider")
@@ -120,10 +153,12 @@ async def get_report(
     report_key: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     sort_by: Optional[str] = None,
     sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     search: Optional[str] = None,
 ):
+    assert_report_access(report_key, access)
     company_id = None if current_user.is_super_admin else current_user.company_id
     rows, columns = await ReportsService.run(
         db,
@@ -153,11 +188,13 @@ async def export_report(
     report_key: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
+    access: Annotated[AccessContext, Depends(get_access)],
     format: str = Query("xlsx", pattern="^(csv|xlsx)$"),
     sort_by: Optional[str] = None,
     sort_order: str = Query("asc", pattern="^(asc|desc)$"),
     search: Optional[str] = None,
 ):
+    assert_report_access(report_key, access)
     company_id = None if current_user.is_super_admin else current_user.company_id
     rows, _ = await ReportsService.run(
         db,

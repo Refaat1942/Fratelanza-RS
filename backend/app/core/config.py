@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@fratelanza.com"
 
+    # Outbound messaging: "log" records messages only (default); "live" sends via configured
+    # providers. Demo tenants are always suppressed regardless of this setting.
+    OUTBOUND_MODE: str = "log"
+
+    RUN_MIGRATIONS_ON_STARTUP: bool = True
+    # In-process daily jobs (rent receivables, reminders, overdue status). Disable when an
+    # external scheduler calls POST /api/v1/rentals/jobs/run instead.
+    SCHEDULER_ENABLED: bool = True
+    SCHEDULER_INTERVAL_SECONDS: int = 3600
+
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     SUPER_ADMIN_EMAIL: str = "admin@fratelanza.com"

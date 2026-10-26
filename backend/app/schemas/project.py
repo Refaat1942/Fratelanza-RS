@@ -55,6 +55,16 @@ class UnitCreate(BaseModel):
     base_price: Optional[Decimal] = None
     maintenance_fee: Optional[Decimal] = None
     delivery_date: Optional[str] = None
+    owner_id: Optional[int] = None
+    furnishing_status: Optional[str] = None
+    finishing: Optional[str] = None
+    rental_category: Optional[str] = None
+    construction_year: Optional[int] = None
+    electricity_meter: Optional[str] = None
+    water_meter: Optional[str] = None
+    gas_meter: Optional[str] = None
+    listing_purpose: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class UnitResponse(UnitCreate):

@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ReDashboardCards } from '@/components/real-estate/ReDashboardCards'
+import { useAuthStore } from '@/stores/authStore'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { DollarSign, Wallet, Home, Target, BarChart3, LayoutDashboard, RefreshCw } from 'lucide-react'
@@ -18,6 +20,7 @@ export function CompanyDashboard() {
   const { formatEGP, formatInteger } = useFormatNumber()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const isSuperAdmin = useAuthStore((s) => !!s.user?.is_super_admin)
   const reseed = useMutation({
     mutationFn: async () => api.post('/dashboard/reseed-demo'),
     onSuccess: () => {
@@ -50,10 +53,12 @@ export function CompanyDashboard() {
         accentIndex={0}
         actions={
           <>
-            <Button variant="secondary" onClick={() => reseed.mutate()} loading={reseed.isPending}>
-              <RefreshCw className="me-2 h-4 w-4" />
-              {t('load_demo_data')}
-            </Button>
+            {isSuperAdmin && (
+              <Button variant="secondary" onClick={() => reseed.mutate()} loading={reseed.isPending}>
+                <RefreshCw className="me-2 h-4 w-4" />
+                {t('load_demo_data')}
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => navigate('/reports')}>
               <BarChart3 className="me-2 h-4 w-4" />
               {t('view_reports')}
@@ -67,6 +72,7 @@ export function CompanyDashboard() {
         <StatCard title={formatKpi(2, t('available_units'))} value={formatInteger(data?.stats.available_units)} icon={Home} color="bg-amber-50 text-amber-700" />
         <StatCard title={formatKpi(3, t('active_leads'))} value={formatInteger(data?.stats.total_leads)} icon={Target} color="bg-violet-50 text-violet-700" />
       </div>
+      <ReDashboardCards />
       <ActionPanel />
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <SalesChart data={data?.sales_chart ?? []} />

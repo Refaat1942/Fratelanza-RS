@@ -193,6 +193,12 @@ async def create_reminder(
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    from app.core.tenant import ensure_refs
+    from app.models.customers import Customer as _Customer
+
+    await ensure_refs(
+        db, current_user.company_id, [(_Customer, data.customer_id, "Customer"), (Lead, data.lead_id, "Lead")]
+    )
     reminder = CustomerReminder(
         company_id=current_user.company_id,
         assigned_to_id=current_user.id,

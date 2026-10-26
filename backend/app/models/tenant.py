@@ -58,6 +58,12 @@ class Company(Base, TimestampMixin, SoftDeleteMixin):
     currency: Mapped[str] = mapped_column(String(10), default="EGP")
     enabled_modules: Mapped[Optional[str]] = mapped_column(Text)
     customer_portal_features: Mapped[Optional[str]] = mapped_column(Text)
+    timezone: Mapped[str] = mapped_column(String(64), default="Africa/Cairo", server_default="Africa/Cairo")
+    date_format: Mapped[str] = mapped_column(String(20), default="YYYY-MM-DD", server_default="YYYY-MM-DD")
+    # production | demo — demo tenants are isolated showcase environments (see app/models/demo.py)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Bumped whenever roles/permissions/feature flags change so cached permission sets are invalidated
+    permissions_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
     branches: Mapped[list["Branch"]] = relationship(back_populates="company", lazy="selectin")
     subscription: Mapped[Optional["CompanySubscription"]] = relationship(

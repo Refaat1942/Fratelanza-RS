@@ -82,6 +82,9 @@ async def update_contract(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
     if not current_user.is_super_admin and contract.company_id != current_user.company_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    from app.core.tenant import ensure_refs
+
+    await ensure_refs(db, contract.company_id, [(Customer, data.customer_id, "Customer")])
     for field, value in data.model_dump(exclude_unset=True).items():
         if field == "status" and value:
             setattr(contract, field, ContractStatus(value))

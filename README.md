@@ -19,6 +19,15 @@ Integrated ERP, CRM, Property Management, Construction, Finance, HR, and Busines
 - **AI Features** — Lead scoring, chat assistant, report summaries
 - **Business Intelligence** — Real-time KPI dashboards
 
+## Property management, RBAC & customer demos
+
+* Rental contracts, rent collection, owner settlements, property/admin expenses, offers & requests matching, financial reports
+* Server-enforced tenant isolation, custom roles (module × action, data scope, sensitive fields), customer-specific demo tenants
+
+Docs: [Gap analysis](docs/REAL_ESTATE_GAP_ANALYSIS.md) · [Multi-tenant architecture](docs/MULTITENANT_ARCHITECTURE.md) ·
+[Implementation plan & accounting rules](docs/IMPLEMENTATION_PLAN.md) · [Roles & permissions](docs/ROLES_AND_PERMISSIONS.md) ·
+[Demo setup](docs/DEMO_SETUP.md) · [Migration & deployment](docs/MIGRATION_AND_DEPLOYMENT.md)
+
 ## Tech Stack
 
 | Layer | Technology |

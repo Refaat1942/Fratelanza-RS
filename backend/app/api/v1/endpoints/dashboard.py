@@ -32,11 +32,10 @@ async def company_dashboard(
 
 @router.post("/reseed-demo")
 async def reseed_demo_data(
-    current_user: Annotated[User, Depends(get_company_user)],
+    current_user: Annotated[User, Depends(get_super_admin)],
 ):
-    """Backfill missing demo records (reservations, brokers, warehouse, etc.) for the company."""
-    if not current_user.company_id and not current_user.is_super_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company required")
+    """Backfill missing records of the built-in DEMO company. Platform super admin only —
+    tenant users must never trigger platform-wide seeding."""
     from app.utils.seed import seed_database
 
     await seed_database()

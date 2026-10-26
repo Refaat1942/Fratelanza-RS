@@ -18,14 +18,19 @@ export function TrialBanner() {
   const accessToken = useAuthStore((s) => s.accessToken)
   const refreshToken = useAuthStore((s) => s.refreshToken)
 
+  const userId = user?.id
+  const isSuperAdmin = user?.is_super_admin
   useEffect(() => {
-    if (!accessToken || user?.is_super_admin) return
+    // Refresh billing/trial fields once per session token. Depending on `user` itself re-ran this
+    // effect after every setAuth (new object) and called /auth/me in an endless loop.
+    if (!accessToken || !userId || isSuperAdmin) return
     api.get<MeResponse>('/auth/me').then(({ data }) => {
-      if (user && refreshToken) {
-        setAuth(accessToken, refreshToken, { ...user, ...data } as typeof user)
+      const current = useAuthStore.getState().user
+      if (current && refreshToken) {
+        setAuth(accessToken, refreshToken, { ...current, ...data } as typeof current)
       }
     }).catch(() => {})
-  }, [accessToken, refreshToken, setAuth, user])
+  }, [accessToken, refreshToken, setAuth, userId, isSuperAdmin])
 
   const me = user as MeResponse | null
   if (!me || me.payment_status !== 'trial') return null

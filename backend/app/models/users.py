@@ -70,6 +70,14 @@ class Role(Base, TimestampMixin):
     code: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     is_system: Mapped[bool] = mapped_column(Boolean, default=False)
+    # all | branch | own — which records of the tenant the role may see
+    data_scope: Mapped[str] = mapped_column(String(20), default="all", server_default="all")
+    # JSON list of sensitive field groups visible to this role (see app/core/permissions.py)
+    field_access: Mapped[Optional[str]] = mapped_column(Text)
+    base_system_role: Mapped[Optional[str]] = mapped_column(String(50))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+    __table_args__ = (UniqueConstraint("company_id", "code", name="uq_role_company_code"),)
 
     permissions: Mapped[list["RolePermission"]] = relationship(back_populates="role", lazy="selectin")
 
@@ -89,6 +97,7 @@ class Permission(Base, TimestampMixin):
 
 class UserRole(Base):
     __tablename__ = "user_roles"
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_role"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -100,6 +109,7 @@ class UserRole(Base):
 
 class RolePermission(Base):
     __tablename__ = "role_permissions"
+    __table_args__ = (UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), nullable=False)

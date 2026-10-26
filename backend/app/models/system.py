@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -20,6 +20,8 @@ class AuditLog(Base, TimestampMixin):
     ip_address: Mapped[Optional[str]] = mapped_column(String(50))
     user_agent: Mapped[Optional[str]] = mapped_column(String(500))
     details: Mapped[Optional[str]] = mapped_column(Text)
+    # JSON {"before": {...}, "after": {...}} with sensitive values removed
+    changes: Mapped[Optional[str]] = mapped_column(Text)
 
 
 class Notification(Base, TimestampMixin):
@@ -37,6 +39,10 @@ class Notification(Base, TimestampMixin):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     reference_type: Mapped[Optional[str]] = mapped_column(String(50))
     reference_id: Mapped[Optional[int]] = mapped_column(Integer)
+    # Idempotency key for scheduled notifications (e.g. "rent_due:123:2026-05-01")
+    dedupe_key: Mapped[Optional[str]] = mapped_column(String(150))
+
+    __table_args__ = (UniqueConstraint("user_id", "dedupe_key", name="uq_notification_user_dedupe"),)
 
 
 class Document(Base, TimestampMixin):

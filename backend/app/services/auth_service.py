@@ -62,9 +62,14 @@ class AuthService:
                 .where(Company.id == user.company_id, Company.is_deleted == False)
             )
             company = company_result.scalar_one_or_none()
-            if company:
-                await PlatformBillingService.ensure_company_accessible(db, company)
-                await db.commit()
+            if not company:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company not found")
+            await PlatformBillingService.ensure_company_accessible(db, company)
+            if company.is_demo:
+                from app.services.access_service import AccessService
+
+                AccessService.ensure_demo_usable(await AccessService.load_demo(db, company.id))
+            await db.commit()
         if user.is_2fa_enabled:
             if not data.totp_code or not user.totp_secret:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="2FA code required")
@@ -99,9 +104,16 @@ class AuthService:
                 .where(Company.id == user.company_id, Company.is_deleted == False)
             )
             company = company_result.scalar_one_or_none()
-            if company:
-                await PlatformBillingService.ensure_company_accessible(db, company)
-                await db.commit()
+            if not company:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Company not found")
+            await PlatformBillingService.ensure_company_accessible(db, company)
+            if company.is_demo:
+                from app.services.access_service import AccessService
+
+                AccessService.ensure_demo_usable(await AccessService.load_demo(db, company.id))
+            await db.commit()
+        if user.status == UserStatus.SUSPENDED:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
         access = create_access_token(
             user.id,
             {

@@ -14,6 +14,21 @@ from app.models.users import User
 router = APIRouter()
 
 
+async def _owned_warehouse(db: AsyncSession, warehouse_id: int, user: User) -> Warehouse:
+    wh = (await db.execute(select(Warehouse).where(Warehouse.id == warehouse_id))).scalar_one_or_none()
+    if not wh or (not user.is_super_admin and wh.company_id != user.company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Warehouse not found")
+    return wh
+
+
+async def _owned_item(db: AsyncSession, item_id: int, user: User) -> InventoryItem:
+    item = (await db.execute(select(InventoryItem).where(InventoryItem.id == item_id))).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    await _owned_warehouse(db, item.warehouse_id, user)
+    return item
+
+
 class WarehouseCreate(BaseModel):
     name_ar: str
     name_en: str
@@ -190,6 +205,7 @@ async def create_item(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
+    await _owned_warehouse(db, data.warehouse_id, current_user)
     item = InventoryItem(**data.model_dump())
     db.add(item)
     await db.flush()
@@ -203,10 +219,7 @@ async def update_item(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(InventoryItem).where(InventoryItem.id == item_id))
-    item = result.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    item = await _owned_item(db, item_id, current_user)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     await db.flush()
@@ -219,10 +232,7 @@ async def delete_item(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(InventoryItem).where(InventoryItem.id == item_id))
-    item = result.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+    item = await _owned_item(db, item_id, current_user)
     await db.delete(item)
     await db.flush()
     return {"message": "Item deleted", "success": True}
@@ -233,7 +243,16 @@ async def list_movements(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_company_user)],
 ):
-    result = await db.execute(select(StockMovement).order_by(StockMovement.id.desc()).limit(100))
+    query = (
+        select(StockMovement)
+        .join(InventoryItem, StockMovement.item_id == InventoryItem.id)
+        .join(Warehouse, InventoryItem.warehouse_id == Warehouse.id)
+        .order_by(StockMovement.id.desc())
+        .limit(100)
+    )
+    if not current_user.is_super_admin:
+        query = query.where(Warehouse.company_id == current_user.company_id)
+    result = await db.execute(query)
     movements = result.scalars().all()
     return [
         {"id": m.id, "item_id": m.item_id, "movement_type": m.movement_type, "quantity": float(m.quantity)}
