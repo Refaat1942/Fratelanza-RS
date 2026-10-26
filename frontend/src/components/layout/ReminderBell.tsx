@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Bell } from 'lucide-react'
 import { useFormatNumber } from '@/hooks/useFormatNumber'
 import api from '@/lib/api'
+import { usePermissionsStore } from '@/stores/permissionsStore'
 
 export function ReminderBell() {
   const { t } = useTranslation()
@@ -12,17 +13,19 @@ export function ReminderBell() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const canFollowUps = usePermissionsStore((s) => s.can('follow_ups'))
 
   const { data: summary } = useQuery({
     queryKey: ['reminders-summary'],
     queryFn: async () => (await api.get('/reminders/summary')).data,
     refetchInterval: 60000,
+    enabled: canFollowUps,
   })
 
   const { data: queue } = useQuery({
     queryKey: ['reminders-queue'],
     queryFn: async () => (await api.get('/reminders/queue')).data,
-    enabled: open,
+    enabled: open && canFollowUps,
   })
   const today = queue?.today_and_overdue ?? []
 
@@ -35,6 +38,7 @@ export function ReminderBell() {
   }, [])
 
   const count = (summary?.today ?? 0) + (summary?.overdue ?? 0)
+  if (!canFollowUps) return null
 
   return (
     <div ref={ref} className="relative">

@@ -7,21 +7,25 @@ import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { useModulesStore } from '@/stores/modulesStore'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { usePermissionsStore } from '@/stores/permissionsStore'
 
 export function ActionPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { formatEGP, formatInteger } = useFormatNumber()
   const { isEnabled } = useModulesStore()
+  const can = usePermissionsStore((s) => s.can)
 
   const { data: reminderSummary } = useQuery({
     queryKey: ['reminders-summary'],
     queryFn: async () => (await api.get('/reminders/summary')).data,
+    enabled: can('follow_ups'),
   })
 
   const { data: queue } = useQuery({
     queryKey: ['reminders-queue'],
     queryFn: async () => (await api.get('/reminders/queue')).data,
+    enabled: can('follow_ups'),
   })
   const todayReminders = queue?.today_and_overdue ?? []
 
@@ -33,6 +37,7 @@ export function ActionPanel() {
   const { data: employees = [] } = useQuery({
     queryKey: ['hr-employees-count'],
     queryFn: async () => (await api.get('/hr/employees')).data,
+    enabled: can('hr'),
   })
 
   const overdue = dashboard?.stats?.overdue_amount ?? 0

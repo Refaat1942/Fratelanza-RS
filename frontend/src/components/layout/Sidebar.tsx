@@ -112,7 +112,7 @@ export function Sidebar() {
     <aside
       className={cn(
         'sidebar-shell fixed inset-y-0 start-0 z-40 transition-transform duration-200 lg:static lg:translate-x-0',
-        sidebarOpen ? 'translate-x-0' : 'ltr:-translate-x-full rtl:translate-x-full',
+        sidebarOpen ? 'translate-x-0' : 'max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full',
       )}
     >
       <div className="border-b border-white/10 p-6">
