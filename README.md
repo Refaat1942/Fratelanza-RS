@@ -49,7 +49,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-## Production Deploy (Hostinger VPS — Port 9000)
+## Production Deploy (Hostinger VPS — Port 14136)
 
 **Verified working commands** (does not stop Hub or other VPS projects):
 
@@ -72,8 +72,8 @@ bash DEPLOY-VPS.sh
 Verify after deploy:
 
 ```bash
-curl -s http://127.0.0.1:9000/health    # must show git_commit
-docker ps | grep fratelanza_nginx       # must show port 9000
+curl -s http://127.0.0.1:14136/health    # must show git_commit
+docker ps | grep fratelanza_rs_nginx       # must show port 14136
 ```
 
 Then hard-refresh browser: `Ctrl+Shift+R` on https://rs.fratelanza.com
@@ -103,7 +103,7 @@ cd frontend && npm install && npm run dev
 |---------|-----|
 | **Live demo (Real Estate)** | https://rs.fratelanza.com/login |
 | **RS control (Super Admin)** | https://rs-control.fratelanza.com/super-admin |
-| Direct (if domain shows Hub) | http://187.124.15.14:9000/login |
+| Direct (if domain shows Hub) | http://187.124.15.14:14136/login |
 | Fratelanza Hub (different app) | https://hub.fratelanza.com |
 | Frontend (local dev) | http://localhost:5173 |
 | API (local dev) | http://localhost:8000 |

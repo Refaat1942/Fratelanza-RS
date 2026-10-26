@@ -3,133 +3,109 @@
 # FRATELANZA REAL ESTATE — VPS PRODUCTION DEPLOY (run on server only)
 # =============================================================================
 #
-# VERIFIED WORKING COMMANDS (Hostinger VPS srv1443693):
-#
 #   cd /opt/fratelanza
 #   git fetch origin && git reset --hard origin/main
 #   bash DEPLOY-VPS.sh
 #
-# Do NOT run:  docker compose up -d --build   (DEV compose — port 5432 conflict)
+# Upgrades the live "fratelanza_rs" stack in place (containers fratelanza_rs_*,
+# public port 14136 by default). It:
+#   * reuses the port and data volumes of the running containers,
+#   * backs up the real-estate database to /root/fratelanza-backups/ first,
+#   * never touches other projects (fratelanza-chat owns "fratelanza_postgres",
+#     plus fratelanza-office/-console/-website, erp, Hub).
+# Do NOT run "docker compose up -d --build" (that is the dev compose file).
 # =============================================================================
 set -euo pipefail
 
 APP_DIR="${1:-/opt/fratelanza}"
-APP_PORT="${APP_PORT:-9000}"
+PROJECT="fratelanza_rs"
+COMPOSE=(docker compose -p "$PROJECT" -f docker-compose.prod.yml)
 cd "$APP_DIR"
-
-echo ""
-echo ">>> FRATELANZA production deploy (port ${APP_PORT})"
-echo ">>> Folder: $APP_DIR"
-echo ""
 
 if [ ! -f docker-compose.prod.yml ]; then
   echo "ERROR: docker-compose.prod.yml not found. Are you in /opt/fratelanza?"
   exit 1
 fi
 
-echo ">>> [1/5] Git: force sync to GitHub main..."
+echo ""
+echo ">>> [1/6] Git: sync to GitHub main..."
 git fetch origin
 git checkout main
 git reset --hard origin/main
 COMMIT=$(git rev-parse --short HEAD)
 echo "    Commit: $COMMIT"
 export GIT_COMMIT="$COMMIT"
-export APP_PORT
 
-echo ">>> [2/5] Stop wrong DEV stack (if any) — Hub NOT touched..."
-docker compose down 2>/dev/null || true
+# Volume name mounted at <path> inside <container> (empty if missing / bind mount)
+mount_of() {
+  docker inspect "$1" --format "{{range .Mounts}}{{if eq .Destination \"$2\"}}{{.Name}}{{end}}{{end}}" 2>/dev/null || true
+}
+running() { docker ps -a --format '{{.Names}}' | grep -qx "$1"; }
 
-echo ">>> [3/5] Rebuild PRODUCTION nginx + backend (5-10 min)..."
-docker compose -p fratelanza -f docker-compose.prod.yml build --no-cache nginx backend
+echo ">>> [2/6] Detect the live stack (port + data volumes)..."
+if running fratelanza_rs_nginx; then
+  LIVE_PORT=$(docker port fratelanza_rs_nginx 9000/tcp 2>/dev/null | head -1 | sed 's/.*://')
+fi
+ENV_PORT=$(grep -E '^APP_PORT=' .env 2>/dev/null | tail -1 | cut -d= -f2 || true)
+export APP_PORT="${APP_PORT:-${LIVE_PORT:-${ENV_PORT:-14136}}}"
 
-echo ">>> [3b] Database backup (before any change)..."
+detected_pg=$(mount_of fratelanza_rs_postgres /var/lib/postgresql/data)
+detected_redis=$(mount_of fratelanza_rs_redis /data)
+detected_uploads=$(mount_of fratelanza_rs_backend /app/uploads)
+detected_backups=$(mount_of fratelanza_rs_backend /app/backups)
+export RS_PG_VOLUME="${detected_pg:-fratelanza_rs_fratelanza_rs_postgres_data}"
+export RS_REDIS_VOLUME="${detected_redis:-fratelanza_rs_redis_data}"
+export RS_UPLOADS_VOLUME="${detected_uploads:-fratelanza_rs_uploads}"
+export RS_BACKUPS_VOLUME="${detected_backups:-fratelanza_rs_backups}"
+echo "    Port:     $APP_PORT"
+echo "    Database: $RS_PG_VOLUME"
+echo "    Uploads:  $RS_UPLOADS_VOLUME"
+for v in "$RS_PG_VOLUME" "$RS_REDIS_VOLUME" "$RS_UPLOADS_VOLUME" "$RS_BACKUPS_VOLUME"; do
+  docker volume inspect "$v" >/dev/null 2>&1 || { echo "    Creating volume $v"; docker volume create "$v" >/dev/null; }
+done
+
+echo ">>> [3/6] Back up the real-estate database..."
 BACKUP_DIR=/root/fratelanza-backups
 mkdir -p "$BACKUP_DIR"
-if docker ps -a --format '{{.Names}}' | grep -qx fratelanza_postgres; then
-  docker start fratelanza_postgres >/dev/null
+if running fratelanza_rs_postgres; then
+  docker start fratelanza_rs_postgres >/dev/null
   sleep 3
-  BK="$BACKUP_DIR/fratelanza_$(date +%F_%H%M%S).sql"
-  if docker exec fratelanza_postgres sh -c 'pg_dump -U "${POSTGRES_USER:-fratelanza}" "${POSTGRES_DB:-fratelanza_db}"' > "$BK" && [ -s "$BK" ]; then
+  BK="$BACKUP_DIR/fratelanza_rs_$(date +%F_%H%M%S).sql"
+  if docker exec fratelanza_rs_postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$BK" && [ -s "$BK" ]; then
     echo "    Saved $BK ($(du -h "$BK" | cut -f1))"
   else
-    echo "ERROR: database backup failed — nothing was changed. Fix the database container and retry."
+    echo "ERROR: database backup failed — nothing was changed."
     exit 1
   fi
+else
+  echo "    No running fratelanza_rs_postgres yet — first install, nothing to back up."
 fi
 
-echo ">>> [3c] Adopt containers created outside the 'fratelanza' compose project..."
-NEW_VOL="fratelanza_fratelanza_postgres"
-if docker ps -a --format '{{.Names}}' | grep -qx fratelanza_postgres; then
-  PROJ=$(docker inspect fratelanza_postgres --format '{{index .Config.Labels "com.docker.compose.project"}}')
-  if [ "$PROJ" != "fratelanza" ]; then
-    OLD_VOL=$(docker inspect fratelanza_postgres --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}')
-    OLD_IMG=$(docker inspect fratelanza_postgres --format '{{.Config.Image}}')
-    echo "    fratelanza_postgres belongs to project '$PROJ' (volume '$OLD_VOL', image '$OLD_IMG')"
-    if [ -n "$OLD_VOL" ] && [ "$OLD_VOL" != "$NEW_VOL" ]; then
-      NEW_HAS_DATA=$(docker run --rm -v "$NEW_VOL":/to alpine sh -c 'ls -A /to | head -1' 2>/dev/null || true)
-      case "$OLD_IMG" in postgres:16*) SAME_MAJOR=yes ;; *) SAME_MAJOR=no ;; esac
-      if [ -n "$NEW_HAS_DATA" ] || [ "$SAME_MAJOR" != "yes" ]; then
-        echo "STOP: data is in volume '$OLD_VOL' but production uses '$NEW_VOL' (already has data: ${NEW_HAS_DATA:+yes}, same Postgres major: $SAME_MAJOR)."
-        echo "      Nothing was deleted. Backup: $BK. Ask for help before continuing."
-        exit 1
-      fi
-      echo "    Copying database files $OLD_VOL -> $NEW_VOL (old volume is kept untouched)"
-      docker stop fratelanza_postgres >/dev/null
-      docker volume create "$NEW_VOL" >/dev/null
-      docker run --rm -v "$OLD_VOL":/from:ro -v "$NEW_VOL":/to alpine sh -c 'cp -a /from/. /to/'
-    fi
-  fi
-fi
-for c in fratelanza_postgres fratelanza_redis fratelanza_backend fratelanza_nginx fratelanza_frontend; do
-  if docker ps -a --format '{{.Names}}' | grep -qx "$c"; then
-    PROJ=$(docker inspect "$c" --format '{{index .Config.Labels "com.docker.compose.project"}}')
-    if [ "$PROJ" != "fratelanza" ]; then
-      echo "    Removing stale container $c (project '$PROJ') — volumes are kept"
-      docker rm -f "$c" >/dev/null
-    fi
-  fi
-done
+echo ">>> [4/6] Build backend + nginx (5-10 min)..."
+"${COMPOSE[@]}" build --no-cache nginx backend
 
-echo ">>> [4/5] Start production stack..."
-docker compose -p fratelanza -f docker-compose.prod.yml up -d
+echo ">>> [5/6] Start (database migrations run automatically on backend start)..."
+"${COMPOSE[@]}" up -d
 
-echo ">>> [5/5] Wait for health..."
-for i in $(seq 1 40); do
+echo ">>> [6/6] Wait for health on port ${APP_PORT}..."
+for i in $(seq 1 60); do
   HEALTH=$(curl -fsS "http://127.0.0.1:${APP_PORT}/health" 2>/dev/null || true)
-  if [ -n "$HEALTH" ]; then
+  if [ -n "$HEALTH" ] && echo "$HEALTH" | grep -q multi_tenant_rbac; then
     echo ""
     echo "HEALTH: $HEALTH"
-  if echo "$HEALTH" | grep -q installment_calculator; then
-      echo ""
-      echo "============================================"
-      echo " SUCCESS — new version is live"
-      echo " Calculator, portal, trial: deployed"
-      echo " Open: https://rs.fratelanza.com/collections"
-      echo " Hard refresh: Ctrl+Shift+R"
-      echo "============================================"
-      exit 0
-    fi
-    if echo "$HEALTH" | grep -q git_commit; then
-      echo ""
-      echo "============================================"
-      echo " SUCCESS — backend updated (commit $COMMIT)"
-      echo " Hard refresh browser: Ctrl+Shift+R"
-      echo "============================================"
-      exit 0
-    fi
-    echo ""
     echo "============================================"
-    echo " WARNING: Server runs but still OLD build"
-    echo " Paste this output when asking for help:"
-    echo "   git log -1 --oneline"
-    echo "   docker ps | grep fratelanza"
-    echo "   curl -s http://127.0.0.1:9000/health"
+    echo " SUCCESS — new version live (commit $COMMIT)"
+    echo " Open: http://$(hostname -I | awk '{print $1}'):${APP_PORT}/login"
+    echo " Login: superadmin  (password 123456 on first start — change it)"
+    echo " Hard refresh browser: Ctrl+Shift+R"
     echo "============================================"
-    exit 1
+    exit 0
   fi
   sleep 3
 done
 
-echo "ERROR: Health check failed after 2 minutes."
-docker compose -p fratelanza -f docker-compose.prod.yml logs --tail=30
+echo "ERROR: new version did not become healthy within 3 minutes."
+echo "Your data is safe; backup: ${BK:-none}"
+"${COMPOSE[@]}" ps
+"${COMPOSE[@]}" logs --tail=60 backend
 exit 1
