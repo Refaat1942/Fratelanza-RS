@@ -12,15 +12,15 @@ git fetch origin && git reset --hard origin/main
 bash DEPLOY-VPS.sh
 ```
 
-- Uses `docker-compose.prod.yml` (port 9000 only).
+- Uses `docker-compose.prod.yml` (port 14136, project `fratelanza_rs`).
 - Does **not** stop Hub or other VPS projects.
 - Never tell users to run `docker compose up -d --build` on the VPS (dev compose, port 5432 conflict).
 
 ### Verify deploy
 
 ```bash
-curl -s http://127.0.0.1:9000/health   # expect git_commit + release_features
-docker ps | grep fratelanza_nginx      # expect 0.0.0.0:9000->9000
+curl -s http://127.0.0.1:14136/health   # expect git_commit + release_features
+docker ps | grep fratelanza_rs_nginx      # expect 0.0.0.0:14136->9000
 ```
 
 ### URLs

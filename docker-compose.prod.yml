@@ -1,29 +1,29 @@
-version: "3.9"
+# FRATELANZA Real Estate — production on the Hostinger VPS
+#
+# Matches the live stack on the server: compose project "fratelanza_rs", containers
+# fratelanza_rs_*, public port 14136 (set APP_PORT to change it).
+# Other projects on the VPS (fratelanza-chat, -office, -console, -website, erp, Hub) use
+# their own names and are never touched — note fratelanza_postgres belongs to fratelanza-chat.
+#
+# Data volumes are external and named explicitly so a rebuild always reattaches the same
+# data. DEPLOY-VPS.sh detects the volumes the running containers use and exports them.
 
-# FRATELANZA Production — Hostinger VPS (Port 9000)
-# FULLY ISOLATED from other projects on the VPS:
-# - Own folder: /opt/fratelanza
-# - Own port: 9000 only (NOT 80, 443, 3000, etc.)
-# - Own Docker project name: fratelanza
-# - Own network, database, redis (no host ports exposed)
-# - Does NOT modify system nginx or other projects
-
-name: fratelanza
+name: fratelanza_rs
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: fratelanza_postgres
+    container_name: fratelanza_rs_postgres
     restart: unless-stopped
-    # NO ports exposed to host — only accessible inside fratelanza network
+    # No host port — reachable only inside the project network
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fratelanza}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-fratelanza_db}
     volumes:
-      - fratelanza_postgres:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     networks:
-      - fratelanza_net
+      - rs_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fratelanza}"]
       interval: 10s
@@ -32,12 +32,12 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: fratelanza_redis
+    container_name: fratelanza_rs_redis
     restart: unless-stopped
     volumes:
-      - fratelanza_redis:/data
+      - redis_data:/data
     networks:
-      - fratelanza_net
+      - rs_net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -48,7 +48,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: fratelanza_backend
+    container_name: fratelanza_rs_backend
     restart: unless-stopped
     env_file:
       - .env
@@ -57,10 +57,10 @@ services:
       DEBUG: "false"
       GIT_COMMIT: ${GIT_COMMIT:-unknown}
     volumes:
-      - fratelanza_uploads:/app/uploads
-      - fratelanza_backups:/app/backups
+      - uploads:/app/uploads
+      - backups:/app/backups
     networks:
-      - fratelanza_net
+      - rs_net
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,26 +72,34 @@ services:
     build:
       context: .
       dockerfile: nginx/Dockerfile.prod
-    container_name: fratelanza_nginx
+    container_name: fratelanza_rs_nginx
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-9000}:9000"
+      - "${APP_PORT:-14136}:9000"
     volumes:
-      - fratelanza_uploads:/app/uploads:ro
+      - uploads:/app/uploads:ro
     networks:
-      - fratelanza_net
+      - rs_net
     depends_on:
       - backend
     environment:
       - DOMAIN=${DOMAIN:-localhost}
 
 networks:
-  fratelanza_net:
+  rs_net:
     driver: bridge
-    name: fratelanza_isolated_net
+    name: fratelanza_rs_net
 
 volumes:
-  fratelanza_postgres:
-  fratelanza_redis:
-  fratelanza_uploads:
-  fratelanza_backups:
+  pg_data:
+    external: true
+    name: ${RS_PG_VOLUME:-fratelanza_rs_fratelanza_rs_postgres_data}
+  redis_data:
+    external: true
+    name: ${RS_REDIS_VOLUME:-fratelanza_rs_redis_data}
+  uploads:
+    external: true
+    name: ${RS_UPLOADS_VOLUME:-fratelanza_rs_uploads}
+  backups:
+    external: true
+    name: ${RS_BACKUPS_VOLUME:-fratelanza_rs_backups}

@@ -36,12 +36,12 @@ Verified locally: the database created by the **original** code (17 units, exist
 
 ## Production deploy (Hostinger VPS, unchanged procedure)
 
-`DEPLOY-VPS.sh` now backs the database up to `/root/fratelanza-backups/` before changing anything, and adopts containers that were created outside the `fratelanza` compose project (the "container name … already in use" error). If the old database lives in a different volume it copies the files into the production volume (old volume untouched) only when it is safe; otherwise it stops without deleting anything.
+The live stack is the compose project **`fratelanza_rs`** (containers `fratelanza_rs_postgres/_redis/_backend/_nginx`, public port **14136**). `DEPLOY-VPS.sh` reads the port and data volumes from the running containers, backs the database up to `/root/fratelanza-backups/` and upgrades that stack in place. Other projects on the VPS are never touched — note that `fratelanza_postgres` belongs to the separate **fratelanza-chat** app.
 
 1. **Back up first** (also done automatically by the script):
    ```bash
    cd /opt/fratelanza
-   docker exec fratelanza_postgres pg_dump -U fratelanza fratelanza_db > /root/fratelanza_pre_rbac_$(date +%F).sql
+   docker exec fratelanza_rs_postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > /root/fratelanza_rs_$(date +%F).sql
    ```
 2. Merge the branch into `main`, then:
    ```bash
@@ -51,9 +51,9 @@ Verified locally: the database created by the **original** code (17 units, exist
    ```
 3. Verify:
    ```bash
-   curl -s http://127.0.0.1:9000/health        # release_features includes multi_tenant_rbac, demo_management
-   docker logs fratelanza_backend 2>&1 | grep -i "migration stopped" || echo "migrations OK"
-   docker exec fratelanza_postgres psql -U fratelanza fratelanza_db -c "select version_num from alembic_version"
+   curl -s http://127.0.0.1:14136/health        # release_features includes multi_tenant_rbac, demo_management
+   docker logs fratelanza_rs_backend 2>&1 | grep -i "migration stopped" || echo "migrations OK"
+   docker exec fratelanza_rs_postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -c "select version_num from alembic_version"'
    ```
 4. Optional `.env` additions (defaults are safe): `OUTBOUND_MODE=log`, `SCHEDULER_ENABLED=true`, `SCHEDULER_INTERVAL_SECONDS=3600`.
 

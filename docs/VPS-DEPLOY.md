@@ -22,7 +22,7 @@ Wait 5–10 minutes. Hard-refresh browser: `Ctrl+Shift+R`.
 ## Verify deploy succeeded
 
 ```bash
-curl -s http://127.0.0.1:9000/health
+curl -s http://127.0.0.1:14136/health
 ```
 
 Good response includes `"git_commit":"..."` and `"release_features"`.
@@ -35,9 +35,9 @@ Must show:
 
 | Container | Port |
 |-----------|------|
-| `fratelanza_nginx` | `0.0.0.0:9000->9000` |
-| `fratelanza_backend` | internal |
-| `fratelanza_postgres` | internal (no host 5432) |
+| `fratelanza_rs_nginx` | `0.0.0.0:14136->9000` |
+| `fratelanza_rs_backend` | internal |
+| `fratelanza_rs_postgres` | internal (no host 5432) |
 | `fratelanza_redis` | internal |
 
 ---
@@ -61,7 +61,7 @@ bash DEPLOY-VPS.sh
 | `docker compose up -d --build` | Dev compose — binds port 5432, build fails |
 | `docker compose down --remove-orphans` | Can remove Hub containers |
 
-Hub and other projects stay running. Only the `fratelanza` compose project (port 9000) is updated.
+Hub and other projects stay running. Only the `fratelanza` compose project (port 14136) is updated.
 
 ---
 
@@ -72,4 +72,4 @@ Hub and other projects stay running. Only the `fratelanza` compose project (port
 | `git pull` fails (diverged) | `git fetch origin && git reset --hard origin/main` |
 | Build TypeScript error | Pull latest `main`, run `DEPLOY-VPS.sh` again |
 | Old UI after deploy | `Ctrl+Shift+R` in browser |
-| No `fratelanza_nginx` in `docker ps` | Deploy failed — read build output, re-run `DEPLOY-VPS.sh` |
+| No `fratelanza_rs_nginx` in `docker ps` | Deploy failed — read build output, re-run `DEPLOY-VPS.sh` |
