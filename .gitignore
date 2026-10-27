@@ -51,3 +51,4 @@ docker-data/
 
 # Alembic
 alembic.ini.bak
+*.tsbuildinfo

@@ -1,6 +1,6 @@
 # Connect Your Domain to FRATELANZA
 
-Your app runs on port **9000**. Your domain will point to it **without affecting other projects**.
+Your app runs on port **14136**. Your domain will point to it **without affecting other projects**.
 
 **VPS IP:** `187.124.15.14`
 

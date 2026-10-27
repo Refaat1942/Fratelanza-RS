@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Grid3x3, Map, X, Home, CircleCheck, Clock, CircleX } from 'lucide-react'
@@ -301,8 +302,8 @@ export function MasterPlanDashboard({
         </div>
       )}
 
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+      {selected && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/40 p-4 sm:items-center">
           <Card className="relative w-full max-w-md animate-fade-in-up !p-6 shadow-xl">
             <button
               type="button"
@@ -350,7 +351,8 @@ export function MasterPlanDashboard({
               </Button>
             )}
           </Card>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

@@ -13,19 +13,6 @@ export async function exportRowsToExcel(
   downloadBlob(data, `${filename}.xlsx`)
 }
 
-export function exportRowsToCsv(rows: Record<string, unknown>[], filename: string) {
-  if (!rows.length) return
-  const headers = Object.keys(rows[0])
-  const csv = [
-    headers.join(','),
-    ...rows.map((row) =>
-      headers.map((h) => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(','),
-    ),
-  ].join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
-  downloadBlob(blob, `${filename}.csv`)
-}
-
 function downloadBlob(data: Blob, filename: string) {
   const url = window.URL.createObjectURL(data)
   const link = document.createElement('a')

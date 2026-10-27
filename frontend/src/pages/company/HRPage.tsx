@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Plus, Wallet, Calendar, Clock, Users, FileText, Download } from 'lucide-react'
+import { Plus, Wallet, Calendar, Clock, Users, FileText } from 'lucide-react'
 import { SortableTable } from '@/components/ui/SortableTable'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
@@ -11,6 +11,10 @@ import { useFormatNumber } from '@/hooks/useFormatNumber'
 import { exportRowsToExcel } from '@/lib/exportTable'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { apiErrorMessage } from '@/lib/apiError'
+import { DataTable } from '@/components/ui/DataTable'
+import { ErrorNote } from '@/components/ui/FormFields'
+import { usePermissionsStore } from '@/stores/permissionsStore'
 
 type Tab = 'employees' | 'payroll' | 'payslips' | 'leaves' | 'attendance'
 
@@ -24,6 +28,27 @@ export function HRPage() {
   const [attOpen, setAttOpen] = useState(false)
   const [selectedRun, setSelectedRun] = useState<number | null>(null)
   const [payrollError, setPayrollError] = useState('')
+  const perms = usePermissionsStore()
+  const canPaySalaries = perms.can('hr', 'collect') && perms.sees('salaries')
+  const [payRow, setPayRow] = useState<Record<string, unknown> | null>(null)
+  const [payForm, setPayForm] = useState({ amount: '', paid_on: '' })
+  const [payError, setPayError] = useState<string | null>(null)
+  const [payBusy, setPayBusy] = useState(false)
+  const paySalary = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!payRow) return
+    setPayBusy(true); setPayError(null)
+    try {
+      await api.post(`/hr/payslips/${payRow.id}/payments`, { amount: Number(payForm.amount), paid_on: payForm.paid_on })
+      setPayRow(null)
+      qc.invalidateQueries({ queryKey: ['hr-all-payslips'] })
+      qc.invalidateQueries({ queryKey: ['hr-payslips'] })
+    } catch (err) {
+      setPayError(apiErrorMessage(err, t))
+    } finally {
+      setPayBusy(false)
+    }
+  }
   const [form, setForm] = useState({
     employee_code: '', full_name_ar: '', full_name_en: '', department: '', position: '', salary: '', hire_date: '',
   })
@@ -211,26 +236,42 @@ export function HRPage() {
           <EmptyState icon={<FileText className="h-10 w-10" />} title={t('no_payslips')} description={t('no_payslips_help')} actionLabel={t('generate_payroll')} onAction={() => generatePayroll.mutate()} />
         ) : (
           <>
-            <div className="mb-4 flex justify-end">
-              <Button variant="secondary" onClick={() => exportRowsToExcel(allPayslips, 'payslips')}>
-                <Download className="me-2 h-4 w-4" />{t('export_excel')}
-              </Button>
-            </div>
-            <SortableTable columns={[
-              { key: 'period_month', label_en: 'Month', label_ar: 'الشهر' },
-              { key: 'employee_code', label_en: 'Code', label_ar: 'الكود' },
-              { key: 'employee_name', label_en: 'Employee', label_ar: 'الموظف' },
-              { key: 'department', label_en: 'Dept', label_ar: 'القسم' },
-              { key: 'basic_salary', label_en: 'Basic', label_ar: 'الأساسي' },
-              { key: 'social_insurance', label_en: 'Insurance', label_ar: 'التأمينات' },
-              { key: 'net_salary', label_en: 'Net', label_ar: 'الصافي' },
-              { key: 'status', label_en: 'Status', label_ar: 'الحالة' },
-            ]} rows={allPayslips.map((s: Record<string, unknown>) => ({
-              ...s,
-              basic_salary: formatEGP(s.basic_salary as number),
-              social_insurance: formatEGP(s.social_insurance as number),
-              net_salary: formatEGP(s.net_salary as number),
-            }))} loading={payslipsLoading} onExport={() => exportRowsToExcel(allPayslips, 'payslips')} />
+            <DataTable
+              title={t('payslips')}
+              subtitle={t('re.payroll.subtitle')}
+              loading={payslipsLoading}
+              data={allPayslips}
+              exportFilename="payslips"
+              columns={[
+                { key: 'period_month', label: t('re.payroll.month') },
+                { key: 'employee_code', label: t('re.fields.code') },
+                { key: 'employee_name', label: t('re.payroll.employee') },
+                { key: 'basic_salary', label: t('re.payroll.basic'), render: (r) => formatEGP(r.basic_salary as number) },
+                { key: 'social_insurance', label: t('re.payroll.insurance'), render: (r) => formatEGP(r.social_insurance as number) },
+                { key: 'net_salary', label: t('re.payroll.net'), render: (r) => formatEGP(r.net_salary as number) },
+                { key: 'paid_amount', label: t('re.fields.paid'), render: (r) => formatEGP(r.paid_amount as number) },
+                { key: 'remaining', label: t('re.fields.remaining'), render: (r) => formatEGP(Number(r.net_salary ?? 0) - Number(r.paid_amount ?? 0)) },
+                { key: 'status', label: t('status'), render: (r) => t(`re.payroll.status_${r.status}`, { defaultValue: String(r.status) }) },
+              ]}
+              rowActions={(row) => (canPaySalaries && Number(row.net_salary ?? 0) - Number(row.paid_amount ?? 0) > 0 ? (
+                <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => {
+                  setPayError(null)
+                  setPayForm({ amount: String(Number(row.net_salary) - Number(row.paid_amount ?? 0)), paid_on: new Date().toISOString().slice(0, 10) })
+                  setPayRow(row)
+                }}>
+                  <Wallet className="me-1 h-3.5 w-3.5" />{t('re.payroll.pay')}
+                </Button>
+              ) : null)}
+            />
+            <Modal open={!!payRow} onClose={() => setPayRow(null)} title={t('re.payroll.pay')}>
+              <form onSubmit={paySalary} className="space-y-4">
+                <ErrorNote message={payError} />
+                <p className="text-sm text-slate-600">{String(payRow?.employee_name ?? '')} — {String(payRow?.period_month ?? '')}</p>
+                <Input type="number" min="0.01" step="0.01" label={t('re.fields.amount')} value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} required />
+                <Input type="date" label={t('re.fields.date')} value={payForm.paid_on} onChange={(e) => setPayForm({ ...payForm, paid_on: e.target.value })} required />
+                <div className="flex gap-3"><Button type="submit" loading={payBusy}>{t('re.confirm')}</Button><Button type="button" variant="secondary" onClick={() => setPayRow(null)}>{t('cancel')}</Button></div>
+              </form>
+            </Modal>
           </>
         )
       )}

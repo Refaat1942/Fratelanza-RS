@@ -1,4 +1,4 @@
-export function isUnlimited(value: number | null | undefined): boolean {
+function isUnlimited(value: number | null | undefined): boolean {
   return value != null && value <= 0
 }
 

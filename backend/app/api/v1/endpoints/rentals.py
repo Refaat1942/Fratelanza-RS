@@ -118,6 +118,22 @@ class UnitPropertyUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class UnitQuickCreate(UnitPropertyUpdate):
+    """Register a unit directly; the property / building / floor are found or created by name."""
+
+    property_name: str = Field(min_length=2, max_length=255)
+    city: Optional[str] = None
+    building: str = Field(default="A", min_length=1, max_length=50)
+    floor_number: int = Field(default=0, ge=-5, le=200)
+    unit_code: str = Field(min_length=1, max_length=50)
+    unit_number: Optional[str] = Field(default=None, max_length=50)
+    unit_type: str = "apartment"
+    area_sqm: Decimal = Field(gt=0)
+    bedrooms: int = Field(default=0, ge=0)
+    bathrooms: int = Field(default=0, ge=0)
+    price: Decimal = Field(default=Decimal("0"), ge=0)
+
+
 CONTRACT_AUDIT_FIELDS = ["status", "start_date", "end_date", "rent_amount", "unit_id", "tenant_name"]
 
 
@@ -542,6 +558,62 @@ async def rental_units(
         }
         for u, f, p, o in rows
     ]
+
+
+@router.post("/units")
+async def create_unit_quick(
+    data: UnitQuickCreate,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_company_user)],
+):
+    from app.models.real_estate import ProjectStatus, UnitStatus, UnitType
+
+    cid = company_id_of(current_user)
+    try:
+        unit_type = UnitType(data.unit_type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid unit type")
+    if data.owner_id:
+        await get_owned(db, PropertyOwner, data.owner_id, cid, entity_name="Owner")
+    if (await db.execute(select(Unit.id).where(Unit.company_id == cid, Unit.unit_code == data.unit_code, Unit.is_deleted == False))).first():  # noqa: E712
+        raise HTTPException(status_code=409, detail="Unit code already exists")
+    name = data.property_name.strip()
+    project = (
+        await db.execute(select(Project).where(Project.company_id == cid, Project.name_ar == name, Project.is_deleted == False))  # noqa: E712
+    ).scalars().first()
+    if not project:
+        import uuid as _uuid
+
+        project = Project(company_id=cid, name_ar=name, name_en=name, code=f"P-{_uuid.uuid4().hex[:6].upper()}",
+                          city=data.city, status=ProjectStatus.ACTIVE)
+        db.add(project)
+        await db.flush()
+    building = (
+        await db.execute(select(Building).where(Building.project_id == project.id, Building.code == data.building, Building.is_deleted == False))  # noqa: E712
+    ).scalars().first()
+    if not building:
+        building = Building(project_id=project.id, name_ar=f"مبنى {data.building}", name_en=f"Building {data.building}", code=data.building)
+        db.add(building)
+        await db.flush()
+    floor = (
+        await db.execute(select(Floor).where(Floor.building_id == building.id, Floor.floor_number == data.floor_number))
+    ).scalars().first()
+    if not floor:
+        floor = Floor(building_id=building.id, floor_number=data.floor_number, name_ar=f"الدور {data.floor_number}", name_en=f"Floor {data.floor_number}")
+        db.add(floor)
+        await db.flush()
+    attributes = data.model_dump(include=set(UnitPropertyUpdate.model_fields), exclude_unset=True)
+    unit = Unit(
+        company_id=cid, floor_id=floor.id, unit_code=data.unit_code, unit_number=data.unit_number or data.unit_code,
+        unit_type=unit_type, area_sqm=data.area_sqm, bedrooms=data.bedrooms, bathrooms=data.bathrooms,
+        price=data.price, base_price=data.price, status=UnitStatus.AVAILABLE, occupancy_status="vacant", **attributes,
+    )
+    db.add(unit)
+    await db.flush()
+    await log_audit(db, request, current_user, "unit_created", "rentals", "unit", unit.id,
+                    after={"unit_code": unit.unit_code, "property": name})
+    return {"id": unit.id, "unit_code": unit.unit_code}
 
 
 @router.put("/units/{unit_id}")

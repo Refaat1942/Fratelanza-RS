@@ -155,6 +155,11 @@
     animation: fadeIn 0.2s ease-out forwards;
   }
 
+  /* Keep a long form's action row (last flex row: Save / Cancel) visible while its body scrolls */
+  .modal-panel form > div.flex:last-child {
+    @apply sticky -bottom-4 z-10 -mx-4 border-t border-slate-100 bg-white px-4 py-3 sm:-bottom-6 sm:-mx-6 sm:px-6;
+  }
+
   .modal-panel {
     animation: scaleIn 0.3s ease-out forwards;
   }

@@ -1,5 +1,5 @@
 {
-  "platform": "Fratelanza",
+  "platform": "Platform (no company)",
   "platform_full": "Fratelanza Real Estate Platform",
   "login": "Login",
   "logout": "Logout",
@@ -247,8 +247,6 @@
   "enable_all": "Enable All",
   "disable_optional": "Core Only",
   "required": "required",
-  "edit": "Edit",
-  "activate": "Activate",
   "trial": "Trial",
   "suspended": "Suspended",
   "expired": "Expired",
@@ -289,7 +287,6 @@
   "users_admin_help": "Edit user details, reset passwords, or suspend accounts. Super admin accounts cannot be modified here.",
   "company_id": "Company ID",
   "company": "Company",
-  "platform": "Platform (no company)",
   "user": "User",
   "total_users": "Total users",
   "active_users": "Active users",
@@ -309,7 +306,6 @@
   "monthly": "Monthly",
   "yearly": "Yearly",
   "paid": "Paid",
-  "pending": "Pending",
   "billing": "Billing",
   "billing_and_payment": "Billing & payment",
   "record_payment": "Record payment",
@@ -356,7 +352,6 @@
   "reservation_date": "Reservation Date",
   "expiry_date": "Expiry Date",
   "convert_to_contract": "Convert to Contract",
-  "approve": "Approve",
   "remaining": "Remaining",
   "payment_method": "Payment Method",
   "reference": "Reference",
@@ -379,11 +374,8 @@
   "balance_check": "Balance Check",
   "balanced": "Balanced",
   "unbalanced": "Needs adjustment",
-  "due_date": "Due Date",
-  "amount": "Amount",
   "manual": "Manual",
   "installment_manual_hint": "Manually edited rows are fixed; the remaining balance is spread equally across other installments.",
-  "monthly": "Monthly",
   "quarterly": "Quarterly",
   "semi_annual": "Semi-Annual",
   "annual": "Annual",
@@ -414,11 +406,6 @@
   "payslips": "Payslips",
   "no_payslips": "No payslips yet",
   "no_payslips_help": "Generate monthly payroll to create payslips for all employees.",
-  "employee_code": "Employee Code",
-  "salary_egp": "Salary (EGP)",
-  "department": "Department",
-  "leaves": "Leaves",
-  "attendance": "Attendance",
   "customers_help": "Full CRM for buyers and owners — profile, contracts, reservations, calls, and activity history.",
   "total_customers": "Total Customers",
   "customers_with_contracts": "With Contracts",
@@ -877,7 +864,8 @@
       "action_renew": "Renew contract",
       "action_pay": "Record collection",
       "action_refund": "Record refund",
-      "action_waive": "Authorised waiver"
+      "action_waive": "Authorised waiver",
+      "new_tenant": "New tenant"
     },
     "owners": {
       "subtitle": "Owner profiles, periodic settlements net of commission and approved expenses, partial payouts and statements",
@@ -1104,7 +1092,40 @@
       "one_page_hint": "One sign-in page for staff and buyers — usernames are case-sensitive",
       "email_optional": "E-mail (optional)"
     },
-    "copied": "Copied"
+    "copied": "Copied",
+    "alerts": {
+      "title": "Alerts",
+      "read_all": "Mark all read",
+      "none": "No alerts"
+    },
+    "payroll": {
+      "subtitle": "Payslips — paid and remaining",
+      "month": "Month",
+      "employee": "Employee",
+      "basic": "Basic",
+      "insurance": "Insurance",
+      "net": "Net",
+      "pay": "Pay",
+      "status_processed": "Unpaid",
+      "status_paid": "Paid",
+      "status_partially_paid": "Partially paid"
+    },
+    "units": {
+      "new": "Add unit",
+      "edit": "Edit unit",
+      "property_name": "Property / project name",
+      "property_hint": "e.g. Al Nasr Building",
+      "building": "Building",
+      "code": "Unit code (unique)",
+      "purpose": "Purpose",
+      "purpose_rent": "For rent",
+      "purpose_sale": "For sale",
+      "purpose_both": "Sale & rent",
+      "purpose_none": "Not listed",
+      "electricity": "Electricity meter",
+      "water": "Water meter",
+      "gas": "Gas meter"
+    }
   },
   "description": "Description"
 }

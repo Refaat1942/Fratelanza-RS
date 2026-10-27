@@ -458,7 +458,7 @@ A: You can add and delete test data freely. Use **Load Demo Data** to restore sa
 A: It may already be reserved or contracted. Only **green (available)** units can be reserved.
 
 **Q: Password not working?**  
-A: Use exactly `Demo123456` for the demo company admin. Super admin is separate (`admin@fratelanza.com`).
+A: Use exactly `Demo123456` for the demo company admin. Super admin is separate (username `superadmin`).
 
 **Q: Module missing from sidebar?**  
 A: Subscription plan controls enabled modules. Demo company uses the Professional plan with all modules.
@@ -474,7 +474,7 @@ A: Contact Fratelanza sales — Super Admin creates your company, plan, and admi
 |------|---------|
 | Live demo walkthrough | Your Fratelanza account manager |
 | Technical API docs | `/docs` on your server (Swagger) |
-| Deployment guide | [16-hostinger-deployment.md](./16-hostinger-deployment.md) |
+| Deployment guide | [MIGRATION_AND_DEPLOYMENT.md](./MIGRATION_AND_DEPLOYMENT.md) |
 
 ---
 

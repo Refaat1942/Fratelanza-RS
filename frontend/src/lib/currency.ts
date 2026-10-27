@@ -1,7 +1,7 @@
 import i18n from '@/i18n'
 
 /** Locale for Intl: Western digits in English, Arabic-Indic digits in Arabic. */
-export function getNumberLocale(lang?: string): string {
+function getNumberLocale(lang?: string): string {
   const l = lang ?? i18n.language ?? 'ar'
   return l.startsWith('ar') ? 'ar-EG' : 'en-US'
 }

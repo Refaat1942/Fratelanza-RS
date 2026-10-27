@@ -18,7 +18,7 @@ fratelanza-platform/
 │   ├── 12-dashboard-designs.md
 │   ├── 13-database-schema.sql
 │   ├── 14-development-roadmap.md
-│   └── 15-production-deployment-guide.md
+│   └── MIGRATION_AND_DEPLOYMENT.md
 ├── backend/
 │   ├── app/
 │   │   ├── api/
