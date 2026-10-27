@@ -269,3 +269,28 @@ async def test_25_notifications_follow_schedule(client, make_tenant):
         quiet = await run_company_jobs(db, t.company_id, run_day + timedelta(days=1))
         await db.rollback()
     assert quiet["notifications"] == 0
+
+
+async def test_quick_unit_registration_and_edit(client, make_tenant):
+    t = await make_tenant()
+    owner = await t.owner("مالك الوحدة")
+    r = await client.post("/api/v1/rentals/units", headers=t.admin, json={
+        "property_name": "عمارة النصر", "building": "B", "floor_number": 3, "unit_code": "NASR-301", "area_sqm": 110,
+        "bedrooms": 3, "owner_id": owner, "furnishing_status": "furnished", "rental_category": "new_law",
+        "electricity_meter": "E-1", "listing_purpose": "rent"})
+    assert r.status_code == 200, r.text
+    again = await client.post("/api/v1/rentals/units", headers=t.admin, json={
+        "property_name": "عمارة النصر", "building": "B", "floor_number": 3, "unit_code": "NASR-302", "area_sqm": 90})
+    assert again.status_code == 200
+    assert (await client.post("/api/v1/rentals/units", headers=t.admin, json={
+        "property_name": "عمارة النصر", "unit_code": "NASR-301", "area_sqm": 90})).status_code == 409
+    units = {u["unit_code"]: u for u in (await client.get("/api/v1/rentals/units", headers=t.admin)).json()}
+    assert units["NASR-301"]["owner_id"] == owner and units["NASR-301"]["rental_category"] == "new_law"
+    assert units["NASR-301"]["project_name"] == units["NASR-302"]["project_name"] == "عمارة النصر"
+    assert (await client.put(f"/api/v1/rentals/units/{units['NASR-302']['id']}", headers=t.admin,
+                             json={"furnishing_status": "unfurnished", "rental_category": "old_law"})).status_code == 200
+    # another tenant's owner cannot be attached
+    other = await make_tenant()
+    foreign = await other.owner("مالك آخر")
+    assert (await client.post("/api/v1/rentals/units", headers=t.admin, json={
+        "property_name": "عمارة النصر", "unit_code": "NASR-303", "area_sqm": 90, "owner_id": foreign})).status_code == 404

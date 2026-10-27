@@ -9,7 +9,7 @@
 
 ### POST /auth/login
 ```json
-{ "email": "admin@fratelanza.com", "password": "Admin@123456" }
+{ "username": "superadmin", "password": "123456" }
 ```
 Response: `{ "access_token", "refresh_token", "token_type": "bearer" }`
 

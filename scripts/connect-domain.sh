@@ -5,7 +5,7 @@ set -euo pipefail
 
 DOMAIN="${1:-}"
 EMAIL="${2:-admin@fratelanza.com}"
-APP_PORT="${APP_PORT:-9000}"
+APP_PORT="${APP_PORT:-14136}"
 VPS_IP="187.124.15.14"
 SAFE_NAME=$(echo "${DOMAIN:-unknown}" | tr '.' '-')
 NGINX_CONF="/etc/nginx/sites-available/fratelanza-${SAFE_NAME}"

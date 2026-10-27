@@ -80,7 +80,7 @@ Then hard-refresh browser: `Ctrl+Shift+R` on https://rs.fratelanza.com
 
 > **Do not run** `docker compose up -d --build` on the VPS — that is the **dev** compose file and fails on port 5432. Production uses `docker-compose.prod.yml` via `DEPLOY-VPS.sh`.
 
-See [docs/16-hostinger-deployment.md](docs/16-hostinger-deployment.md) for full guide.
+See [docs/VPS-DEPLOY.md](docs/VPS-DEPLOY.md) and [docs/MIGRATION_AND_DEPLOYMENT.md](docs/MIGRATION_AND_DEPLOYMENT.md).
 
 ### Local development only
 
@@ -117,10 +117,11 @@ cd /opt/fratelanza && bash scripts/fix-rs-domain.sh
 
 ## Default Credentials
 
-| Role | Email | Password |
-|------|-------|----------|
-| Super Admin | admin@fratelanza.com | Admin@123456 |
-| Demo Company Admin | admin@demo.fratelanza.com | Demo123456 |
+One sign-in page (`/login`) for everyone; username only, case-sensitive.
+
+| Role | Username | Password |
+|------|----------|----------|
+| Platform owner (super admin) | `superadmin` | `123456` (set once on first start) |
 
 > Change these immediately in production.
 
@@ -142,10 +143,10 @@ cd /opt/fratelanza && bash scripts/fix-rs-domain.sh
 | Dashboard Designs | [docs/12-dashboard-designs.md](docs/12-dashboard-designs.md) |
 | Database Schema | [docs/13-database-schema.sql](docs/13-database-schema.sql) |
 | Development Roadmap | [docs/14-development-roadmap.md](docs/14-development-roadmap.md) |
-| Deployment Guide | [docs/15-production-deployment-guide.md](docs/15-production-deployment-guide.md) |
+| Deployment Guide | [docs/MIGRATION_AND_DEPLOYMENT.md](docs/MIGRATION_AND_DEPLOYMENT.md) |
+| Customer demos | [docs/DEMO_SETUP.md](docs/DEMO_SETUP.md) |
 | **Demo User Manual (EN)** | [docs/DEMO-USER-MANUAL.md](docs/DEMO-USER-MANUAL.md) |
 | **Demo User Manual (AR)** | [docs/DEMO-USER-MANUAL-AR.md](docs/DEMO-USER-MANUAL-AR.md) |
-| Demo Quick Start Card | [docs/DEMO-QUICK-START.md](docs/DEMO-QUICK-START.md) |
 
 ## Project Structure
 

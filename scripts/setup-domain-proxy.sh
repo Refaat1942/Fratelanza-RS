@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # Setup domain proxy on Hostinger VPS
-# Routes external domain (port 80/443) → FRATELANZA on port 9000
+# Routes external domain (port 80/443) → FRATELANZA on port 14136
 # Keeps FRATELANZA isolated from other projects
 
 DOMAIN="${1:-erp.yourdomain.com}"
-APP_PORT="${APP_PORT:-9000}"
+APP_PORT="${APP_PORT:-14136}"
 
 if [ "$DOMAIN" = "erp.yourdomain.com" ]; then
     echo "Usage: ./scripts/setup-domain-proxy.sh your-domain.com"

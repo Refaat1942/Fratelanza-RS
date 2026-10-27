@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Home, Plus, FileSignature, RefreshCcw, Ban, Wallet, Undo2, BadgePercent, Eye, CheckCircle2, Users } from 'lucide-react'
+import { Home, Plus, FileSignature, RefreshCcw, Ban, Wallet, Undo2, BadgePercent, Eye, CheckCircle2, Users, UserPlus, Pencil } from 'lucide-react'
 import api from '@/lib/api'
 import { apiErrorMessage } from '@/lib/apiError'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -186,6 +186,90 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">{label}</p><div className="mt-1 font-medium text-slate-900">{value}</div></div>
 }
 
+const UNIT_TYPES = ['apartment', 'villa', 'duplex', 'penthouse', 'chalet', 'office', 'retail', 'clinic', 'warehouse']
+const emptyUnit = {
+  property_name: '', city: '', building: 'A', floor_number: '0', unit_code: '', unit_type: 'apartment', area_sqm: '', bedrooms: '0',
+  bathrooms: '0', price: '0', owner_id: '', furnishing_status: '', finishing: '', rental_category: '', construction_year: '',
+  electricity_meter: '', water_meter: '', gas_meter: '', listing_purpose: 'rent', notes: '',
+}
+
+function UnitModal({ unit, open, onClose, onSaved }: { unit: Row | null; open: boolean; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation()
+  const can = usePermissionsStore((s) => s.can)
+  const { data: owners = [] } = useOwners(can('owners'))
+  const [form, setForm] = useState<Record<string, string>>(() => unit
+    ? Object.fromEntries(Object.keys(emptyUnit).map((k) => [k, unit[k] == null ? '' : String(unit[k])]))
+    : emptyUnit)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const attrs = ['owner_id', 'furnishing_status', 'finishing', 'rental_category', 'construction_year', 'electricity_meter',
+    'water_meter', 'gas_meter', 'listing_purpose', 'notes']
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true); setError(null)
+    const payload: Row = {}
+    for (const k of attrs) payload[k] = form[k] === '' ? null : form[k]
+    if (payload.owner_id) payload.owner_id = Number(payload.owner_id)
+    if (payload.construction_year) payload.construction_year = Number(payload.construction_year)
+    try {
+      if (unit) {
+        await api.put(`/rentals/units/${unit.id}`, payload)
+      } else {
+        await api.post('/rentals/units', {
+          ...payload, property_name: form.property_name, city: form.city || null, building: form.building || 'A',
+          floor_number: Number(form.floor_number || 0), unit_code: form.unit_code, unit_type: form.unit_type,
+          area_sqm: Number(form.area_sqm), bedrooms: Number(form.bedrooms || 0), bathrooms: Number(form.bathrooms || 0),
+          price: Number(form.price || 0),
+        })
+      }
+      onSaved(); onClose()
+    } catch (err) { setError(apiErrorMessage(err, t)) } finally { setBusy(false) }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={unit ? `${t('re.units.edit')} — ${String(unit.unit_code)}` : t('re.units.new')} className="max-w-2xl">
+      <form onSubmit={submit} className="space-y-4">
+        <ErrorNote message={error} />
+        {!unit && (
+          <FormGrid>
+            <Input label={t('re.units.property_name')} value={form.property_name} onChange={(e) => set('property_name', e.target.value)} required placeholder={t('re.units.property_hint')} />
+            <Input label={t('re.fields.city')} value={form.city} onChange={(e) => set('city', e.target.value)} />
+            <Input label={t('re.units.building')} value={form.building} onChange={(e) => set('building', e.target.value)} />
+            <Input type="number" label={t('re.fields.floor')} value={form.floor_number} onChange={(e) => set('floor_number', e.target.value)} />
+            <Input label={t('re.units.code')} value={form.unit_code} onChange={(e) => set('unit_code', e.target.value)} required dir="ltr" />
+            <SelectField label={t('re.fields.property_type')} value={form.unit_type} onChange={(v) => set('unit_type', v)} required
+              options={UNIT_TYPES.map((k) => ({ value: k, label: t(`re.unit_type.${k}`) }))} />
+            <Input type="number" min="1" step="0.01" label={t('re.fields.area')} value={form.area_sqm} onChange={(e) => set('area_sqm', e.target.value)} required />
+            <Input type="number" min="0" label={t('re.fields.rooms')} value={form.bedrooms} onChange={(e) => set('bedrooms', e.target.value)} />
+          </FormGrid>
+        )}
+        <FormGrid>
+          {can('owners') && (
+            <SelectField label={t('re.fields.owner')} value={form.owner_id} onChange={(v) => set('owner_id', v)}
+              options={owners.map((o) => ({ value: String(o.id), label: String(o.full_name) }))} />
+          )}
+          <SelectField label={t('re.fields.rental_category')} value={form.rental_category} onChange={(v) => set('rental_category', v)}
+            options={['new_law', 'old_law', 'furnished_short', 'commercial'].map((k) => ({ value: k, label: t(`re.rental_category.${k}`) }))} />
+          <SelectField label={t('re.fields.furnishing')} value={form.furnishing_status} onChange={(v) => set('furnishing_status', v)}
+            options={['unfurnished', 'semi', 'furnished'].map((k) => ({ value: k, label: t(`re.furnishing.${k}`) }))} />
+          <SelectField label={t('re.fields.finishing')} value={form.finishing} onChange={(v) => set('finishing', v)}
+            options={['core_shell', 'semi', 'full', 'super_lux'].map((k) => ({ value: k, label: t(`re.finishing.${k}`) }))} />
+          <SelectField label={t('re.units.purpose')} value={form.listing_purpose} onChange={(v) => set('listing_purpose', v)}
+            options={['rent', 'sale', 'both', 'none'].map((k) => ({ value: k, label: t(`re.units.purpose_${k}`) }))} />
+          <Input type="number" min="1900" max="2100" label={t('re.fields.construction_year')} value={form.construction_year} onChange={(e) => set('construction_year', e.target.value)} />
+          <Input label={t('re.units.electricity')} value={form.electricity_meter} onChange={(e) => set('electricity_meter', e.target.value)} dir="ltr" />
+          <Input label={t('re.units.water')} value={form.water_meter} onChange={(e) => set('water_meter', e.target.value)} dir="ltr" />
+          <Input label={t('re.units.gas')} value={form.gas_meter} onChange={(e) => set('gas_meter', e.target.value)} dir="ltr" />
+        </FormGrid>
+        <TextAreaField label={t('re.fields.notes')} value={form.notes} onChange={(v) => set('notes', v)} rows={2} />
+        <div className="flex gap-3"><Button type="submit" loading={busy}>{t('save')}</Button><Button type="button" variant="secondary" onClick={onClose}>{t('cancel')}</Button></div>
+      </form>
+    </Modal>
+  )
+}
+
 export function RentalsPage() {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -195,6 +279,8 @@ export function RentalsPage() {
   const tab = params.get('tab') ?? 'contracts'
   const statusFilter = params.get('status') ?? ''
   const [createOpen, setCreateOpen] = useState(false)
+  const [newTenantUnit, setNewTenantUnit] = useState<number | null>(null)
+  const [unitModal, setUnitModal] = useState<{ open: boolean; unit: Row | null }>({ open: false, unit: null })
   const [detailId, setDetailId] = useState<number | null>(null)
   const [action, setAction] = useState<{ kind: string; row: Row } | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
@@ -258,8 +344,9 @@ export function RentalsPage() {
         subtitle={t('re.rentals.subtitle')}
         icon={Home}
         accentIndex={2}
-        actions={can('rentals', 'create') ? (
-          <Button onClick={() => setCreateOpen(true)}><Plus className="me-2 h-4 w-4" />{t('re.rentals.new_contract')}</Button>
+        actions={can('rentals', 'create') ? (tab === 'units'
+          ? <Button onClick={() => setUnitModal({ open: true, unit: null })}><Plus className="me-2 h-4 w-4" />{t('re.units.new')}</Button>
+          : <Button onClick={() => setCreateOpen(true)}><Plus className="me-2 h-4 w-4" />{t('re.rentals.new_contract')}</Button>
         ) : undefined}
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -308,6 +395,10 @@ export function RentalsPage() {
               {row.stored_status === 'active' && can('rentals', 'terminate') && (
                 <Button variant="secondary" className="!px-2 !py-1.5 text-xs text-red-600" onClick={() => openAction('terminate', row, { date: today(), reason: '' })}><Ban className="me-1 h-3.5 w-3.5" />{t('re.rentals.terminate')}</Button>
               )}
+              {['terminated', 'expired'].includes(String(row.status)) && can('rentals', 'create')
+                && !(units.data ?? []).find((u) => u.id === row.unit_id)?.active_contract_id && (
+                <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => setNewTenantUnit(row.unit_id as number)}><UserPlus className="me-1 h-3.5 w-3.5" />{t('re.rentals.new_tenant')}</Button>
+              )}
             </div>
           )}
         />
@@ -355,11 +446,21 @@ export function RentalsPage() {
             { key: 'current_tenant', label: t('re.fields.tenant_name'), render: (r) => String(r.current_tenant ?? '—') },
             { key: 'occupancy_status', label: t('re.fields.occupancy'), render: (r) => <Badge tone={r.occupancy_status === 'occupied' ? 'green' : 'blue'}><Users className="me-1 h-3 w-3" />{t(`re.occupancy.${r.occupancy_status}`)}</Badge> },
           ]}
+          rowActions={can('rentals', 'edit') ? (row) => (
+            <Button variant="secondary" className="!px-2 !py-1.5 text-xs" onClick={() => setUnitModal({ open: true, unit: row })}><Pencil className="me-1 h-3.5 w-3.5" />{t('edit')}</Button>
+          ) : undefined}
+          onEmptyAction={can('rentals', 'create') ? () => setUnitModal({ open: true, unit: null }) : undefined}
         />
       )}
 
       <ContractFormModal open={createOpen} onClose={() => setCreateOpen(false)} title={t('re.rentals.new_contract')}
         onSubmit={async (payload) => { await api.post('/rentals/contracts', payload); refresh() }} />
+      <ContractFormModal key={`tenant-${newTenantUnit}`} open={newTenantUnit !== null} fixedUnitId={newTenantUnit ?? undefined}
+        onClose={() => setNewTenantUnit(null)} title={t('re.rentals.new_tenant')}
+        onSubmit={async (payload) => { await api.post('/rentals/contracts', payload); refresh() }} />
+      {unitModal.open && (
+        <UnitModal key={String(unitModal.unit?.id ?? 'new')} unit={unitModal.unit} open onClose={() => setUnitModal({ open: false, unit: null })} onSaved={refresh} />
+      )}
       <ContractDetail id={detailId} onClose={() => setDetailId(null)} />
 
       <ActionModal open={!!action} onClose={() => setAction(null)} title={action ? t(`re.rentals.action_${action.kind}`) : ''}>

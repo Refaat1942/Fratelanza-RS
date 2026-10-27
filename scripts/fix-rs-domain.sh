@@ -1,5 +1,5 @@
 #!/bin/bash
-# Point Real Estate domains at port 9000 (not Fratelanza Hub).
+# Point Real Estate domains at port 14136 (not Fratelanza Hub).
 #
 # Fixes by default:
 #   rs.fratelanza.com       — company demo + platform
@@ -11,7 +11,7 @@
 set -euo pipefail
 
 EMAIL="${RS_EMAIL:-admin@fratelanza.com}"
-APP_PORT="${APP_PORT:-9000}"
+APP_PORT="${APP_PORT:-14136}"
 APP_DIR="${APP_DIR:-/opt/fratelanza}"
 DISABLED_DIR="/etc/nginx/sites-disabled-fratelanza-fix"
 
